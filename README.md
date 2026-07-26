@@ -50,9 +50,13 @@ Both M0 exit tests pass:
 `Company → Restaurant` inheritance chain with no caching · Ingredients with par levels ·
 Recipes with live contribution margin · Kasavana-Smith classification · JSON content
 loading · Time (`GameClock`) · Kitchen throughput (brigade stations with real queueing) ·
-Customers (arrival curve + satisfaction formula), joined by a headless `ServiceSimulation`.
+Customers (arrival curve + satisfaction formula), joined by a headless `ServiceSimulation` ·
+Economy (append-only ledger, live prime cost).
 
-**Still outstanding for M0:** Economy · save/load.
+**Still outstanding for M0:** save/load.
+
+Economy tracks labour cost but nothing generates it yet — Employees are an M1 system — so
+prime cost is only as complete as the labour figure booked against it.
 
 M0 is not finished until those exist. Do not start M1 before then.
 

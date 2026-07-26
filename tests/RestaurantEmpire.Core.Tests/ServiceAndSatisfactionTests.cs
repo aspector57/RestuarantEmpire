@@ -75,8 +75,8 @@ namespace RestaurantEmpire.Core.Tests
             Assert.Equal(1m, delighted.ServiceSpeed);
 
             // Queue five more behind it and the last one suffers.
-            Ticket slow = null;
-            for (var i = 0; i < 5; i++) slow = pass.Fire(margherita, 0, restaurant.Inventory);
+            var slow = pass.Fire(margherita, 0, restaurant.Inventory);
+            for (var i = 0; i < 4; i++) slow = pass.Fire(margherita, 0, restaurant.Inventory);
 
             var unhappy = SatisfactionModel.Evaluate(party, slow, "Pizza Margherita", quality, costRatio);
             Assert.True(unhappy.ServiceSpeed < happy.ServiceSpeed);
@@ -92,8 +92,8 @@ namespace RestaurantEmpire.Core.Tests
 
             var party = new DemandModel(1, 1).ArrivalsFor(0, 600)[0];
 
-            Ticket ticket = null;
-            for (var i = 0; i < 6; i++) ticket = pass.Fire(risotto, 0, restaurant.Inventory);
+            var ticket = pass.Fire(risotto, 0, restaurant.Inventory);
+            for (var i = 0; i < 5; i++) ticket = pass.Fire(risotto, 0, restaurant.Inventory);
 
             var result = SatisfactionModel.Evaluate(party, ticket, "Black Truffle Risotto",
                 restaurant.Costing.IngredientQuality("truffle-risotto"),

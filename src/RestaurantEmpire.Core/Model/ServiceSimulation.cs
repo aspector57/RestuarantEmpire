@@ -10,7 +10,8 @@ namespace RestaurantEmpire.Core.Model
 
         internal ServiceResult(
             Dictionary<string, int> unitsSold, IList<Ticket> tickets, IList<string> diagnostics,
-            decimal revenue, int partiesArrived, int partiesTurnedAway, int coversServed,
+            decimal revenue, decimal foodCost, decimal wastedFoodCost,
+            int partiesArrived, int partiesTurnedAway, int coversServed,
             int walkouts, int eightySixed, decimal averageSatisfaction,
             int longestWaitMinutes, string busiestStationId)
         {
@@ -18,6 +19,8 @@ namespace RestaurantEmpire.Core.Model
             Tickets = new List<Ticket>(tickets).AsReadOnly();
             Diagnostics = new List<string>(diagnostics).AsReadOnly();
             Revenue = revenue;
+            FoodCost = foodCost;
+            WastedFoodCost = wastedFoodCost;
             PartiesArrived = partiesArrived;
             PartiesTurnedAway = partiesTurnedAway;
             CoversServed = coversServed;
@@ -41,6 +44,21 @@ namespace RestaurantEmpire.Core.Model
         public IReadOnlyList<string> Diagnostics { get; }
 
         public decimal Revenue { get; }
+
+        /// <summary>
+        /// Ingredient cost of every plate the kitchen actually produced — including plates
+        /// for guests who walked out before eating them. The food was bought and cooked
+        /// either way, so it belongs in COGS either way.
+        /// </summary>
+        public decimal FoodCost { get; }
+
+        /// <summary>
+        /// The share of <see cref="FoodCost"/> that earned nothing because the guest had
+        /// already left. This is what makes a walkout cost twice: no revenue, and the plate
+        /// still went in the bin.
+        /// </summary>
+        public decimal WastedFoodCost { get; }
+
         public int PartiesArrived { get; }
 
         /// <summary>Turned away at the door because the dining room was full.</summary>
@@ -111,7 +129,7 @@ namespace RestaurantEmpire.Core.Model
             var stationMinutes = new Dictionary<string, int>(StringComparer.Ordinal);
             var seatFreeAt = new List<long>();   // one entry per occupied seat
 
-            decimal revenue = 0m, satisfactionTotal = 0m;
+            decimal revenue = 0m, satisfactionTotal = 0m, foodCost = 0m, wastedFoodCost = 0m;
             int partiesTurnedAway = 0, coversServed = 0, walkouts = 0, eightySixed = 0, longestWait = 0;
 
             var arrivals = demand.ArrivalsFor(serviceStartTick, serviceMinutes);
@@ -150,6 +168,10 @@ namespace RestaurantEmpire.Core.Model
                         continue;
                     }
 
+                    // The plate was cooked, so its ingredients are spent whatever happens next.
+                    var plateCost = costing.PlateCost(recipeId);
+                    foodCost += plateCost;
+
                     int running;
                     stationMinutes.TryGetValue(ticket.StationId, out running);
                     stationMinutes[ticket.StationId] = running + ticket.CookMinutes;
@@ -165,6 +187,7 @@ namespace RestaurantEmpire.Core.Model
                     if (satisfaction.WalkedOut)
                     {
                         walkouts++;
+                        wastedFoodCost += plateCost;   // cooked, binned, unpaid for
                         diagnostics.Add(satisfaction.Diagnosis);
                         continue;
                     }
@@ -185,7 +208,7 @@ namespace RestaurantEmpire.Core.Model
             }
 
             return new ServiceResult(
-                unitsSold, tickets, diagnostics, revenue,
+                unitsSold, tickets, diagnostics, revenue, foodCost, wastedFoodCost,
                 arrivals.Count, partiesTurnedAway, coversServed, walkouts, eightySixed,
                 coversServed == 0 ? 0m : satisfactionTotal / coversServed,
                 longestWait, BusiestStation(stationMinutes));

@@ -33,7 +33,9 @@ Rendering, UI, layout/build mode, the Advisor, Events, Competitors, Marketing, h
 1. Switching a Supplier assignment updates every dependent Recipe's contribution margin with **zero manual edits**.
 2. A new Recipe or Furniture object can be added **purely by writing a data file**, with no engine/code changes.
 
-**Status: both exit tests pass.** Built so far — Company→Restaurant hierarchy, Suppliers with the full inheritance chain, Ingredients with par levels, Recipes with live contribution margin, Kasavana-Smith classification, JSON content loading, Time (`GameClock`), Kitchen throughput (brigade stations, queueing, 86'ing), and Customers (arrival curve, satisfaction formula) tied together by a headless `ServiceSimulation`. **Still outstanding for M0: Economy, save/load.** M0 is not done and M1 must not start until it is.
+**Status: both exit tests pass.** Built so far — Company→Restaurant hierarchy, Suppliers with the full inheritance chain, Ingredients with par levels, Recipes with live contribution margin, Kasavana-Smith classification, JSON content loading, Time (`GameClock`), Kitchen throughput (brigade stations, queueing, 86'ing), Customers (arrival curve, satisfaction formula) tied together by a headless `ServiceSimulation`, and Economy (append-only ledger on the Company, live prime cost). **Still outstanding for M0: save/load.** M0 is not done and M1 must not start until it is.
+
+**Caveat on prime cost:** Economy *tracks* labour cost, but nothing *generates* it yet — Employees arrive at M1. Until then a labour figure has to be booked by the caller, so prime cost is only as honest as what gets recorded against it.
 
 **Simulation determinism is a hard requirement.** Use `DeterministicRandom`, never `System.Random` — the runtime does not guarantee `System.Random`'s sequence across versions or platforms, and tests, save/load, and post-hoc explanation of a night all depend on the same seed always producing the same service.
 

@@ -20,7 +20,7 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly List<Restaurant> _restaurants;
 
-        public Company(string id, string name, DefinitionRegistry definitions)
+        public Company(string id, string name, DefinitionRegistry definitions, decimal openingCash = 0m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Company id is required.", nameof(id));
             if (definitions == null) throw new ArgumentNullException(nameof(definitions));
@@ -29,6 +29,7 @@ namespace RestaurantEmpire.Core.Model
             Name = name ?? id;
             Definitions = definitions;
             SupplierPolicy = new SupplierPolicy(definitions, Name, null);
+            Economy = new Economy(openingCash);
             _restaurants = new List<Restaurant>();
         }
 
@@ -49,6 +50,13 @@ namespace RestaurantEmpire.Core.Model
         /// Nothing else has to change when it does — resolution already walks a chain.
         /// </summary>
         public SupplierPolicy SupplierPolicy { get; }
+
+        /// <summary>
+        /// The books for the whole group. One ledger, with entries tagged by location, so it
+        /// answers both per-restaurant and empire-wide questions — the rollup layer corporate
+        /// ownership needs, present from day one rather than retrofitted.
+        /// </summary>
+        public Economy Economy { get; }
 
         public IReadOnlyList<Restaurant> Restaurants { get { return _restaurants; } }
 
