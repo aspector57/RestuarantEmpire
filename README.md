@@ -34,7 +34,7 @@ docs/                          design documents
 deliberate: it is what lets this simulation core drop into Unity at M1 without a rewrite.
 Don't "modernise" the target framework without checking Unity still loads it.
 
-## Current status — M0, partially complete
+## Current status — M0 scope complete
 
 M0 proves the one architectural claim the whole design rests on: **a supplier decision
 propagates everywhere it applies, with zero manual editing.** Restaurant Empire II made
@@ -51,12 +51,14 @@ Both M0 exit tests pass:
 Recipes with live contribution margin · Kasavana-Smith classification · JSON content
 loading · Time (`GameClock`) · Kitchen throughput (brigade stations with real queueing) ·
 Customers (arrival curve + satisfaction formula), joined by a headless `ServiceSimulation` ·
-Economy (append-only ledger, live prime cost).
+Economy (append-only ledger, live prime cost) · save/load with version stamps and graceful
+degradation · menu pricing as a player decision.
 
-**Still outstanding for M0:** save/load.
-
-Economy tracks labour cost but nothing generates it yet — Employees are an M1 system — so
-prime cost is only as complete as the labour figure booked against it.
+**Deferred out of M0 on purpose, both needing the game loop rather than the core:** the
+autosave *policy* (rolling slots, prompt-on-exit) — the save format and its degradation
+behaviour are built, the scheduling is not; and labour cost *generation* — Economy tracks
+labour, but nothing produces it until Employees arrive at M1, so prime cost is only as
+complete as the labour figure booked against it.
 
 M0 is not finished until those exist. Do not start M1 before then.
 

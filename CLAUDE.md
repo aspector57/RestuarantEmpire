@@ -33,7 +33,9 @@ Rendering, UI, layout/build mode, the Advisor, Events, Competitors, Marketing, h
 1. Switching a Supplier assignment updates every dependent Recipe's contribution margin with **zero manual edits**.
 2. A new Recipe or Furniture object can be added **purely by writing a data file**, with no engine/code changes.
 
-**Status: both exit tests pass.** Built so far — Company→Restaurant hierarchy, Suppliers with the full inheritance chain, Ingredients with par levels, Recipes with live contribution margin, Kasavana-Smith classification, JSON content loading, Time (`GameClock`), Kitchen throughput (brigade stations, queueing, 86'ing), Customers (arrival curve, satisfaction formula) tied together by a headless `ServiceSimulation`, and Economy (append-only ledger on the Company, live prime cost). **Still outstanding for M0: save/load.** M0 is not done and M1 must not start until it is.
+**Status: M0 SCOPE COMPLETE — both exit tests pass.** Company→Restaurant hierarchy · Suppliers and Pricing, both resolving up a Company→Restaurant inheritance chain · Ingredients with par levels · Recipes with live contribution margin · Kasavana-Smith classification · JSON content loading · Time (`GameClock`) · Kitchen throughput (brigade stations, queueing, 86'ing) · Customers (arrival curve, satisfaction formula), joined by a headless `ServiceSimulation` · Economy (append-only ledger, live prime cost) · save/load with version stamps and graceful degradation.
+
+**Two things deferred out of M0, deliberately, both because they need the game loop rather than the core:** the autosave *policy* (rolling slots, prompt-on-exit, autosave after a long jump-ahead) — the format and degradation are built, the scheduling is not; and labour cost *generation* — Economy tracks it, but nothing produces it until Employees arrive at M1, so prime cost is only as complete as the labour figure booked against it.
 
 **Caveat on prime cost:** Economy *tracks* labour cost, but nothing *generates* it yet — Employees arrive at M1. Until then a labour figure has to be booked by the caller, so prime cost is only as honest as what gets recorded against it.
 
