@@ -1,0 +1,58 @@
+using System;
+
+namespace RestaurantEmpire.Core.Model
+{
+    /// <summary>
+    /// One physical location. Always owned by a <see cref="Model.Company"/> — there is no
+    /// way to construct a free-floating restaurant, which is what keeps the hierarchy
+    /// honest rather than aspirational.
+    ///
+    /// Note what this class does NOT own: supplier assignments. Those live on the parent
+    /// company, so a restaurant reads current prices rather than holding its own copy.
+    /// </summary>
+    public sealed class Restaurant
+    {
+        internal Restaurant(string id, string name, LocationType locationType, Company company)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Restaurant id is required.", nameof(id));
+            if (company == null) throw new ArgumentNullException(nameof(company));
+
+            Id = id;
+            Name = name ?? id;
+            LocationType = locationType;
+            Company = company;
+            Menu = new Menu(company.Definitions);
+            Inventory = new Inventory(company.Definitions);
+        }
+
+        public string Id { get; }
+        public string Name { get; }
+
+        /// <summary>Brick-and-mortar, food truck, ghost kitchen... a parameter, not a subclass.</summary>
+        public LocationType LocationType { get; }
+
+        /// <summary>The parent company. Never null.</summary>
+        public Company Company { get; }
+
+        public Menu Menu { get; }
+        public Inventory Inventory { get; }
+
+        /// <summary>
+        /// Live costing for this restaurant's menu.
+        ///
+        /// Deliberately returns a NEW instance on every access and holds no state. There is
+        /// no cached costing object that could go stale, and no invalidation step anyone
+        /// could forget to call — the numbers are recomputed from the company's current
+        /// supplier policy each time you ask.
+        /// </summary>
+        public MenuCosting Costing
+        {
+            get { return new MenuCosting(Company.Definitions, Company.SupplierPolicy); }
+        }
+
+        public override string ToString()
+        {
+            return Name + " (" + Id + ", " + LocationType + ")";
+        }
+    }
+}

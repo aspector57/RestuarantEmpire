@@ -1,0 +1,46 @@
+{
+  "suppliers": [
+    {
+      "id": "budget-wholesale",
+      "name": "Budget Wholesale Foods",
+      "qualityTier": 1,
+      "prices": {
+        "flour": 1.20,
+        "tomato": 2.00,
+        "mozzarella": 6.00,
+        "basil": 1.00,
+        "arborio-rice": 3.00,
+        "parmesan": 12.00,
+        "truffle": 1.80
+      }
+    },
+    {
+      "id": "valley-produce",
+      "name": "Valley Produce Co.",
+      "qualityTier": 3,
+      "prices": {
+        "flour": 1.80,
+        "tomato": 3.00,
+        "mozzarella": 9.00,
+        "basil": 1.60,
+        "arborio-rice": 4.50,
+        "parmesan": 18.00,
+        "truffle": 2.60
+      }
+    },
+    {
+      "id": "premium-harvest",
+      "name": "Premium Harvest Partners",
+      "qualityTier": 5,
+      "prices": {
+        "flour": 2.60,
+        "tomato": 5.00,
+        "mozzarella": 14.00,
+        "basil": 2.80,
+        "arborio-rice": 7.00,
+        "parmesan": 28.00,
+        "truffle": 4.20
+      }
+    }
+  ]
+}

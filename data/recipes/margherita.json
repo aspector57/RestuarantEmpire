@@ -1,0 +1,11 @@
+{
+  "id": "margherita",
+  "name": "Pizza Margherita",
+  "menuPrice": 16.00,
+  "ingredients": [
+    { "ingredientId": "flour",      "quantity": 0.25 },
+    { "ingredientId": "tomato",     "quantity": 0.15 },
+    { "ingredientId": "mozzarella", "quantity": 0.12 },
+    { "ingredientId": "basil",      "quantity": 0.02 }
+  ]
+}

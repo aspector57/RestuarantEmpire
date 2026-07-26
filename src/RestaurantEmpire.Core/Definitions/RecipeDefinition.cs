@@ -1,0 +1,80 @@
+using System;
+using System.Collections.Generic;
+
+namespace RestaurantEmpire.Core.Definitions
+{
+    /// <summary>One ingredient line on a recipe: which ingredient, and how much of it.</summary>
+    public sealed class RecipeIngredient
+    {
+        /// <summary>Reference by stable string ID — never a cached cost (Architecture Rule 1).</summary>
+        public string IngredientId { get; }
+
+        /// <summary>Amount used per plate, in the ingredient's own unit.</summary>
+        public decimal Quantity { get; }
+
+        public RecipeIngredient(string ingredientId, decimal quantity)
+        {
+            if (string.IsNullOrWhiteSpace(ingredientId))
+                throw new ArgumentException("Recipe ingredient id is required.", nameof(ingredientId));
+            if (quantity <= 0m)
+                throw new ArgumentOutOfRangeException(nameof(quantity), "Recipe ingredient quantity must be positive.");
+
+            IngredientId = ingredientId;
+            Quantity = quantity;
+        }
+
+        public override string ToString()
+        {
+            return Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture) + " x " + IngredientId;
+        }
+    }
+
+    /// <summary>
+    /// A sellable dish. Loaded from a file in data/recipes/.
+    ///
+    /// DELIBERATELY HAS NO COST OR MARGIN PROPERTY. This is the architectural heart of
+    /// the project: Restaurant Empire II stored cost on the recipe, so a supplier change
+    /// left every recipe stale until the player hand-edited each one. Here there is
+    /// nowhere to put a stale number — cost is computed on demand by
+    /// <see cref="Model.MenuCosting"/> from whichever supplier is assigned right now.
+    ///
+    /// If you are ever tempted to add a `PlateCost` property here, that is the bug the
+    /// whole design exists to prevent.
+    /// </summary>
+    public sealed class RecipeDefinition
+    {
+        public string Id { get; }
+        public string Name { get; }
+
+        /// <summary>What the guest pays. The one money figure that genuinely belongs to the dish.</summary>
+        public decimal MenuPrice { get; }
+
+        public IReadOnlyList<RecipeIngredient> Ingredients { get; }
+
+        public RecipeDefinition(string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Recipe id is required.", nameof(id));
+            if (menuPrice < 0m) throw new ArgumentOutOfRangeException(nameof(menuPrice), "Menu price cannot be negative.");
+
+            Id = id;
+            Name = name ?? id;
+            MenuPrice = menuPrice;
+            Ingredients = new List<RecipeIngredient>(ingredients ?? new List<RecipeIngredient>()).AsReadOnly();
+        }
+
+        public bool Uses(string ingredientId)
+        {
+            for (var i = 0; i < Ingredients.Count; i++)
+            {
+                if (Ingredients[i].IngredientId == ingredientId) return true;
+            }
+
+            return false;
+        }
+
+        public override string ToString()
+        {
+            return Name + " (" + Id + ")";
+        }
+    }
+}

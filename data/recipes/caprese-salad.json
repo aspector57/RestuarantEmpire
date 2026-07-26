@@ -1,0 +1,10 @@
+{
+  "id": "caprese-salad",
+  "name": "Caprese Salad",
+  "menuPrice": 14.00,
+  "ingredients": [
+    { "ingredientId": "tomato",     "quantity": 0.20 },
+    { "ingredientId": "mozzarella", "quantity": 0.15 },
+    { "ingredientId": "basil",      "quantity": 0.03 }
+  ]
+}

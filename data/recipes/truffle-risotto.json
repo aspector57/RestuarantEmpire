@@ -1,0 +1,10 @@
+{
+  "id": "truffle-risotto",
+  "name": "Black Truffle Risotto",
+  "menuPrice": 38.00,
+  "ingredients": [
+    { "ingredientId": "arborio-rice", "quantity": 0.12 },
+    { "ingredientId": "truffle",      "quantity": 8.0 },
+    { "ingredientId": "parmesan",     "quantity": 0.05 }
+  ]
+}

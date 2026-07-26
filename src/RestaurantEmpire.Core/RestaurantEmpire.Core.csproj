@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      netstandard2.1, NOT net10.0. This is what lets the M0 simulation core drop into
+      Unity at M1 without a rewrite (CLAUDE.md Architecture Rule 4). Do not "modernise"
+      this to a newer target framework without checking Unity still loads it.
+    -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+
+    <!--
+      Nullable reference types off, matching Unity's own default. This code guards
+      against null explicitly at every public entry point instead. Turning this on
+      would add ?/! annotation noise throughout for no behavioural change.
+    -->
+    <Nullable>disable</Nullable>
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+</Project>

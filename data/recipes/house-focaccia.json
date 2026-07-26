@@ -1,0 +1,9 @@
+{
+  "id": "house-focaccia",
+  "name": "House Focaccia",
+  "menuPrice": 9.00,
+  "ingredients": [
+    { "ingredientId": "flour", "quantity": 0.30 },
+    { "ingredientId": "basil", "quantity": 0.02 }
+  ]
+}
