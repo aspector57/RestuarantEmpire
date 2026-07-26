@@ -196,7 +196,7 @@ namespace RestaurantEmpire.Core.Model
                     unitsSold.TryGetValue(recipeId, out running);
                     unitsSold[recipeId] = running + 1;
 
-                    revenue += recipe.MenuPrice;
+                    revenue += costing.MenuPrice(recipeId);   // what this location charges, not the shipped default
                     coversServed++;
                     satisfactionTotal += satisfaction.Overall;
 

@@ -25,6 +25,7 @@ namespace RestaurantEmpire.Core.Model
             Inventory = new Inventory(company.Definitions);
             Kitchen = new Kitchen();
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
+            Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
         }
 
         public string Id { get; }
@@ -71,9 +72,16 @@ namespace RestaurantEmpire.Core.Model
         /// could forget to call — the numbers are recomputed from this restaurant's current
         /// sourcing chain each time you ask.
         /// </summary>
+        /// <summary>
+        /// What this location charges, inheriting from the company's brand pricing. Empty
+        /// normally; setting a price here is the deliberate local exception — a pricier
+        /// neighbourhood, a flagship that can command more.
+        /// </summary>
+        public PricingPolicy Pricing { get; }
+
         public MenuCosting Costing
         {
-            get { return new MenuCosting(Company.Definitions, SupplierPolicy); }
+            get { return new MenuCosting(Company.Definitions, SupplierPolicy, Pricing); }
         }
 
         public override string ToString()

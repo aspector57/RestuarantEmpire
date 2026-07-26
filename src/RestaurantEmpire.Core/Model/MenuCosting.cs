@@ -16,14 +16,27 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly DefinitionRegistry _definitions;
         private readonly SupplierPolicy _policy;
+        private readonly PricingPolicy _pricing;
 
-        public MenuCosting(DefinitionRegistry definitions, SupplierPolicy policy)
+        public MenuCosting(DefinitionRegistry definitions, SupplierPolicy policy, PricingPolicy pricing)
         {
             if (definitions == null) throw new ArgumentNullException(nameof(definitions));
             if (policy == null) throw new ArgumentNullException(nameof(policy));
+            if (pricing == null) throw new ArgumentNullException(nameof(pricing));
 
             _definitions = definitions;
             _policy = policy;
+            _pricing = pricing;
+        }
+
+        /// <summary>
+        /// What this restaurant charges for the dish right now — the player's price if one
+        /// is set anywhere up the chain, otherwise the price the recipe shipped with.
+        /// Every figure below is computed against this, never against the raw definition.
+        /// </summary>
+        public decimal MenuPrice(string recipeId)
+        {
+            return _pricing.ResolvePrice(recipeId);
         }
 
         /// <summary>
@@ -50,13 +63,13 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public decimal ContributionMargin(string recipeId)
         {
-            return _definitions.GetRecipe(recipeId).MenuPrice - PlateCost(recipeId);
+            return MenuPrice(recipeId) - PlateCost(recipeId);
         }
 
         /// <summary>Contribution margin as a share of menu price (0.72 = 72% of the price is margin).</summary>
         public decimal ContributionMarginRatio(string recipeId)
         {
-            var price = _definitions.GetRecipe(recipeId).MenuPrice;
+            var price = MenuPrice(recipeId);
             return price == 0m ? 0m : ContributionMargin(recipeId) / price;
         }
 
@@ -66,7 +79,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public decimal FoodCostRatio(string recipeId)
         {
-            var price = _definitions.GetRecipe(recipeId).MenuPrice;
+            var price = MenuPrice(recipeId);
             return price == 0m ? 0m : PlateCost(recipeId) / price;
         }
 

@@ -195,7 +195,7 @@ namespace RestaurantEmpire.Core.Model
                 else classification = MenuClassification.Dog;
 
                 items.Add(new MenuItemAnalysis(
-                    recipe.Id, recipe.Name, recipe.MenuPrice,
+                    recipe.Id, recipe.Name, costing.MenuPrice(recipe.Id),
                     costing.PlateCost(recipe.Id), margins[i],
                     units[i], share, classification));
             }
