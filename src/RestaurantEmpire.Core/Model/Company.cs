@@ -28,7 +28,7 @@ namespace RestaurantEmpire.Core.Model
             Id = id;
             Name = name ?? id;
             Definitions = definitions;
-            SupplierPolicy = new SupplierPolicy(definitions);
+            SupplierPolicy = new SupplierPolicy(definitions, Name, null);
             _restaurants = new List<Restaurant>();
         }
 
@@ -39,9 +39,14 @@ namespace RestaurantEmpire.Core.Model
         public DefinitionRegistry Definitions { get; }
 
         /// <summary>
-        /// Company-wide purchasing policy — one assignment record, read live by every
-        /// restaurant. Switching a supplier here is the single write that moves every
-        /// dependent margin across the whole empire.
+        /// Company-wide purchasing policy — the BASE of the sourcing chain, read live by
+        /// every restaurant that hasn't deliberately overridden it. Switching a supplier
+        /// here is the single write that moves every dependent margin across the whole
+        /// empire.
+        ///
+        /// A Region scope will slot between this and each Restaurant at M4, when
+        /// multi-location makes "national contract vs. local sourcing" a real decision.
+        /// Nothing else has to change when it does — resolution already walks a chain.
         /// </summary>
         public SupplierPolicy SupplierPolicy { get; }
 

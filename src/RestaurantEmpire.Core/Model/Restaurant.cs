@@ -23,6 +23,7 @@ namespace RestaurantEmpire.Core.Model
             Company = company;
             Menu = new Menu(company.Definitions);
             Inventory = new Inventory(company.Definitions);
+            SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
         }
 
         public string Id { get; }
@@ -38,16 +39,26 @@ namespace RestaurantEmpire.Core.Model
         public Inventory Inventory { get; }
 
         /// <summary>
+        /// This location's own sourcing scope, which INHERITS FROM the company's.
+        ///
+        /// Normally empty — an empty local scope means "use the company default for
+        /// everything," which is the healthy default and the whole point of propagation.
+        /// Assigning here is the deliberate, rare exception: this one kitchen buys its
+        /// tomatoes from the farm down the road, everything else still follows the company.
+        /// </summary>
+        public SupplierPolicy SupplierPolicy { get; }
+
+        /// <summary>
         /// Live costing for this restaurant's menu.
         ///
         /// Deliberately returns a NEW instance on every access and holds no state. There is
         /// no cached costing object that could go stale, and no invalidation step anyone
-        /// could forget to call — the numbers are recomputed from the company's current
-        /// supplier policy each time you ask.
+        /// could forget to call — the numbers are recomputed from this restaurant's current
+        /// sourcing chain each time you ask.
         /// </summary>
         public MenuCosting Costing
         {
-            get { return new MenuCosting(Company.Definitions, Company.SupplierPolicy); }
+            get { return new MenuCosting(Company.Definitions, SupplierPolicy); }
         }
 
         public override string ToString()

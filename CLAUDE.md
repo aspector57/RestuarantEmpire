@@ -33,6 +33,8 @@ Rendering, UI, layout/build mode, the Advisor, Events, Competitors, Marketing, h
 1. Switching a Supplier assignment updates every dependent Recipe's contribution margin with **zero manual edits**.
 2. A new Recipe or Furniture object can be added **purely by writing a data file**, with no engine/code changes.
 
+**Status: both exit tests pass.** Built so far — Company→Restaurant hierarchy, Suppliers with the full inheritance chain, Ingredients with par levels, Recipes with live contribution margin, Kasavana-Smith classification, JSON content loading, and Time (`GameClock`). **Still outstanding for M0: Economy, Kitchen throughput, Customers, save/load.** M0 is not done and M1 must not start until it is.
+
 ---
 
 ## Architecture Rules (violating these is a bug, not a style choice)
@@ -45,6 +47,10 @@ This is the most load-bearing rule in the project. It exists because Restaurant 
 - Contribution margin is computed **live at read time**, pulling whatever the currently-assigned Supplier costs right now.
 - Switching a Supplier is a **single write to one assignment record**. Every dependent Recipe and location sees it on next computation.
 - The same "single assignment, many live readers, no snapshots" pattern applies to schedule templates and (later) GM delegation.
+
+**Sourcing scope — decided, implemented in M0.** Assignments resolve up an inheritance chain: **Company → (Region, added at M4) → Restaurant**. The company-level assignment is the default that propagates everywhere; a lower scope may override, and that override is the "exception requiring explicit opt-in" the design doc's Suppliers contract calls for. Reads walk the chain live and never snapshot, so clearing an override falls back to whatever the company says *now*, not what it said when the override was made.
+
+The Region tier is deliberately **not built yet** — it has nothing to override until multi-location exists. It slots in without touching Recipes, costing, or any read site, because resolution already walks a chain. The reason to want it at all: without a regional tier, sourcing at ten restaurants is the identical decision as at one, which is the flat-scaling anti-pattern below. "National contract vs. local sourcing" is a decision that *cannot exist* before expansion, which is exactly what multi-location is supposed to add.
 
 **2. Content is data-driven, not hardcoded.**
 Recipes, furniture/object types, employee traits, and event definitions live in external JSON (or equivalent def files). This is required for the modding goal and is extremely expensive to retrofit. Follow RimWorld's pattern.

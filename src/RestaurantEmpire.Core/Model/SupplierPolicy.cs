@@ -5,43 +5,69 @@ using RestaurantEmpire.Core.Definitions;
 namespace RestaurantEmpire.Core.Model
 {
     /// <summary>
-    /// THE assignment record: which supplier the company currently buys each ingredient from.
+    /// Which supplier a scope buys each ingredient from — and the inheritance chain that
+    /// makes one decision reach everything below it.
     ///
-    /// This is the single most load-bearing class in the project. It exists because
-    /// Restaurant Empire II made a supplier change a per-recipe editing chore, and that
-    /// was its most-criticised flaw.
+    /// This is the most load-bearing class in the project. It exists because Restaurant
+    /// Empire II made a supplier change a per-recipe editing chore, and that was its
+    /// most-criticised flaw.
     ///
-    /// The contract (CLAUDE.md Architecture Rule 1 / design doc Phase 6.3):
-    ///   - ONE assignment per ingredient, held here and nowhere else.
-    ///   - MANY live readers. Recipes, restaurants and the menu-engineering matrix all
-    ///     read through this at the moment they need a number.
-    ///   - NO snapshots. Nothing copies an assignment or a price out of here, so nothing
-    ///     can go stale and there is no "refresh" step to forget.
+    /// THE CONTRACT (CLAUDE.md Architecture Rule 1 / design doc Phase 6.3), which the
+    /// design doc states as "a single decision that automatically updates every recipe and
+    /// location, with any exceptions requiring explicit opt-in rather than every instance
+    /// requiring opt-in by default":
     ///
-    /// One policy lives on the Company, so a single write reaches every location at once.
+    ///   - Assignments are made at a SCOPE. Company is the base scope; each Restaurant has
+    ///     its own scope that inherits from it. A Region scope slots in between at M4
+    ///     without any other code changing.
+    ///   - Reads RESOLVE UP THE CHAIN: restaurant override first, then whatever it inherits
+    ///     from, until someone answers. So the company-wide default is what almost
+    ///     everything uses, and an override is a deliberate, rare exception.
+    ///   - NOTHING IS CACHED. No price or resolved supplier is ever stored, so there is no
+    ///     stale value and no refresh step anyone could forget.
+    ///
+    /// The propagation cuts both ways, and that is intended (Phase 7 audit): a bad
+    /// company-level switch gets worse everywhere at once, which is what makes sourcing a
+    /// genuinely consequential decision rather than a contained one.
     /// </summary>
     public sealed class SupplierPolicy
     {
         private readonly DefinitionRegistry _definitions;
+        private readonly SupplierPolicy _inheritsFrom;
         private readonly Dictionary<string, string> _assignments;
 
-        internal SupplierPolicy(DefinitionRegistry definitions)
+        internal SupplierPolicy(DefinitionRegistry definitions, string scopeName, SupplierPolicy inheritsFrom)
         {
             if (definitions == null) throw new ArgumentNullException(nameof(definitions));
 
             _definitions = definitions;
-            _assignments = new Dictionary<string, string>();
+            _inheritsFrom = inheritsFrom;
+            _assignments = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            ScopeName = string.IsNullOrWhiteSpace(scopeName) ? "unnamed scope" : scopeName;
         }
 
-        /// <summary>Current ingredient id -> supplier id assignments. Read-only; write via <see cref="Assign"/>.</summary>
-        public IReadOnlyDictionary<string, string> Assignments { get { return _assignments; } }
+        /// <summary>Human-readable name of this scope ("Acme Restaurant Group", "The Flagship").</summary>
+        public string ScopeName { get; }
+
+        /// <summary>The scope this one falls back to, or null if this is the top of the chain.</summary>
+        public SupplierPolicy InheritsFrom { get { return _inheritsFrom; } }
 
         /// <summary>
-        /// The single write. Points one ingredient at one supplier.
+        /// Assignments made AT THIS SCOPE only — not what this scope resolves to.
+        /// A restaurant with an empty set here is using the company default for everything,
+        /// which is the normal, healthy case.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> LocalAssignments { get { return _assignments; } }
+
+        // ---- Writing ----
+
+        /// <summary>
+        /// The single write. Points one ingredient at one supplier, at this scope.
         ///
-        /// Every recipe using that ingredient — in every restaurant, present and future —
-        /// costs differently from the next read onward. Nothing else is touched, and no
-        /// recipe needs editing. That is the entire point.
+        /// Done on a Company, every restaurant that hasn't overridden it costs differently
+        /// from the next read onward, with no recipe edited. Done on a Restaurant, only
+        /// that location diverges — the explicit opt-in exception.
         /// </summary>
         public void Assign(string ingredientId, string supplierId)
         {
@@ -60,10 +86,7 @@ namespace RestaurantEmpire.Core.Model
             _assignments[ingredientId] = supplierId;
         }
 
-        /// <summary>
-        /// Convenience for setup and for "move my whole book to one supplier": assigns every
-        /// ingredient that supplier carries. Still one write per ingredient, still no caching.
-        /// </summary>
+        /// <summary>Assigns every ingredient this supplier carries, at this scope.</summary>
         public void AssignAll(string supplierId)
         {
             var supplier = _definitions.GetSupplier(supplierId);
@@ -75,46 +98,94 @@ namespace RestaurantEmpire.Core.Model
             }
         }
 
-        public bool IsAssigned(string ingredientId)
+        /// <summary>
+        /// Drops a local override so this scope goes back to inheriting. Returns false if
+        /// there was no override to drop.
+        /// </summary>
+        public bool ClearOverride(string ingredientId)
+        {
+            return ingredientId != null && _assignments.Remove(ingredientId);
+        }
+
+        /// <summary>True when this exact scope overrides the ingredient, rather than inheriting it.</summary>
+        public bool HasLocalOverride(string ingredientId)
         {
             return ingredientId != null && _assignments.ContainsKey(ingredientId);
         }
 
-        public string GetSupplierIdFor(string ingredientId)
+        // ---- Reading: resolution walks up the chain, live, every time ----
+
+        /// <summary>
+        /// The scope that actually answers for this ingredient — this one, or the nearest
+        /// ancestor that has an assignment. Null when nobody does.
+        ///
+        /// Exposed because "every outcome must trace to a specific named cause"
+        /// (CLAUDE.md principle 2): the player can always be told *why* a dish costs what
+        /// it costs, down to which level of the business made the call.
+        /// </summary>
+        public SupplierPolicy ResolveScope(string ingredientId)
         {
-            string supplierId;
-            if (!_assignments.TryGetValue(ingredientId ?? string.Empty, out supplierId))
+            var key = ingredientId ?? string.Empty;
+            var scope = this;
+
+            while (scope != null)
             {
-                throw new InvalidOperationException(
-                    "No supplier is assigned for ingredient '" + ingredientId +
-                    "'. Assign one before costing a recipe that uses it.");
+                if (scope._assignments.ContainsKey(key)) return scope;
+                scope = scope._inheritsFrom;
             }
 
-            return supplierId;
+            return null;
         }
 
-        public SupplierDefinition GetSupplierFor(string ingredientId)
+        /// <summary>Name of the scope that decided this ingredient's supplier, or null if unassigned.</summary>
+        public string ResolvedFromScopeName(string ingredientId)
         {
-            return _definitions.GetSupplier(GetSupplierIdFor(ingredientId));
+            var scope = ResolveScope(ingredientId);
+            return scope == null ? null : scope.ScopeName;
+        }
+
+        public bool IsAssigned(string ingredientId)
+        {
+            return ResolveScope(ingredientId) != null;
+        }
+
+        public string ResolveSupplierId(string ingredientId)
+        {
+            var scope = ResolveScope(ingredientId);
+
+            if (scope == null)
+            {
+                throw new InvalidOperationException(
+                    "No supplier is assigned for ingredient '" + ingredientId + "' at scope '" +
+                    ScopeName + "' or anything it inherits from. Assign one before costing a " +
+                    "recipe that uses it.");
+            }
+
+            return scope._assignments[ingredientId];
+        }
+
+        public SupplierDefinition ResolveSupplier(string ingredientId)
+        {
+            return _definitions.GetSupplier(ResolveSupplierId(ingredientId));
         }
 
         /// <summary>
-        /// Live unit price for an ingredient under the current assignment. Computed on every
-        /// call — there is intentionally no cached price field anywhere in this class.
+        /// Live unit price under whatever is assigned right now. Recomputed on every call —
+        /// there is deliberately no cached price field anywhere in this class.
         /// </summary>
         public decimal UnitPriceFor(string ingredientId)
         {
-            return GetSupplierFor(ingredientId).UnitPriceFor(ingredientId);
+            return ResolveSupplier(ingredientId).UnitPriceFor(ingredientId);
         }
 
-        /// <summary>Ingredients on the books with no supplier assigned — these block costing.</summary>
+        /// <summary>Ingredients nothing in the chain has assigned — these block costing.</summary>
         public IEnumerable<string> UnassignedIngredientIds
         {
             get
             {
                 foreach (var id in _definitions.IngredientIds)
                 {
-                    if (!_assignments.ContainsKey(id)) yield return id;
+                    if (!IsAssigned(id)) yield return id;
                 }
             }
         }

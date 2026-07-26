@@ -46,13 +46,25 @@ Both M0 exit tests pass:
    with zero manual edits, across every location.
 2. A new recipe can be added by writing a JSON file alone, with no code change.
 
-**Built:** Company → Restaurant hierarchy · Suppliers (single assignment record, live
-readers, no caching) · Ingredients with par levels · Recipes with live contribution
-margin · Kasavana-Smith classification · JSON content loading.
+**Built:** Company → Restaurant hierarchy · Suppliers, resolving up a
+`Company → Restaurant` inheritance chain with no caching · Ingredients with par levels ·
+Recipes with live contribution margin · Kasavana-Smith classification · JSON content
+loading · Time (`GameClock`).
 
-**Still outstanding for M0:** Time · Economy · Kitchen throughput · Customers · save/load.
+**Still outstanding for M0:** Economy · Kitchen throughput · Customers · save/load.
 
 M0 is not finished until those exist. Do not start M1 before then.
+
+### Sourcing scope
+
+Supplier assignments resolve up a chain: **Company → (Region, at M4) → Restaurant.** The
+company-level assignment propagates everywhere by default; a restaurant may override, and
+that override is a deliberate exception rather than the norm. A Region tier slots in at M4
+without any read site changing, because resolution already walks a chain.
+
+Without a regional tier, sourcing at ten restaurants would be the identical decision as at
+one — the flat-scaling trap. "National contract vs. local sourcing" is a decision that
+cannot exist before expansion, which is precisely what multi-location should add.
 
 ## The one rule worth knowing before you touch anything
 
