@@ -80,7 +80,8 @@ namespace RestaurantEmpire.Core.Model
             Outcome = TicketOutcome.Served;
         }
 
-        internal Ticket(string recipeId, string stationId, long placedTick, TicketOutcome outcome, string failureReason)
+        internal Ticket(string recipeId, string stationId, long placedTick, TicketOutcome outcome,
+            string failureReason, string failedIngredientId = null)
         {
             RecipeId = recipeId;
             StationId = stationId;
@@ -89,6 +90,7 @@ namespace RestaurantEmpire.Core.Model
             CompletedTick = placedTick;
             Outcome = outcome;
             FailureReason = failureReason;
+            FailedIngredientId = failedIngredientId;
         }
 
         public string RecipeId { get; }
@@ -102,6 +104,13 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>Plain-language reason when this ticket wasn't served. Null when it was.</summary>
         public string FailureReason { get; }
+
+        /// <summary>
+        /// Which ingredient ran out, when that is why this failed. Exposed as an ID rather
+        /// than only inside the message so callers can group by cause — one stockout is one
+        /// problem, however many tickets it takes down.
+        /// </summary>
+        public string FailedIngredientId { get; }
 
         public bool WasServed { get { return Outcome == TicketOutcome.Served; } }
 
@@ -239,7 +248,7 @@ namespace RestaurantEmpire.Core.Model
                 if (!inventory.TryConsumeAll(recipe.Ingredients, out shortfall))
                 {
                     return new Ticket(recipe.Id, recipe.StationId, placedTick, TicketOutcome.OutOfStock,
-                        recipe.Name + " was 86'd — out of " + shortfall + ".");
+                        recipe.Name + " was 86'd — out of " + shortfall + ".", shortfall);
                 }
             }
 

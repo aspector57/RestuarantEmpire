@@ -65,10 +65,13 @@ namespace RestaurantEmpire.Core.Model
         private readonly List<string> _diagnostics = new List<string>();
         private readonly Dictionary<string, int> _stationMinutes = new Dictionary<string, int>(StringComparer.Ordinal);
 
+        private readonly HashSet<string> _stockoutsReported = new HashSet<string>(StringComparer.Ordinal);
+
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
         private int _walkoutStreak, _partyCounter, _occupiedSeats;
-        private bool _cashFloorBreached;
+        private bool _cashFloorBreached, _walkoutAlarmRaisedThisService;
+        private string _serviceOnLastTick;
 
         public SimulationRunner(Restaurant restaurant, GameClock clock, long seed, InterruptPolicy interrupts = null)
         {
@@ -181,6 +184,15 @@ namespace RestaurantEmpire.Core.Model
 
             Interrupt interrupt = null;
 
+            // A new service is a clean slate for the alarms that are per-service.
+            var serviceNow = CurrentWindow() == null ? null : CurrentWindow().Name;
+            if (serviceNow != _serviceOnLastTick)
+            {
+                _serviceOnLastTick = serviceNow;
+                _walkoutAlarmRaisedThisService = false;
+                _walkoutStreak = 0;
+            }
+
             // 1. Guests who have run out of patience give up and leave. Their food is
             //    already in the oven and will still be cooked, and still be binned.
             foreach (var table in _tables)
@@ -202,13 +214,19 @@ namespace RestaurantEmpire.Core.Model
                         " of that was the " + order.Ticket.StationId + " station backed up).");
                 }
 
-                if (interrupt == null && Interrupts.WalkoutStreakThreshold > 0 &&
+                // Once per service, not once per streak. A kitchen that is underwater all
+                // night is ONE problem the player needs told about, not a fire alarm that
+                // will not stop. Rearms when the next service opens.
+                if (interrupt == null && !_walkoutAlarmRaisedThisService &&
+                    Interrupts.WalkoutStreakThreshold > 0 &&
                     _walkoutStreak >= Interrupts.WalkoutStreakThreshold)
                 {
                     interrupt = new Interrupt(InterruptKind.WalkoutStreak, tick, now,
                         _walkoutStreak + " guests have walked out in a row — the kitchen is losing the room.",
                         _restaurant.Id);
+
                     _walkoutStreak = 0;
+                    _walkoutAlarmRaisedThisService = true;
                 }
             }
 
@@ -243,7 +261,13 @@ namespace RestaurantEmpire.Core.Model
                 }
             }
 
-            // 4. New arrivals, but only while the doors are open.
+            // 4. Anything that has been restocked can raise the alarm again next time.
+            if (_stockoutsReported.Count > 0)
+            {
+                _stockoutsReported.RemoveWhere(id => _restaurant.Inventory.QuantityOf(id) > 0m);
+            }
+
+            // 5. New arrivals, but only while the doors are open.
             var window = CurrentWindow();
             if (window != null)
             {
@@ -256,7 +280,7 @@ namespace RestaurantEmpire.Core.Model
                 }
             }
 
-            // 5. Money.
+            // 6. Money.
             if (interrupt == null && Interrupts.CashFloor.HasValue)
             {
                 var cash = ProjectedCash;
@@ -308,10 +332,17 @@ namespace RestaurantEmpire.Core.Model
                     _eightySixed++;
                     _diagnostics.Add(ticket.FailureReason);
 
-                    if (interrupt == null && Interrupts.StopOnStockout && ticket.Outcome == TicketOutcome.OutOfStock)
+                    // One stockout is ONE problem, however many tickets it takes down. Without
+                    // this, running out of truffle at 19:00 interrupts on every order for the
+                    // rest of the night — which is not a pulse, it is a stuck alarm. Rearmed
+                    // the moment that ingredient is back on the shelf.
+                    if (interrupt == null && Interrupts.StopOnStockout &&
+                        ticket.Outcome == TicketOutcome.OutOfStock &&
+                        ticket.FailedIngredientId != null &&
+                        _stockoutsReported.Add(ticket.FailedIngredientId))
                     {
                         interrupt = new Interrupt(InterruptKind.IngredientStockout, tick, now,
-                            ticket.FailureReason, recipeId);
+                            ticket.FailureReason, ticket.FailedIngredientId);
                     }
 
                     continue;

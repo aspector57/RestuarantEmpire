@@ -68,7 +68,17 @@ A restaurant sets whatever hours it likes — including round-the-clock, and inc
 
 The honest way to model 24/7 is **several windows with their own peaks** (breakfast, lunch, late-night) rather than one flat 24-hour window whose single peak lands arbitrarily at noon. Each service then has its own demand to staff against.
 
-**Staying open longer must carry real risk, and currently doesn't.** Right now long hours are pure upside — more covers, more revenue, no cost. The two things that make it a decision are both scheduled, not built: **labour cost at M1** (nothing generates it yet, so being open is free), and **time-of-day demand at M2** — Aaron's point that a menu should have to match the hour, so a late-night service selling a tasting menu should do badly. Neither should be built early; but "open 24/7" being strictly optimal is a known, temporary hole rather than a balance finding.
+**Staying open longer must carry real risk, and currently doesn't.** Right now long hours are close to pure upside — more covers, more revenue, almost no added cost. Aaron's list of what the downside *should* be, and where each one stands:
+
+| The cost | Status |
+|---|---|
+| **More stock to buy, and more capital tied up in it** | **Gap.** Ingredients are charged when *used*, never when *bought*, so a deep pantry costs nothing to hold. Fixing this means purchase-vs-consumption accounting. |
+| **Spoilage on that bigger pantry** | **Gap.** Listed in M0 scope, deliberately cut from the built slice. Nothing rots, so over-ordering is free. |
+| **More labour to cover more hours** | **Scheduled — M1.** Economy tracks labour; nothing generates it until Employees. |
+| **Equipment each service needs** (an espresso machine for breakfast) | **Nearly free to build.** Stations already gate dishes — a breakfast recipe naming a `coffee` station simply cannot be cooked without one. What is missing is that `Kitchen.Install` costs nothing; charging it as `CapitalExpenditure` is a small change. |
+| **Local traffic may not support every daypart** | **Gap, and the bigger one.** `ServiceWindow.PeakPartiesPerHour` is set by the player, so demand is an *input* rather than an output of neighbourhood and reputation. Until location demographics (design doc Phase 4, Restaurant) drive it, a player can simply declare their breakfast is busy. |
+
+Until several of those land, "open 24/7" being close to optimal is a known temporary hole, not a balance finding.
 
 ### What this implies, flagged before building
 

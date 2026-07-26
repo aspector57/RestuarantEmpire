@@ -8,35 +8,21 @@ using RestaurantEmpire.Core.Model;
 namespace RestaurantEmpire.Sim
 {
     /// <summary>
-    /// Runs one night of service and prints what happened.
+    /// The M1 rhythm harness: drive the simulation forward and be interrupted by it.
     ///
-    /// This is the "and logs" half of how M0 is validated (CLAUDE.md: "no graphics, no
-    /// engine, validated by unit tests and logs"). It is NOT the game — there is no input,
-    /// no pacing, and nothing to click. It exists so a human can turn the dials the
-    /// simulation actually has and read the consequences, which is the only way to build
-    /// intuition about whether the numbers behave sensibly before M1 spends real time on
-    /// rendering them.
+    /// This is how M1 exit test (b) gets answered. The mechanism bar (a) is settled by unit
+    /// tests — the sim provably pauses and resumes cleanly. But whether the
+    /// fast-forward-with-interrupts loop has a PULSE is a question only a human sitting in
+    /// front of a month of simulated time can answer, so this asks directly after every
+    /// stop: was that worth stopping for? It keeps score and reports the tally on the way out.
+    ///
+    /// Still not the game. No graphics, no watching service unfold. But it is the loop.
     /// </summary>
     internal static class Program
     {
         private static int Main(string[] args)
         {
-            if (args.Contains("--help") || args.Contains("-h"))
-            {
-                PrintHelp();
-                return 0;
-            }
-
-            var supplier = Arg(args, "--supplier", "valley-produce");
-            var priceMultiplier = Decimal(args, "--price", 1.0m);
-            var stations = Int(args, "--stations", 2);
-            var demand = Double(args, "--demand", 25);
-            var seats = Int(args, "--seats", 0);
-            var staff = Int(args, "--staff", 3);
-            var wage = Decimal(args, "--wage", 18m);
-            var hours = Int(args, "--hours", 6);
-            var overhead = Decimal(args, "--overhead", 300m);
-            var seed = Int(args, "--seed", 4242);
+            if (args.Contains("--help") || args.Contains("-h")) { Help(); return 0; }
 
             var dataDir = FindDataDirectory();
             if (dataDir == null)
@@ -46,178 +32,237 @@ namespace RestaurantEmpire.Sim
             }
 
             var definitions = JsonDefinitionLoader.LoadFromDirectory(dataDir);
-            foreach (var warning in definitions.LoadWarnings) Console.WriteLine("content warning: " + warning);
+            foreach (var w in definitions.LoadWarnings) Console.WriteLine("content warning: " + w);
 
-            var company = new Company("player-co", "Your Restaurant Group", definitions, 20000m);
+            var supplier = Arg(args, "--supplier", "valley-produce");
+            var priceMultiplier = Dec(args, "--price", 1.0m);
+            var stations = Int(args, "--stations", 3);
+            var demand = Dbl(args, "--demand", 25);
+            var seats = Int(args, "--seats", 0);
+            var seed = Int(args, "--seed", 4242);
+
+            var company = new Company("player-co", "Your Restaurant Group", definitions, Dec(args, "--cash", 20000m));
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
             restaurant.SeatingCapacity = seats;
 
-            try
+            if (!definitions.HasSupplier(supplier))
             {
-                company.SupplierPolicy.AssignAll(supplier);
-            }
-            catch (Exception)
-            {
-                Console.Error.WriteLine("Unknown supplier '" + supplier + "'. Options: " +
+                Console.Error.WriteLine("Unknown supplier. Options: " +
                     string.Join(", ", definitions.Suppliers.Select(s => s.Id)));
                 return 1;
             }
 
+            company.SupplierPolicy.AssignAll(supplier);
             if (priceMultiplier != 1.0m)
                 foreach (var id in restaurant.Menu.RecipeIds) company.Pricing.AdjustPrice(id, priceMultiplier);
 
-            // Install a station for every station the menu needs.
+            restaurant.ServiceWindows.Clear();
+            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15, demand * 0.6));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, demand));
+
             foreach (var stationId in restaurant.Menu.Recipes.Select(r => r.StationId).Distinct())
                 restaurant.Kitchen.Install(stationId, Title(stationId), stations);
 
-            foreach (var id in definitions.IngredientIds) restaurant.Inventory.Receive(id, 100000m);
+            // Par levels: the standing policy the morning delivery is ordered against.
+            var par = Dec(args, "--stock", 2000m);
+            foreach (var id in definitions.IngredientIds)
+            {
+                restaurant.Inventory.SetPar(id, par * 0.35m, par);
+                restaurant.Inventory.Receive(id, par);
+            }
 
-            restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, demand));
+            var runner = new SimulationRunner(restaurant, new GameClock(), seed, new InterruptPolicy
+            {
+                WalkoutStreakThreshold = Int(args, "--walkout-streak", 4),
+                CashFloor = Dec(args, "--cash-floor", 0m),
+                StopOnStockout = true
+            });
 
-            var clock = new GameClock();
-            clock.AdvanceHours(18);   // doors open
-
-            Console.WriteLine();
-            Console.WriteLine("=== " + restaurant.Name + " — " + clock.Now.ToString("dddd d MMMM yyyy") + ", dinner ===");
-            Console.WriteLine("sourcing " + supplier + "  ·  prices x" + priceMultiplier +
-                              "  ·  " + stations + " slot(s) per station  ·  " +
-                              (seats == 0 ? "unlimited seats" : seats + " seats"));
-
-            PrintMenu(restaurant);
-
-            var runner = new SimulationRunner(restaurant, clock, seed, InterruptPolicy.None());
-            runner.Advance(6 * GameClock.TicksPerHour);   // through service, plus time for the last tables
-
-            var result = runner.Snapshot();
-            company.Economy.RecordService(restaurant, result, clock.Tick);
-
-            var labour = staff * hours * wage;
-            if (labour > 0m) company.Economy.Record(clock.Tick, LedgerCategory.LaborCost, labour,
-                staff + " staff x " + hours + "h @ " + wage, restaurant.Id);
-            if (overhead > 0m) company.Economy.Record(clock.Tick, LedgerCategory.Overhead, overhead,
-                "Nightly share of rent and utilities", restaurant.Id);
-
-            PrintService(result);
-            PrintBooks(company, restaurant, clock);
-            PrintMatrix(restaurant, result);
-            PrintComplaints(result);
+            var session = new Session(runner, company,
+                labourPerDay: Dec(args, "--labour", 420m),
+                overheadPerDay: Dec(args, "--overhead", 300m));
 
             Console.WriteLine();
-            Console.WriteLine("Try: --supplier premium-harvest --price 1.5   (buy better, charge for it)");
-            Console.WriteLine("     --stations 1                            (choke the kitchen)");
-            Console.WriteLine("     --demand 60                             (more guests than you can cook for)");
-            Console.WriteLine("     --help                                  (all the dials)");
-            Console.WriteLine();
+            Console.WriteLine("  sourcing " + supplier + "  ·  prices x" + priceMultiplier + "  ·  " +
+                              stations + " slot(s)/station  ·  " + (seats == 0 ? "unlimited seats" : seats + " seats"));
 
-            return 0;
+            var autoDays = Int(args, "--auto", 0);
+            return autoDays > 0 ? session.RunAuto(autoDays) : session.RunInteractive();
         }
 
-        private static void PrintMenu(Restaurant restaurant)
+        // ---- The loop ----
+
+        private sealed class Session
         {
-            var costing = restaurant.Costing;
+            private readonly SimulationRunner _runner;
+            private readonly Company _company;
+            private readonly decimal _labourPerDay, _overheadPerDay;
 
-            Console.WriteLine();
-            Console.WriteLine("MENU                      price     cost   food%   margin   station");
-            Console.WriteLine("  ------------------------------------------------------------------------");
+            private ServiceResult _lastSeen;
+            private ServiceResult _lastBooked;
+            private int _stops, _worthIt, _daysBooked;
 
-            foreach (var recipe in restaurant.Menu.Recipes)
+            public Session(SimulationRunner runner, Company company, decimal labourPerDay, decimal overheadPerDay)
             {
-                Console.WriteLine(string.Format("  {0,-22} {1,7:0.00}  {2,7:0.00}  {3,6:P0}  {4,7:0.00}   {5} ({6} min)",
-                    recipe.Name, costing.MenuPrice(recipe.Id), costing.PlateCost(recipe.Id),
-                    costing.FoodCostRatio(recipe.Id), costing.ContributionMargin(recipe.Id),
-                    recipe.StationId, recipe.PrepMinutes));
+                _runner = runner;
+                _company = company;
+                _labourPerDay = labourPerDay;
+                _overheadPerDay = overheadPerDay;
+                _lastSeen = runner.Snapshot();
+                _lastBooked = _lastSeen;
+            }
+
+            /// <summary>Advances, books any completed days, and reports what happened.</summary>
+            private AdvanceResult Step(long ticks)
+            {
+                var before = _runner.Snapshot();
+                var result = _runner.Advance(ticks);
+                var after = _runner.Snapshot();
+
+                for (var day = 0; day < result.Elapsed.Days; day++) BookADay();
+
+                Report.Happened(new Delta(before, after), _runner.Clock);
+                _lastSeen = after;
+
+                return result;
+            }
+
+            /// <summary>
+            /// The game loop's job, not the simulation's: turn a day of trading into ledger
+            /// entries. The runner reports the boundary; deciding what it costs is up here.
+            /// </summary>
+            private void BookADay()
+            {
+                var now = _runner.Snapshot();
+                var tick = _runner.Clock.Tick;
+                var id = _runner.Restaurant.Id;
+
+                // The morning delivery, ordered against standing par levels — the Factorio
+                // "set it up once, trust it" pattern. Deliberately the game loop's job, not
+                // the simulation's.
+                //
+                // NOTE: this is currently free. Ingredients are charged when USED, not when
+                // BOUGHT, so holding a deep pantry ties up no cash and nothing ever spoils.
+                // Both are real gaps — see CLAUDE.md on what makes long hours a real cost.
+                foreach (var stock in _runner.Restaurant.Inventory.Items.ToList())
+                {
+                    if (stock.IsBelowPar)
+                        _runner.Restaurant.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
+                }
+
+                var revenue = now.Revenue - _lastBooked.Revenue;
+                var food = now.FoodCost - _lastBooked.FoodCost;
+
+                if (revenue > 0m) _company.Economy.Record(tick, LedgerCategory.Revenue, revenue, "Day's takings", id);
+                if (food > 0m) _company.Economy.Record(tick, LedgerCategory.FoodCost, food, "Day's ingredients", id);
+                if (_labourPerDay > 0m) _company.Economy.Record(tick, LedgerCategory.LaborCost, _labourPerDay, "Brigade", id);
+                if (_overheadPerDay > 0m) _company.Economy.Record(tick, LedgerCategory.Overhead, _overheadPerDay, "Rent and utilities", id);
+
+                _lastBooked = now;
+                _daysBooked++;
+            }
+
+            public int RunAuto(int days)
+            {
+                Console.WriteLine("  simulating " + days + " days, stopping at every interrupt...");
+
+                long remaining = (long)days * GameClock.TicksPerDay;
+
+                while (remaining > 0)
+                {
+                    var step = Step(remaining);
+                    remaining -= step.TicksAdvanced;
+
+                    if (!step.StoppedEarly) break;
+
+                    _stops++;
+                    Report.TheInterrupt(step.Interrupt);
+                }
+
+                Summary();
+                return 0;
+            }
+
+            public int RunInteractive()
+            {
+                while (true)
+                {
+                    Report.Header(_runner);
+                    Console.WriteLine();
+                    Console.Write("  [h]our [d]ay [w]eek [m]onth   [b]ooks [k]menu [x]matrix   [q]uit > ");
+
+                    var input = Console.ReadLine();
+                    if (input == null) { Summary(); return 0; }   // piped stdin ran out
+
+                    var key = input.Trim().ToLowerInvariant();
+                    long ticks;
+
+                    switch (key)
+                    {
+                        case "h": ticks = GameClock.TicksPerHour; break;
+                        case "d": ticks = GameClock.TicksPerDay; break;
+                        case "w": ticks = GameClock.TicksPerWeek; break;
+                        case "m": ticks = 30L * GameClock.TicksPerDay; break;
+
+                        case "b": Report.Books(_company, _runner.Restaurant); continue;
+                        case "k": Report.Menu(_runner.Restaurant); continue;
+                        case "x": Report.Matrix(_runner.Restaurant, _runner.Snapshot()); continue;
+
+                        case "q": Summary(); return 0;
+                        default: continue;
+                    }
+
+                    // Keep going until we've covered the whole jump, asking about each stop.
+                    var remaining = ticks;
+
+                    while (remaining > 0)
+                    {
+                        var before = _runner.Snapshot();
+                        var step = Step(remaining);
+                        remaining -= step.TicksAdvanced;
+
+                        if (!step.StoppedEarly) break;
+
+                        _stops++;
+                        Report.TheInterrupt(step.Interrupt);
+                        Report.Complaints(new Delta(before, _runner.Snapshot()));
+
+                        Console.WriteLine();
+                        Console.Write("  ##  Was that worth stopping for? [y/n]  (or [s]top jumping) > ");
+
+                        var verdict = Console.ReadLine();
+                        if (verdict == null) { Summary(); return 0; }
+
+                        verdict = verdict.Trim().ToLowerInvariant();
+                        if (verdict.StartsWith("y")) _worthIt++;
+                        if (verdict.StartsWith("s")) break;
+                    }
+                }
+            }
+
+            private void Summary()
+            {
+                Console.WriteLine();
+                Console.WriteLine("  ================ M1(b): DID THE LOOP HAVE A PULSE? ================");
+                Console.WriteLine("  simulated       " + _runner.Clock.DayNumber + " days");
+                Console.WriteLine("  interrupted     " + _stops + " times");
+
+                if (_worthIt > 0 || _stops > 0)
+                    Console.WriteLine("  worth stopping  " + _worthIt + " of " + _stops);
+
+                if (_stops == 0)
+                    Console.WriteLine("  -> nothing ever stopped you. That is the failure mode: fast-forward with no pulse.");
+                else if (_stops > _runner.Clock.DayNumber * 3)
+                    Console.WriteLine("  -> stopped very often. Interrupt fatigue is the other failure mode.");
+
+                Report.Books(_company, _runner.Restaurant);
+                Console.WriteLine();
             }
         }
 
-        private static void PrintService(ServiceResult r)
-        {
-            Console.WriteLine();
-            Console.WriteLine("SERVICE");
-            Console.WriteLine("  parties arrived      " + r.PartiesArrived);
-            if (r.PartiesTurnedAway > 0)
-                Console.WriteLine("  turned away          " + r.PartiesTurnedAway + "   (dining room full)");
-            Console.WriteLine("  covers served        " + r.CoversServed);
-            Console.WriteLine("  walked out           " + r.Walkouts +
-                (r.WastedFoodCost > 0m ? "   (" + r.WastedFoodCost.ToString("0.00") + " of food binned)" : ""));
-            if (r.EightySixed > 0)
-                Console.WriteLine("  86'd                 " + r.EightySixed);
-            Console.WriteLine("  longest wait         " + r.LongestWaitMinutes + " min");
-            Console.WriteLine("  busiest station      " + (r.BusiestStationId ?? "—"));
-            Console.WriteLine("  avg satisfaction     " + r.AverageSatisfaction.ToString("0.00") + "   " + Stars(r.AverageSatisfaction));
-        }
-
-        private static void PrintBooks(Company company, Restaurant restaurant, GameClock clock)
-        {
-            var books = company.Economy.Summarize(clock.Tick, clock.Tick, restaurant.Id);
-
-            Console.WriteLine();
-            Console.WriteLine("THE BOOKS");
-            Console.WriteLine(string.Format("  revenue              {0,9:0.00}", books.Revenue));
-            Console.WriteLine(string.Format("  food cost            {0,9:0.00}   {1,6:P0} of revenue", books.FoodCost, books.FoodCostRatio));
-            Console.WriteLine(string.Format("  labour               {0,9:0.00}   {1,6:P0} of revenue", books.LaborCost, books.LaborCostRatio));
-            Console.WriteLine(string.Format("  overhead             {0,9:0.00}", books.Overhead));
-            Console.WriteLine("  ------------------------------------------------");
-            Console.WriteLine(string.Format("  PRIME COST           {0,9:0.00}   {1,6:P1}   {2}",
-                books.PrimeCost, books.PrimeCostRatio, Verdict(books.Band)));
-            Console.WriteLine(string.Format("  net profit           {0,9:0.00}   {1}",
-                books.NetProfit, books.NetProfit >= 0m ? "" : "  <-- losing money"));
-            Console.WriteLine(string.Format("  cash on hand         {0,9:0.00}", company.Economy.CashOnHand));
-        }
-
-        private static void PrintMatrix(Restaurant restaurant, ServiceResult result)
-        {
-            if (result.TotalUnitsSold == 0) return;
-
-            var analysis = MenuEngineering.Analyze(
-                restaurant, result.UnitsSoldByRecipeId.ToDictionary(p => p.Key, p => p.Value));
-
-            Console.WriteLine();
-            Console.WriteLine("MENU MATRIX (from tonight's actual sales)");
-
-            foreach (var item in analysis.Items.OrderByDescending(i => i.TotalContribution))
-            {
-                Console.WriteLine(string.Format("  {0,-22} {1,-10} sold {2,3}   margin {3,6:0.00}   earned {4,8:0.00}",
-                    item.Name, item.Classification, item.UnitsSold, item.ContributionMargin, item.TotalContribution));
-            }
-
-            Console.WriteLine("  Star = protect · Plowhorse = popular, thin · Puzzle = profitable, ignored · Dog = cut");
-        }
-
-        private static void PrintComplaints(ServiceResult result)
-        {
-            if (result.Diagnostics.Count == 0) return;
-
-            Console.WriteLine();
-            Console.WriteLine("WHAT WENT WRONG (top 5 of " + result.Diagnostics.Count + ")");
-
-            foreach (var line in result.Diagnostics.Take(5)) Console.WriteLine("  · " + line);
-        }
-
-        private static string Verdict(PrimeCostBand band)
-        {
-            switch (band)
-            {
-                case PrimeCostBand.Excellent: return "excellent — better than most real operators";
-                case PrimeCostBand.Healthy: return "healthy — where a good kitchen lives";
-                case PrimeCostBand.Tight: return "tight — survivable for fine dining, not much else";
-                case PrimeCostBand.Unsustainable: return "UNSUSTAINABLE — losing on every cover";
-                default: return "no revenue to judge";
-            }
-        }
-
-        private static string Stars(decimal satisfaction)
-        {
-            var full = (int)Math.Round(satisfaction * 5m, MidpointRounding.AwayFromZero);
-            return new string('*', Math.Max(0, full)) + new string('.', Math.Max(0, 5 - full));
-        }
-
-        private static string Title(string id)
-        {
-            return string.Join(" ", id.Split('-').Select(w => char.ToUpperInvariant(w[0]) + w.Substring(1)));
-        }
+        // ---- Plumbing ----
 
         private static string FindDataDirectory()
         {
@@ -227,58 +272,64 @@ namespace RestaurantEmpire.Sim
             {
                 var candidate = Path.Combine(dir.FullName, "data");
                 if (File.Exists(Path.Combine(candidate, "ingredients.json"))) return candidate;
-
                 dir = dir.Parent;
             }
 
             return null;
         }
 
-        private static string Arg(string[] args, string name, string fallback)
+        private static string Title(string id)
         {
-            var i = Array.IndexOf(args, name);
-            return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
+            return string.Join(" ", id.Split('-').Select(w => char.ToUpperInvariant(w[0]) + w.Substring(1)));
         }
 
-        private static int Int(string[] args, string name, int fallback)
+        private static string Arg(string[] a, string n, string d)
         {
-            int value;
-            return int.TryParse(Arg(args, name, null), out value) ? value : fallback;
+            var i = Array.IndexOf(a, n);
+            return i >= 0 && i + 1 < a.Length ? a[i + 1] : d;
         }
 
-        private static double Double(string[] args, string name, double fallback)
+        private static int Int(string[] a, string n, int d)
         {
-            double value;
-            return double.TryParse(Arg(args, name, null), out value) ? value : fallback;
+            int v; return int.TryParse(Arg(a, n, null), out v) ? v : d;
         }
 
-        private static decimal Decimal(string[] args, string name, decimal fallback)
+        private static double Dbl(string[] a, string n, double d)
         {
-            decimal value;
-            return decimal.TryParse(Arg(args, name, null), out value) ? value : fallback;
+            double v; return double.TryParse(Arg(a, n, null), out v) ? v : d;
         }
 
-        private static void PrintHelp()
+        private static decimal Dec(string[] a, string n, decimal d)
+        {
+            decimal v; return decimal.TryParse(Arg(a, n, null), out v) ? v : d;
+        }
+
+        private static void Help()
         {
             Console.WriteLine(@"
-Runs one dinner service and prints what happened. This is a inspection tool for the
-M0 simulation core, not the game — there is nothing to click and no pacing yet.
+Drive the restaurant forward and let it interrupt you. This is the M1 rhythm harness:
+the question it exists to answer is whether being stopped feels worth it.
 
-  --supplier <id>    budget-wholesale | valley-produce | premium-harvest   (default valley-produce)
-  --price <mult>     multiply every menu price, e.g. 1.5                   (default 1.0)
-  --stations <n>     slots per kitchen station                             (default 2)
-  --demand <n>       parties per hour at the peak of service               (default 25)
-  --seats <n>        dining room capacity, 0 for unlimited                 (default 0)
-  --staff <n>        people on tonight                                     (default 3)
-  --wage <n>         hourly wage                                           (default 18)
-  --hours <n>        length of shift                                       (default 6)
-  --overhead <n>     nightly rent and utilities                            (default 300)
-  --seed <n>         change this for a different night                     (default 4242)
+  (no args)              interactive — jump by hour/day/week/month, judge each stop
+  --auto <days>          run N days non-interactively, printing every interrupt
+
+  --supplier <id>        budget-wholesale | valley-produce | premium-harvest
+  --price <mult>         multiply every menu price, e.g. 1.5
+  --stations <n>         slots per kitchen station          (default 3)
+  --demand <n>           dinner peak parties/hour           (default 25)
+  --seats <n>            dining room capacity, 0 = unlimited
+  --cash <n>             opening cash                       (default 20000)
+  --stock <n>            opening stock per ingredient       (default 2000)
+  --labour <n>           labour booked per day              (default 420)
+  --overhead <n>         rent and utilities per day         (default 300)
+  --walkout-streak <n>   walkouts in a row before stopping  (default 4)
+  --cash-floor <n>       cash level that stops the sim      (default 0)
+  --seed <n>             a different world
 
 Examples:
   dotnet run --project src/RestaurantEmpire.Sim
-  dotnet run --project src/RestaurantEmpire.Sim -- --supplier premium-harvest --price 1.5
-  dotnet run --project src/RestaurantEmpire.Sim -- --stations 1 --demand 40
+  dotnet run --project src/RestaurantEmpire.Sim -- --auto 30
+  dotnet run --project src/RestaurantEmpire.Sim -- --auto 14 --stations 1 --stock 300
 ");
         }
     }
