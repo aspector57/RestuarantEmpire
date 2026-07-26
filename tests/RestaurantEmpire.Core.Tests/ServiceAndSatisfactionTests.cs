@@ -40,7 +40,7 @@ namespace RestaurantEmpire.Core.Tests
 
         private static ServiceResult RunDinner(Restaurant restaurant, double peakRate = 12, long demandSeed = 4242)
         {
-            return ServiceSimulation.Run(restaurant, 0, 180, new DemandModel(peakRate, demandSeed), 99);
+            return Dinner.Run(restaurant, peakRate, demandSeed);
         }
 
         // ---- Satisfaction ----
@@ -53,7 +53,7 @@ namespace RestaurantEmpire.Core.Tests
             var pass = restaurant.Kitchen.OpenPass(0);
             var margherita = definitions.GetRecipe("margherita");
 
-            var party = new DemandModel(1, 1).ArrivalsFor(0, 600)[0];
+            var party = new CustomerParty("test-party", 2, 0, 25, 1.0m);
 
             var prompt = pass.Fire(margherita, 0, restaurant.Inventory);
             var quality = restaurant.Costing.IngredientQuality("margherita");
@@ -90,7 +90,7 @@ namespace RestaurantEmpire.Core.Tests
             var pass = restaurant.Kitchen.OpenPass(0);
             var risotto = definitions.GetRecipe("truffle-risotto"); // 16 minutes each
 
-            var party = new DemandModel(1, 1).ArrivalsFor(0, 600)[0];
+            var party = new CustomerParty("test-party", 2, 0, 25, 1.0m);
 
             var ticket = pass.Fire(risotto, 0, restaurant.Inventory);
             for (var i = 0; i < 5; i++) ticket = pass.Fire(risotto, 0, restaurant.Inventory);
@@ -158,8 +158,8 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void ADifferentSeedProducesADifferentNight()
         {
-            var quiet = ServiceSimulation.Run(BuildRestaurant(out _), 0, 180, new DemandModel(12, 4242), 99);
-            var other = ServiceSimulation.Run(BuildRestaurant(out _), 0, 180, new DemandModel(12, 777), 99);
+            var quiet = RunDinner(BuildRestaurant(out _), 12, 4242);
+            var other = RunDinner(BuildRestaurant(out _), 12, 777);
 
             Assert.NotEqual(quiet.Revenue, other.Revenue);
         }

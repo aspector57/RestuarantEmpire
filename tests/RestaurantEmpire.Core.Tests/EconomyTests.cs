@@ -113,7 +113,7 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = BuildTradingRestaurant(out var company);
             var cashBefore = company.Economy.CashOnHand;
 
-            var night = ServiceSimulation.Run(restaurant, 0, 180, new DemandModel(12, 4242), 99);
+            var night = Dinner.Run(restaurant, 12, 99);
             company.Economy.RecordService(restaurant, night, 0);
 
             var books = company.Economy.Summarize(0, 0, restaurant.Id);
@@ -135,7 +135,7 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = BuildTradingRestaurant(out _, openingCash: 0m);
             restaurant.Kitchen.Install("saute", "Saute", 1);   // deliberately choke one station
 
-            var night = ServiceSimulation.Run(restaurant, 0, 180, new DemandModel(14, 4242), 99);
+            var night = Dinner.Run(restaurant, 14, 99);
 
             Assert.True(night.Walkouts > 0);
             Assert.True(night.WastedFoodCost > 0m);
@@ -147,12 +147,12 @@ namespace RestaurantEmpire.Core.Tests
         {
             var premium = BuildTradingRestaurant(out var premiumCompany);
             premiumCompany.SupplierPolicy.AssignAll("premium-harvest");
-            var premiumNight = ServiceSimulation.Run(premium, 0, 180, new DemandModel(12, 4242), 99);
+            var premiumNight = Dinner.Run(premium, 12, 99);
             premiumCompany.Economy.RecordService(premium, premiumNight, 0);
 
             var budget = BuildTradingRestaurant(out var budgetCompany);
             budgetCompany.SupplierPolicy.AssignAll("budget-wholesale");
-            var budgetNight = ServiceSimulation.Run(budget, 0, 180, new DemandModel(12, 4242), 99);
+            var budgetNight = Dinner.Run(budget, 12, 99);
             budgetCompany.Economy.RecordService(budget, budgetNight, 0);
 
             var premiumBooks = premiumCompany.Economy.Summarize(0, 0, premium.Id);

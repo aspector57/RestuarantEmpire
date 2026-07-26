@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace RestaurantEmpire.Core.Model
 {
@@ -24,6 +25,7 @@ namespace RestaurantEmpire.Core.Model
             Menu = new Menu(company.Definitions);
             Inventory = new Inventory(company.Definitions);
             Kitchen = new Kitchen();
+            ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
             Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
         }
@@ -46,6 +48,13 @@ namespace RestaurantEmpire.Core.Model
         /// impressive dining room fed by an undersized kitchen.
         /// </summary>
         public Kitchen Kitchen { get; }
+
+        /// <summary>
+        /// When the doors are open. The clock runs continuously around these; outside them
+        /// nobody arrives, which is exactly what makes most of a day compressible.
+        /// Defaults to a conventional lunch and dinner — edit freely.
+        /// </summary>
+        public IList<ServiceWindow> ServiceWindows { get; }
 
         /// <summary>
         /// How many guests the dining room can seat at once. Zero means unset; the food

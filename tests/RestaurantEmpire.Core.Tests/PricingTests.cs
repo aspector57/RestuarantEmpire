@@ -145,23 +145,32 @@ namespace RestaurantEmpire.Core.Tests
             // Before pricing existed, buying the best ingredients was simply a losing move.
             // That was not a balance problem, it was a missing lever.
             var cheapPrices = Build(out var cheapCo, "premium-harvest");
-            var asIs = ServiceSimulation.Run(cheapPrices, 0, 180, new DemandModel(25, 4242), 99);
+            var asIs = Dinner.Run(cheapPrices, 25, 99);
             cheapCo.Economy.RecordService(cheapPrices, asIs, 0);
 
             var repriced = Build(out var repricedCo, "premium-harvest");
             foreach (var id in repriced.Menu.RecipeIds) repricedCo.Pricing.AdjustPrice(id, 1.5m);
-            var charged = ServiceSimulation.Run(repriced, 0, 180, new DemandModel(25, 4242), 99);
+            var charged = Dinner.Run(repriced, 25, 99);
             repricedCo.Economy.RecordService(repriced, charged, 0);
 
             // Same ingredients, same guests, same kitchen — only the prices moved.
-            Assert.True(asIs.FoodCost / asIs.Revenue > 0.70m);        // ruinous
-            Assert.True(charged.FoodCost / charged.Revenue < 0.55m);  // survivable
+            //
+            // Judged against the industry bands rather than hand-picked thresholds, so this
+            // keeps testing the claim rather than a particular balance pass: book each
+            // night's takings with the same labour and read what the books say.
+            var labour = 900m;
+            cheapCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", cheapPrices.Id);
+            repricedCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", repriced.Id);
 
-            var asIsProfit = asIs.Revenue - asIs.FoodCost - 324m - 300m;
-            var chargedProfit = charged.Revenue - charged.FoodCost - 324m - 300m;
+            var asIsBooks = cheapCo.Economy.Summarize(0, 0, cheapPrices.Id);
+            var chargedBooks = repricedCo.Economy.Summarize(0, 0, repriced.Id);
 
-            Assert.True(asIsProfit < 0m);       // was losing money
-            Assert.True(chargedProfit > 0m);    // now making it
+            Assert.Equal(PrimeCostBand.Unsustainable, asIsBooks.Band);   // losing on every cover
+            Assert.True(chargedBooks.Band <= PrimeCostBand.Healthy);     // a business again
+
+            // The same night earns more than twice as much once the plate is priced for
+            // what went into it.
+            Assert.True(charged.Revenue - charged.FoodCost > (asIs.Revenue - asIs.FoodCost) * 2m);
         }
 
         [Fact]
@@ -170,11 +179,11 @@ namespace RestaurantEmpire.Core.Tests
             // Value perception is driven by food cost ratio against the industry's fair
             // third. Charge more for the same plate and guests notice.
             var modest = Build(out _);
-            var modestNight = ServiceSimulation.Run(modest, 0, 180, new DemandModel(25, 4242), 99);
+            var modestNight = Dinner.Run(modest, 25, 99);
 
             var dear = Build(out var dearCo);
             foreach (var id in dear.Menu.RecipeIds) dearCo.Pricing.AdjustPrice(id, 1.75m);
-            var dearNight = ServiceSimulation.Run(dear, 0, 180, new DemandModel(25, 4242), 99);
+            var dearNight = Dinner.Run(dear, 25, 99);
 
             Assert.True(dearNight.Revenue > modestNight.Revenue);                       // more money in
             Assert.True(dearNight.AverageSatisfaction < modestNight.AverageSatisfaction); // less goodwill
@@ -187,11 +196,11 @@ namespace RestaurantEmpire.Core.Tests
             // sourcing being compared and not pricing.
             var mid = Build(out var midCo, "valley-produce");
             foreach (var id in mid.Menu.RecipeIds) midCo.Pricing.AdjustPrice(id, 1.5m);
-            var midNight = ServiceSimulation.Run(mid, 0, 180, new DemandModel(25, 4242), 99);
+            var midNight = Dinner.Run(mid, 25, 99);
 
             var premium = Build(out var premiumCo, "premium-harvest");
             foreach (var id in premium.Menu.RecipeIds) premiumCo.Pricing.AdjustPrice(id, 1.5m);
-            var premiumNight = ServiceSimulation.Run(premium, 0, 180, new DemandModel(25, 4242), 99);
+            var premiumNight = Dinner.Run(premium, 25, 99);
 
             Assert.Equal(midNight.Revenue, premiumNight.Revenue);                             // identical takings
             Assert.True(midNight.FoodCost < premiumNight.FoodCost);                           // mid-tier keeps more

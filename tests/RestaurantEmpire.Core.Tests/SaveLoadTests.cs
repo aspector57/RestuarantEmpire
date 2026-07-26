@@ -124,10 +124,10 @@ namespace RestaurantEmpire.Core.Tests
             var original = company.GetRestaurant("flagship");
             foreach (var id in company.Definitions.IngredientIds) original.Inventory.Receive(id, 10000m);
 
-            var before = ServiceSimulation.Run(original, 0, 180, new DemandModel(25, 4242), 99);
+            var before = Dinner.Run(original, 25, 99);
 
             var loaded = SaveGameSerializer.FromJson(SaveGameSerializer.ToJson(company, clock), Definitions());
-            var after = ServiceSimulation.Run(loaded.Company.GetRestaurant("flagship"), 0, 180, new DemandModel(25, 4242), 99);
+            var after = Dinner.Run(loaded.Company.GetRestaurant("flagship"), 25, 99);
 
             Assert.Equal(before.Revenue, after.Revenue);
             Assert.Equal(before.CoversServed, after.CoversServed);

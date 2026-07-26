@@ -74,8 +74,11 @@ namespace RestaurantEmpire.Sim
 
             foreach (var id in definitions.IngredientIds) restaurant.Inventory.Receive(id, 100000m);
 
+            restaurant.ServiceWindows.Clear();
+            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, demand));
+
             var clock = new GameClock();
-            clock.AdvanceHours(17);   // dinner service starts at 5pm
+            clock.AdvanceHours(18);   // doors open
 
             Console.WriteLine();
             Console.WriteLine("=== " + restaurant.Name + " — " + clock.Now.ToString("dddd d MMMM yyyy") + ", dinner ===");
@@ -85,7 +88,10 @@ namespace RestaurantEmpire.Sim
 
             PrintMenu(restaurant);
 
-            var result = ServiceSimulation.Run(restaurant, clock.Tick, 180, new DemandModel(demand, seed), seed);
+            var runner = new SimulationRunner(restaurant, clock, seed, InterruptPolicy.None());
+            runner.Advance(6 * GameClock.TicksPerHour);   // through service, plus time for the last tables
+
+            var result = runner.Snapshot();
             company.Economy.RecordService(restaurant, result, clock.Tick);
 
             var labour = staff * hours * wage;

@@ -62,6 +62,14 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 **Full interrupt quality is an M2 bar**, once the Advisor exists and can generate them properly. Judging variety and "was that worth stopping for?" against three hardcoded triggers would fail M1 for the wrong reason.
 
+### Opening hours are the operator's choice (Aaron)
+
+A restaurant sets whatever hours it likes — including round-the-clock, and including services that run past midnight. `Restaurant.ServiceWindows` is a free list; the clock runs continuously regardless, and windows only decide when guests turn up.
+
+The honest way to model 24/7 is **several windows with their own peaks** (breakfast, lunch, late-night) rather than one flat 24-hour window whose single peak lands arbitrarily at noon. Each service then has its own demand to staff against.
+
+**Staying open longer must carry real risk, and currently doesn't.** Right now long hours are pure upside — more covers, more revenue, no cost. The two things that make it a decision are both scheduled, not built: **labour cost at M1** (nothing generates it yet, so being open is free), and **time-of-day demand at M2** — Aaron's point that a menu should have to match the hour, so a late-night service selling a tasting menu should do badly. Neither should be built early; but "open 24/7" being strictly optimal is a known, temporary hole rather than a balance finding.
+
 ### What this implies, flagged before building
 
 - **Most of (a) is testable headlessly, before Unity.** Jump-ahead with pause-on-condition is a simulation concern, not a rendering one. The riskiest part of M1 can be de-risked in the existing core.
