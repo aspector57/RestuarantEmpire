@@ -160,9 +160,9 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = BuildStockedKitchen(out var definitions);
             var pass = restaurant.Kitchen.OpenPass(0);
 
-            // Enough mozzarella for exactly one margherita (0.12kg), plenty of everything else.
+            // Enough mozzarella for exactly one margherita (0.15kg), plenty of everything else.
             restaurant.Inventory.TryConsume("mozzarella", restaurant.Inventory.QuantityOf("mozzarella"));
-            restaurant.Inventory.Receive("mozzarella", 0.12m);
+            restaurant.Inventory.Receive("mozzarella", 0.15m);
 
             var margherita = definitions.GetRecipe("margherita");
 

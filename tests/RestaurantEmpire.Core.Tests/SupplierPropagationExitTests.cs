@@ -22,20 +22,20 @@ namespace RestaurantEmpire.Core.Tests
     public class SupplierPropagationExitTests
     {
         // Plate costs with every ingredient sourced from Valley Produce.
-        //   margherita      0.25*1.80 + 0.15*3.00 + 0.12*9.00 + 0.02*1.60 = 2.012  -> 16.00 - 2.012 = 13.988
-        //   caprese-salad   0.20*3.00 + 0.15*9.00 + 0.03*1.60             = 1.998  -> 14.00 - 1.998 = 12.002
-        //   truffle-risotto 0.12*4.50 + 8.00*2.60 + 0.05*18.00            = 22.24  -> 38.00 - 22.24 = 15.76
-        //   house-focaccia  0.30*1.80 + 0.02*1.60                         = 0.572  ->  9.00 - 0.572 =  8.428
-        private const decimal MargheritaOnValley = 13.988m;
-        private const decimal CapreseOnValley = 12.002m;
-        private const decimal RisottoOnValley = 15.76m;
-        private const decimal FocacciaOnValley = 8.428m;
+        //   margherita      0.25*1.80 + 0.20*3.00 + 0.15*9.00 + 0.02*1.60 + 0.015*11.00 = 2.597 -> 12.00 - 2.597 =  9.403
+        //   caprese-salad   0.25*3.00 + 0.18*9.00 + 0.04*1.60 + 0.02*11.00              = 2.654 ->  9.00 - 2.654 =  6.346
+        //   truffle-risotto 0.12*4.50 + 5.00*2.60 + 0.06*18.00 + 0.02*11.00             = 14.84 -> 37.00 - 14.84 = 22.160
+        //   house-focaccia  0.30*1.80 + 0.04*11.00 + 0.02*1.60                          = 1.012 ->  7.00 - 1.012 =  5.988
+        private const decimal MargheritaOnValley = 9.403m;
+        private const decimal CapreseOnValley = 6.346m;
+        private const decimal RisottoOnValley = 22.16m;
+        private const decimal FocacciaOnValley = 5.988m;
 
         // After tomato alone moves to Premium Harvest (5.00/kg instead of 3.00/kg):
-        //   margherita      tomato line goes 0.45 -> 0.75, cost 2.312 -> 16.00 - 2.312 = 13.688
-        //   caprese-salad   tomato line goes 0.60 -> 1.00, cost 2.398 -> 14.00 - 2.398 = 11.602
-        private const decimal MargheritaOnPremiumTomato = 13.688m;
-        private const decimal CapreseOnPremiumTomato = 11.602m;
+        //   margherita      tomato line goes 0.60 -> 1.00, cost 2.997 -> 12.00 - 2.997 = 9.003
+        //   caprese-salad   tomato line goes 0.75 -> 1.25, cost 3.154 ->  9.00 - 3.154 = 5.846
+        private const decimal MargheritaOnPremiumTomato = 9.003m;
+        private const decimal CapreseOnPremiumTomato = 5.846m;
 
         private static Restaurant BuildFlagship(out Company company)
         {

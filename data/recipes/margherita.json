@@ -3,7 +3,7 @@
   "name": "Pizza Margherita",
   "station": "oven",
   "prepMinutes": 9,
-  "menuPrice": 16.0,
+  "menuPrice": 12.0,
   "ingredients": [
     {
       "ingredientId": "flour",
@@ -11,15 +11,19 @@
     },
     {
       "ingredientId": "tomato",
-      "quantity": 0.15
+      "quantity": 0.2
     },
     {
       "ingredientId": "mozzarella",
-      "quantity": 0.12
+      "quantity": 0.15
     },
     {
       "ingredientId": "basil",
       "quantity": 0.02
+    },
+    {
+      "ingredientId": "olive-oil",
+      "quantity": 0.015
     }
   ]
 }

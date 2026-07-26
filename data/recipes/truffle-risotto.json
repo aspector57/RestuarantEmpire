@@ -3,7 +3,7 @@
   "name": "Black Truffle Risotto",
   "station": "saute",
   "prepMinutes": 16,
-  "menuPrice": 38.0,
+  "menuPrice": 37.0,
   "ingredients": [
     {
       "ingredientId": "arborio-rice",
@@ -11,11 +11,15 @@
     },
     {
       "ingredientId": "truffle",
-      "quantity": 8.0
+      "quantity": 5.0
     },
     {
       "ingredientId": "parmesan",
-      "quantity": 0.05
+      "quantity": 0.06
+    },
+    {
+      "ingredientId": "olive-oil",
+      "quantity": 0.02
     }
   ]
 }

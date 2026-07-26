@@ -1,11 +1,12 @@
 {
   "ingredients": [
-    { "id": "flour",        "name": "00 Flour",       "unit": "kg" },
-    { "id": "tomato",       "name": "Tomatoes",       "unit": "kg" },
-    { "id": "mozzarella",   "name": "Mozzarella",     "unit": "kg" },
-    { "id": "basil",        "name": "Fresh Basil",    "unit": "bunch" },
-    { "id": "arborio-rice", "name": "Arborio Rice",   "unit": "kg" },
-    { "id": "parmesan",     "name": "Parmesan",       "unit": "kg" },
-    { "id": "truffle",      "name": "Black Truffle",  "unit": "g" }
+    { "id": "flour",        "name": "00 Flour",         "unit": "kg" },
+    { "id": "tomato",       "name": "Tomatoes",         "unit": "kg" },
+    { "id": "mozzarella",   "name": "Mozzarella",       "unit": "kg" },
+    { "id": "basil",        "name": "Fresh Basil",      "unit": "bunch" },
+    { "id": "olive-oil",    "name": "Olive Oil",        "unit": "L" },
+    { "id": "arborio-rice", "name": "Arborio Rice",     "unit": "kg" },
+    { "id": "parmesan",     "name": "Parmesan",         "unit": "kg" },
+    { "id": "truffle",      "name": "Black Truffle",    "unit": "g" }
   ]
 }

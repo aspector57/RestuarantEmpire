@@ -107,7 +107,7 @@ namespace RestaurantEmpire.Core.Tests
             var registry = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
             Assert.Empty(registry.LoadWarnings);
-            Assert.Equal(7, registry.IngredientCount);
+            Assert.Equal(8, registry.IngredientCount);
             Assert.Equal(3, registry.SupplierCount);
             Assert.Equal(4, registry.RecipeCount);
         }

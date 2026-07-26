@@ -1,4 +1,13 @@
 {
+  "_comment": [
+    "Three quality tiers of the same goods. Premium runs roughly 1.5x Valley, which is",
+    "realistic for most produce and dairy.",
+    "",
+    "Truffle is deliberately the exception: 1.80 / 2.60 / 6.50 is a far wider spread than",
+    "anything else here. Real truffle prices genuinely swing that hard by season and grade,",
+    "and it makes sourcing a single ingredient capable of destroying a single dish - which",
+    "is a much more interesting decision than every ingredient moving together."
+  ],
   "suppliers": [
     {
       "id": "budget-wholesale",
@@ -9,6 +18,7 @@
         "tomato": 2.00,
         "mozzarella": 6.00,
         "basil": 1.00,
+        "olive-oil": 6.00,
         "arborio-rice": 3.00,
         "parmesan": 12.00,
         "truffle": 1.80
@@ -23,6 +33,7 @@
         "tomato": 3.00,
         "mozzarella": 9.00,
         "basil": 1.60,
+        "olive-oil": 11.00,
         "arborio-rice": 4.50,
         "parmesan": 18.00,
         "truffle": 2.60
@@ -37,9 +48,10 @@
         "tomato": 5.00,
         "mozzarella": 14.00,
         "basil": 2.80,
+        "olive-oil": 22.00,
         "arborio-rice": 7.00,
         "parmesan": 28.00,
-        "truffle": 4.20
+        "truffle": 6.50
       }
     }
   ]

@@ -138,7 +138,8 @@ namespace RestaurantEmpire.Core.Tests
             var flagship = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
             flagship.Menu.Add("house-focaccia");
 
-            Assert.Equal(new[] { "basil", "flour" }, flagship.Menu.RequiredIngredientIds.OrderBy(id => id).ToArray());
+            Assert.Equal(new[] { "basil", "flour", "olive-oil" },
+                flagship.Menu.RequiredIngredientIds.OrderBy(id => id).ToArray());
         }
 
         [Fact]
