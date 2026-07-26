@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/RestaurantEmpire.Core/RestaurantEmpire.Core.csproj" />
+    <Project Path="src/RestaurantEmpire.Sim/RestaurantEmpire.Sim.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RestaurantEmpire.Core.Tests/RestaurantEmpire.Core.Tests.csproj" />

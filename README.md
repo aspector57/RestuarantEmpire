@@ -15,8 +15,30 @@ dotnet test     # run every test — this is how M0 is verified
 dotnet build    # compile only
 ```
 
-There is nothing to *play* yet, by design. M0 is a headless simulation validated by tests
-and logs, not by playing — proving the core math before spending an hour on rendering.
+### Watching a night run
+
+There is nothing to *play* yet, by design — M0 is headless, validated by tests and logs
+rather than by playing, so the core math is proven before an hour goes into rendering.
+But you can run a service and read what happened:
+
+```bash
+dotnet run --project src/RestaurantEmpire.Sim
+dotnet run --project src/RestaurantEmpire.Sim -- --help
+```
+
+It prints the menu with live costs, the night's service, the books with prime cost, the
+Kasavana-Smith matrix built from that night's real sales, and the specific complaints.
+Every dial the simulation actually has is exposed as a flag:
+
+```bash
+--stations 1                            # choke the kitchen and watch guests walk
+--supplier premium-harvest --price 1.5  # buy better ingredients and charge for them
+--demand 60                             # more guests than you can possibly cook for
+--seed 99                               # a different night
+```
+
+This is an inspection tool, not the game. There is no input, no pacing and nothing to
+click; that arrives with M1.
 
 ## Layout
 
