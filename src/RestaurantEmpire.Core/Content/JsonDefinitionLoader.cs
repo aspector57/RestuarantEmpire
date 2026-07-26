@@ -197,7 +197,12 @@ namespace RestaurantEmpire.Core.Content
                     continue;
                 }
 
-                result.Add(new RecipeDefinition(dto.Id, dto.Name, dto.MenuPrice, lines));
+                // Station and prep time are optional in the file — a dish that names neither
+                // lands on the generic line at a default pace rather than failing to load.
+                result.Add(new RecipeDefinition(
+                    dto.Id, dto.Name, dto.MenuPrice, lines,
+                    string.IsNullOrWhiteSpace(dto.Station) ? RecipeDefinition.DefaultStationId : dto.Station,
+                    dto.PrepMinutes > 0 ? dto.PrepMinutes : RecipeDefinition.DefaultPrepMinutes));
             }
 
             return result;
@@ -234,6 +239,8 @@ namespace RestaurantEmpire.Core.Content
         {
             public string Id { get; set; }
             public string Name { get; set; }
+            public string Station { get; set; }
+            public int PrepMinutes { get; set; }
             public decimal MenuPrice { get; set; }
             public List<RecipeIngredientDto> Ingredients { get; set; }
         }

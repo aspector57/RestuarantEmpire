@@ -23,6 +23,7 @@ namespace RestaurantEmpire.Core.Model
             Company = company;
             Menu = new Menu(company.Definitions);
             Inventory = new Inventory(company.Definitions);
+            Kitchen = new Kitchen();
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
         }
 
@@ -37,6 +38,20 @@ namespace RestaurantEmpire.Core.Model
 
         public Menu Menu { get; }
         public Inventory Inventory { get; }
+
+        /// <summary>
+        /// The brigade stations installed here. This is the hard ceiling on how much this
+        /// location can actually produce — the design's dominant layout failure mode is an
+        /// impressive dining room fed by an undersized kitchen.
+        /// </summary>
+        public Kitchen Kitchen { get; }
+
+        /// <summary>
+        /// How many guests the dining room can seat at once. Zero means unset; the food
+        /// truck and ghost kitchen cases simply use small or zero values rather than a
+        /// different class (Architecture Rule 5).
+        /// </summary>
+        public int SeatingCapacity { get; set; }
 
         /// <summary>
         /// This location's own sourcing scope, which INHERITS FROM the company's.

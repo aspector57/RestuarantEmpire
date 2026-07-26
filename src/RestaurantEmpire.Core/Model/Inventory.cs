@@ -107,6 +107,42 @@ namespace RestaurantEmpire.Core.Model
             return GetOrCreate(ingredientId).TryConsume(quantity);
         }
 
+        /// <summary>
+        /// Consumes a whole recipe's ingredient list ATOMICALLY: every line is checked
+        /// before anything is taken, so a dish that can't be made leaves the walk-in
+        /// untouched rather than half-consumed.
+        ///
+        /// Reports which ingredient came up short, because "86'd — out of mozzarella" is a
+        /// usable diagnosis and "couldn't make it" is not.
+        /// </summary>
+        public bool TryConsumeAll(IEnumerable<RecipeIngredient> lines, out string shortfallIngredientId)
+        {
+            shortfallIngredientId = null;
+            if (lines == null) return true;
+
+            var required = new Dictionary<string, decimal>(StringComparer.Ordinal);
+
+            foreach (var line in lines)
+            {
+                decimal running;
+                required.TryGetValue(line.IngredientId, out running);
+                required[line.IngredientId] = running + line.Quantity;
+            }
+
+            foreach (var pair in required)
+            {
+                if (QuantityOf(pair.Key) < pair.Value)
+                {
+                    shortfallIngredientId = pair.Key;
+                    return false;
+                }
+            }
+
+            foreach (var pair in required) GetOrCreate(pair.Key).TryConsume(pair.Value);
+
+            return true;
+        }
+
         public decimal QuantityOf(string ingredientId)
         {
             IngredientStock stock;

@@ -49,9 +49,10 @@ Both M0 exit tests pass:
 **Built:** Company → Restaurant hierarchy · Suppliers, resolving up a
 `Company → Restaurant` inheritance chain with no caching · Ingredients with par levels ·
 Recipes with live contribution margin · Kasavana-Smith classification · JSON content
-loading · Time (`GameClock`).
+loading · Time (`GameClock`) · Kitchen throughput (brigade stations with real queueing) ·
+Customers (arrival curve + satisfaction formula), joined by a headless `ServiceSimulation`.
 
-**Still outstanding for M0:** Economy · Kitchen throughput · Customers · save/load.
+**Still outstanding for M0:** Economy · save/load.
 
 M0 is not finished until those exist. Do not start M1 before then.
 

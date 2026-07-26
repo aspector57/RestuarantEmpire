@@ -43,22 +43,46 @@ namespace RestaurantEmpire.Core.Definitions
     /// </summary>
     public sealed class RecipeDefinition
     {
+        /// <summary>Station a dish defaults to when its data file doesn't name one.</summary>
+        public const string DefaultStationId = "line";
+
+        /// <summary>Prep time a dish defaults to when its data file doesn't give one.</summary>
+        public const int DefaultPrepMinutes = 5;
+
         public string Id { get; }
         public string Name { get; }
 
         /// <summary>What the guest pays. The one money figure that genuinely belongs to the dish.</summary>
         public decimal MenuPrice { get; }
 
+        /// <summary>
+        /// Which brigade station cooks this (oven, saute, garde-manger...). A string rather
+        /// than an enum so a content pack can add a station type without a code change.
+        /// </summary>
+        public string StationId { get; }
+
+        /// <summary>
+        /// Hands-on minutes at that station for one plate, before any equipment or (from M1)
+        /// staff-skill multiplier. This is what makes two dishes sharing one station
+        /// contend for it under load.
+        /// </summary>
+        public int PrepMinutes { get; }
+
         public IReadOnlyList<RecipeIngredient> Ingredients { get; }
 
-        public RecipeDefinition(string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients)
+        public RecipeDefinition(
+            string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients,
+            string stationId = DefaultStationId, int prepMinutes = DefaultPrepMinutes)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Recipe id is required.", nameof(id));
             if (menuPrice < 0m) throw new ArgumentOutOfRangeException(nameof(menuPrice), "Menu price cannot be negative.");
+            if (prepMinutes <= 0) throw new ArgumentOutOfRangeException(nameof(prepMinutes), "Prep time must be positive.");
 
             Id = id;
             Name = name ?? id;
             MenuPrice = menuPrice;
+            StationId = string.IsNullOrWhiteSpace(stationId) ? DefaultStationId : stationId;
+            PrepMinutes = prepMinutes;
             Ingredients = new List<RecipeIngredient>(ingredients ?? new List<RecipeIngredient>()).AsReadOnly();
         }
 

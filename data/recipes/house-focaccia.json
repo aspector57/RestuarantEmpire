@@ -1,9 +1,17 @@
 {
   "id": "house-focaccia",
   "name": "House Focaccia",
-  "menuPrice": 9.00,
+  "station": "oven",
+  "prepMinutes": 6,
+  "menuPrice": 9.0,
   "ingredients": [
-    { "ingredientId": "flour", "quantity": 0.30 },
-    { "ingredientId": "basil", "quantity": 0.02 }
+    {
+      "ingredientId": "flour",
+      "quantity": 0.3
+    },
+    {
+      "ingredientId": "basil",
+      "quantity": 0.02
+    }
   ]
 }

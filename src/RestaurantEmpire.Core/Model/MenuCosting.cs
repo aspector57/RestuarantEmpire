@@ -69,5 +69,26 @@ namespace RestaurantEmpire.Core.Model
             var price = _definitions.GetRecipe(recipeId).MenuPrice;
             return price == 0m ? 0m : PlateCost(recipeId) / price;
         }
+
+        /// <summary>
+        /// How good this dish's ingredients currently are, 0 to 1, from the quality tiers of
+        /// whichever suppliers are assigned right now.
+        ///
+        /// Live like everything else here, which is the interesting part: switching to a
+        /// cheaper supplier raises margin and lowers this in the same instant, and guests
+        /// taste the difference. That is the tradeoff the whole sourcing system exists to create.
+        /// </summary>
+        public decimal IngredientQuality(string recipeId)
+        {
+            var recipe = _definitions.GetRecipe(recipeId);
+            if (recipe.Ingredients.Count == 0) return 0m;
+
+            var totalTier = 0m;
+            for (var i = 0; i < recipe.Ingredients.Count; i++)
+                totalTier += _policy.ResolveSupplier(recipe.Ingredients[i].IngredientId).QualityTier;
+
+            // Tiers run 1..5, so this lands in 0.2 (budget) .. 1.0 (premium).
+            return (totalTier / recipe.Ingredients.Count) / 5m;
+        }
     }
 }

@@ -1,10 +1,21 @@
 {
   "id": "caprese-salad",
   "name": "Caprese Salad",
-  "menuPrice": 14.00,
+  "station": "garde-manger",
+  "prepMinutes": 4,
+  "menuPrice": 14.0,
   "ingredients": [
-    { "ingredientId": "tomato",     "quantity": 0.20 },
-    { "ingredientId": "mozzarella", "quantity": 0.15 },
-    { "ingredientId": "basil",      "quantity": 0.03 }
+    {
+      "ingredientId": "tomato",
+      "quantity": 0.2
+    },
+    {
+      "ingredientId": "mozzarella",
+      "quantity": 0.15
+    },
+    {
+      "ingredientId": "basil",
+      "quantity": 0.03
+    }
   ]
 }
