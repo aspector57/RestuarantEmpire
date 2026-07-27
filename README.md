@@ -22,9 +22,20 @@ rather than by playing, so the core math is proven before an hour goes into rend
 But you can run a service and read what happened:
 
 ```bash
-dotnet run --project src/RestaurantEmpire.Sim
+dotnet run --project src/RestaurantEmpire.Sim          # drive it yourself
 dotnet run --project src/RestaurantEmpire.Sim -- --help
 ```
+
+You jump time forward and the restaurant interrupts you when something needs deciding:
+
+```
+[h]our [d]ay [w]eek [m]onth   [a]ct   [b]ooks [k]menu [x]matrix   [q]uit
+```
+
+When it stops you it says what happened and asks whether that was worth stopping for —
+it keeps score and reports the tally when you quit, which is how M1's rhythm bar gets
+answered. Press `a` to actually do something about it: buy a slot at a station, change
+prices, switch supplier, or change your opening hours.
 
 It prints the menu with live costs, the night's service, the books with prime cost, the
 Kasavana-Smith matrix built from that night's real sales, and the specific complaints.

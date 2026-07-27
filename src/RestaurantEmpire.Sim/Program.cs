@@ -112,6 +112,8 @@ namespace RestaurantEmpire.Sim
                 labourPerDay: Dec(args, "--labour-per-hour", 72m) * openHours,
                 overheadPerDay: Dec(args, "--overhead", 300m));
 
+            session.StationSlotCost = perSlot;
+
             Console.WriteLine();
             Console.WriteLine("  " + restaurant.Location.Name + "  ·  sourcing " + supplier +
                               "  ·  prices x" + priceMultiplier + "  ·  " + stations + " slot(s)/station  ·  " +
@@ -139,6 +141,8 @@ namespace RestaurantEmpire.Sim
             private readonly SimulationRunner _runner;
             private readonly Company _company;
             private readonly decimal _labourPerDay, _overheadPerDay;
+
+            public decimal StationSlotCost = 2800m;
 
             private ServiceResult _lastSeen;
             private ServiceResult _lastBooked;
@@ -231,7 +235,7 @@ namespace RestaurantEmpire.Sim
                 {
                     Report.Header(_runner);
                     Console.WriteLine();
-                    Console.Write("  [h]our [d]ay [w]eek [m]onth   [b]ooks [k]menu [x]matrix   [q]uit > ");
+                    Console.Write("  [h]our [d]ay [w]eek [m]onth   [a]ct   [b]ooks [k]menu [x]matrix   [q]uit > ");
 
                     var input = Console.ReadLine();
                     if (input == null) { Summary(); return 0; }   // piped stdin ran out
@@ -249,6 +253,7 @@ namespace RestaurantEmpire.Sim
                         case "b": Report.Books(_company, _runner.Restaurant); continue;
                         case "k": Report.Menu(_runner.Restaurant); continue;
                         case "x": Report.Matrix(_runner.Restaurant, _runner.Snapshot()); continue;
+                        case "a": if (!Act()) { Summary(); return 0; } continue;
 
                         case "q": Summary(); return 0;
                         default: continue;
@@ -270,14 +275,126 @@ namespace RestaurantEmpire.Sim
                         Report.Complaints(new Delta(before, _runner.Snapshot()));
 
                         Console.WriteLine();
-                        Console.Write("  ##  Was that worth stopping for? [y/n]  (or [s]top jumping) > ");
+                        Console.Write("  ##  Worth stopping for? [y/n]   [a]ct on it   [s]top jumping > ");
 
                         var verdict = Console.ReadLine();
                         if (verdict == null) { Summary(); return 0; }
 
                         verdict = verdict.Trim().ToLowerInvariant();
                         if (verdict.StartsWith("y")) _worthIt++;
+                        if (verdict.StartsWith("a")) { _worthIt++; if (!Act()) { Summary(); return 0; } break; }
                         if (verdict.StartsWith("s")) break;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// The levers. Being stopped is pointless if you cannot do anything about it —
+            /// "was that worth stopping for?" is unanswerable when the only options are
+            /// carry on or quit.
+            ///
+            /// Returns false when input runs out.
+            /// </summary>
+            private bool Act()
+            {
+                var restaurant = _runner.Restaurant;
+
+                while (true)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("  cash " + _runner.ProjectedCash.ToString("N2"));
+                    Console.Write("  [1] buy a slot at a station   [2] change prices   " +
+                                  "[3] switch supplier   [4] change hours   [enter] back > ");
+
+                    var input = Console.ReadLine();
+                    if (input == null) return false;
+
+                    switch (input.Trim())
+                    {
+                        case "1":
+                            Console.Write("    which station? (" +
+                                string.Join(", ", restaurant.Kitchen.Stations.Select(s => s.Id + " x" + s.ConcurrentCapacity)) + ") > ");
+                            var stationId = Console.ReadLine();
+                            if (stationId == null) return false;
+
+                            KitchenStation existing;
+                            if (restaurant.Kitchen.TryGet(stationId.Trim(), out existing))
+                            {
+                                // Stations are immutable, so buying capacity replaces the
+                                // station with a bigger one and bills for the extra slot.
+                                restaurant.BuyStation(existing.Id, existing.Name, StationSlotCost,
+                                    existing.ConcurrentCapacity + 1, existing.SpeedMultiplier, _runner.Clock.Tick);
+
+                                Console.WriteLine("    " + existing.Name + " now runs " +
+                                    (existing.ConcurrentCapacity + 1) + " plates at once. Cost " +
+                                    StationSlotCost.ToString("N2") + ".");
+                            }
+                            else Console.WriteLine("    no such station.");
+                            break;
+
+                        case "2":
+                            Console.Write("    multiply every price by > ");
+                            var multiplierText = Console.ReadLine();
+                            if (multiplierText == null) return false;
+
+                            decimal multiplier;
+                            if (decimal.TryParse(multiplierText.Trim(), out multiplier) && multiplier > 0m)
+                            {
+                                foreach (var id in restaurant.Menu.RecipeIds) _company.Pricing.AdjustPrice(id, multiplier);
+                                Report.Menu(restaurant);
+                            }
+                            else Console.WriteLine("    that isn't a number.");
+                            break;
+
+                        case "3":
+                            Console.Write("    which supplier? (" +
+                                string.Join(", ", _company.Definitions.Suppliers.Select(s => s.Id)) + ") > ");
+                            var supplierId = Console.ReadLine();
+                            if (supplierId == null) return false;
+
+                            if (_company.Definitions.HasSupplier(supplierId.Trim()))
+                            {
+                                _company.SupplierPolicy.AssignAll(supplierId.Trim());
+                                Console.WriteLine("    now buying everything from " + supplierId.Trim() + ".");
+                                Report.Menu(restaurant);
+                            }
+                            else Console.WriteLine("    no such supplier.");
+                            break;
+
+                        case "4":
+                            Console.Write("    hours, e.g. 12-15,18-23 > ");
+                            var hours = Console.ReadLine();
+                            if (hours == null) return false;
+
+                            var parsed = new List<ServiceWindow>();
+                            foreach (var spec in hours.Split(','))
+                            {
+                                var parts = spec.Trim().Split('-');
+                                int from, to;
+                                if (parts.Length == 2 && int.TryParse(parts[0], out from) && int.TryParse(parts[1], out to))
+                                {
+                                    try { parsed.Add(new ServiceWindow(NameFor(from), from, to)); }
+                                    catch (ArgumentOutOfRangeException) { }
+                                }
+                            }
+
+                            if (parsed.Count > 0)
+                            {
+                                restaurant.ServiceWindows.Clear();
+                                foreach (var window in parsed) restaurant.ServiceWindows.Add(window);
+
+                                foreach (var window in parsed)
+                                {
+                                    var potential = window.PotentialPartiesIn(restaurant.Location);
+                                    Console.WriteLine("    " + window + "  —  about " + potential.ToString("0.0") +
+                                        " parties pass by across that service" + (potential < 4 ? "   !! barely worth opening" : ""));
+                                }
+                            }
+                            else Console.WriteLine("    couldn't read those hours.");
+                            break;
+
+                        default:
+                            return true;
                     }
                 }
             }
