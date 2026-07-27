@@ -62,6 +62,15 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 **Full interrupt quality is an M2 bar**, once the Advisor exists and can generate them properly. Judging variety and "was that worth stopping for?" against three hardcoded triggers would fail M1 for the wrong reason.
 
+### Pricing is per-dish (Aaron)
+
+The real game prices each menu item individually. That is already how the model works —
+`PricingPolicy.SetPrice(recipeId, price)` is the primitive and `AdjustPrice` (a multiplier)
+is a convenience built on top. The Sim harness only exposes the multiplier, which is fine
+for testing the loop but means the player cannot currently make the actual menu-engineering
+move: repricing ONE dish and watching the Kasavana-Smith matrix rearrange. Until then
+`[x]matrix` in the harness is decoration.
+
 ### Playtest verdict so far: (a) passes, (b) does NOT
 
 Two sessions, Aaron at the keyboard. Both found real defects the tests could not — a walkout death spiral, then an economy where tripling prices tripled revenue. Both are fixed.
