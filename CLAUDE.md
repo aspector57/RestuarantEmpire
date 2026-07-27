@@ -43,7 +43,47 @@ Rendering, UI, layout/build mode, the Advisor, Events, Competitors, Marketing, h
 
 ---
 
-## Next milestone: M1 — Single Restaurant, Placeholder Graphics, the Core Loop
+## Current milestone: M2 — Depth (Advisor, menu engineering, full employees)
+
+Aaron's call: build the Advisor and the systems around it BEFORE graphics, since graphics
+would only make bad interrupts prettier. M1's simulation half is done and its mechanism bar
+passes; M1's *presentation* half (Unity, build mode, dashboard UI) is deferred until the
+systems underneath are worth looking at.
+
+### Built so far in M2
+
+**Featured menu slots.** Two by default. `Menu.Feature` returns whatever it displaced,
+because "what did this cost me?" is the mechanic — scarcity is the only reason promoting a
+dish is a decision.
+
+**The Advisor**, with the three-tier authority model intact:
+
+- **Chore** — stated flatly, never asked. Restocking, unstaffed equipment, unservable tables.
+- **Proposal** — a question with its reasoning visible, and ONLY where "no" is defensible.
+- **Strategic** — named, never proposed. The player initiates.
+
+The line it must not cross is pinned by tests: it may say *"the risotto earns most of
+anything we sell and nobody orders it — want it featured?"*, but never *"this is a Puzzle"*.
+Same information, entirely different relationship, and only the first leaves the player
+running the restaurant. A test asserts the words "puzzle", "plowhorse" and "kasavana" never
+appear in anything it says.
+
+It also surfaces opportunities, not only problems, and is capable of saying nothing at all —
+there is a test for a healthy restaurant getting no advice, because an Advisor that always
+has an opinion stops being read.
+
+### Found while building it: the popularity axis is currently degenerate
+
+Guests pick dishes **uniformly at random**, so with four dishes every dish lands near a 25%
+share — comfortably above the 17.5% popularity bar. A Puzzle (high margin, LOW volume)
+therefore cannot arise naturally; only featuring something else pushes the others under.
+
+That makes half of the Kasavana-Smith matrix decorative until dishes have different natural
+appeal. The design already has the answer scheduled here at M2: **Customer archetypes**, who
+want different things. Until that lands, the menu matrix is measuring the simulation's
+uniform RNG rather than anything about the menu.
+
+## Earlier milestone: M1 — Single Restaurant, Placeholder Graphics, the Core Loop
 
 Not started. Scope per the design doc's Phase 8, plus the Time Control & Interrupts model from Phase 5, which is M1's primary time interface rather than a convenience feature.
 

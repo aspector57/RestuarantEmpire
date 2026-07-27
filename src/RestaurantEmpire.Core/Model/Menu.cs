@@ -15,12 +15,60 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly DefinitionRegistry _definitions;
         private readonly List<string> _recipeIds;
+        private readonly List<string> _featured;
 
         internal Menu(DefinitionRegistry definitions)
         {
             _definitions = definitions;
             _recipeIds = new List<string>();
+            _featured = new List<string>();
         }
+
+        /// <summary>
+        /// How many dishes can be promoted at once. Deliberately few — the design chose
+        /// featured slots over a full menu-layout system precisely because scarcity is what
+        /// makes promoting a dish a decision. If you could feature everything, featuring
+        /// would mean nothing.
+        /// </summary>
+        public int FeaturedSlots { get; set; } = 2;
+
+        /// <summary>Dishes currently promoted. Guests order these noticeably more often.</summary>
+        public IReadOnlyList<string> Featured { get { return _featured; } }
+
+        public bool IsFeatured(string recipeId)
+        {
+            return recipeId != null && _featured.Contains(recipeId);
+        }
+
+        /// <summary>
+        /// Promotes a dish. Returns what got bumped to make room, or null if there was a
+        /// free slot — because "what did this cost me?" is the whole point of the mechanic.
+        /// </summary>
+        public string Feature(string recipeId)
+        {
+            if (!Contains(recipeId))
+                throw new InvalidOperationException("'" + recipeId + "' is not on the menu, so it cannot be featured.");
+
+            if (_featured.Contains(recipeId)) return null;
+
+            string displaced = null;
+            while (_featured.Count >= FeaturedSlots && _featured.Count > 0)
+            {
+                displaced = _featured[0];
+                _featured.RemoveAt(0);
+            }
+
+            _featured.Add(recipeId);
+            return displaced;
+        }
+
+        public bool Unfeature(string recipeId)
+        {
+            return _featured.Remove(recipeId);
+        }
+
+        /// <summary>How much likelier a featured dish is to be ordered.</summary>
+        public const int FeaturedWeight = 3;
 
         public IReadOnlyList<string> RecipeIds { get { return _recipeIds; } }
         public int Count { get { return _recipeIds.Count; } }
@@ -41,6 +89,7 @@ namespace RestaurantEmpire.Core.Model
 
         public bool Remove(string recipeId)
         {
+            _featured.Remove(recipeId);
             return _recipeIds.Remove(recipeId);
         }
 

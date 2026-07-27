@@ -377,7 +377,9 @@ namespace RestaurantEmpire.Core.Model
                     continue;
                 }
 
-                wanted.Add(recipeId);
+                // A featured dish goes in the hat several times — that IS the promotion.
+                var copies = _restaurant.Menu.IsFeatured(recipeId) ? Menu.FeaturedWeight : 1;
+                for (var c = 0; c < copies; c++) wanted.Add(recipeId);
             }
 
             if (wanted.Count == 0)
