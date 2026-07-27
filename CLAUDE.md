@@ -75,7 +75,8 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 | **More stock to buy, and more capital tied up in it** | **Gap.** Ingredients are charged when *used*, never when *bought*, so a deep pantry costs nothing to hold. Fixing this means purchase-vs-consumption accounting. |
 | **Spoilage on that bigger pantry** | **Gap.** Listed in M0 scope, deliberately cut from the built slice. Nothing rots, so over-ordering is free. |
 | **More labour to cover more hours** | **Scheduled — M1.** Economy tracks labour; nothing generates it until Employees. |
-| **Equipment each service needs** (an espresso machine for breakfast) | **Nearly free to build.** Stations already gate dishes — a breakfast recipe naming a `coffee` station simply cannot be cooked without one. What is missing is that `Kitchen.Install` costs nothing; charging it as `CapitalExpenditure` is a small change. |
+| **Equipment each service needs** (an espresso machine for breakfast) | **Built.** `Restaurant.BuyStation` charges `CapitalExpenditure`; stations already gate dishes, so a breakfast recipe naming a `coffee` station cannot be cooked until the machine is bought. |
+| **Decor and furniture** | **Built.** `Restaurant.Buy`/`BuyTables` charge the books, and `SeatingCapacity` is now *derived* from furniture rather than declared — a bigger room is something you pay for. Comfort feeds satisfaction at the smallest of the four weights, per the design's insistence that decor nudges rather than decides. |
 | **Local traffic may not support every daypart** | **Gap, and the bigger one.** `ServiceWindow.PeakPartiesPerHour` is set by the player, so demand is an *input* rather than an output of neighbourhood and reputation. Until location demographics (design doc Phase 4, Restaurant) drive it, a player can simply declare their breakfast is busy. |
 
 Until several of those land, "open 24/7" being close to optimal is a known temporary hole, not a balance finding.

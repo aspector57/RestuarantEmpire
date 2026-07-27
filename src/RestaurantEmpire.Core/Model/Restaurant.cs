@@ -25,6 +25,7 @@ namespace RestaurantEmpire.Core.Model
             Menu = new Menu(company.Definitions);
             Inventory = new Inventory(company.Definitions);
             Kitchen = new Kitchen();
+            DiningRoom = new DiningRoom();
             ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
             Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
@@ -56,12 +57,55 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public IList<ServiceWindow> ServiceWindows { get; }
 
+        /// <summary>Everything installed out front: tables, chairs, decor.</summary>
+        public DiningRoom DiningRoom { get; }
+
         /// <summary>
-        /// How many guests the dining room can seat at once. Zero means unset; the food
-        /// truck and ghost kitchen cases simply use small or zero values rather than a
-        /// different class (Architecture Rule 5).
+        /// How many guests can sit down at once — DERIVED from the furniture actually
+        /// bought, not declared. A bigger room is something you pay for.
+        ///
+        /// Zero means nothing has been installed, which the simulation reads as "capacity
+        /// not modelled" and lets everyone in. That keeps a ghost kitchen or a bare test
+        /// fixture from having to furnish itself first (Architecture Rule 5: location type
+        /// is a parameter, not a subclass).
         /// </summary>
-        public int SeatingCapacity { get; set; }
+        public int SeatingCapacity { get { return DiningRoom.Seats; } }
+
+        /// <summary>
+        /// Buys and installs a kitchen station, billing the company. This is how equipment
+        /// becomes a real decision: opening for breakfast means buying the espresso machine
+        /// that breakfast needs.
+        /// </summary>
+        public KitchenStation BuyStation(
+            string id, string name, decimal cost, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m, long tick = 0)
+        {
+            var station = new KitchenStation(id, name, concurrentCapacity, speedMultiplier, cost);
+            Kitchen.Install(station);
+
+            if (cost > 0m)
+                Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, cost, "Bought " + station.Name, Id);
+
+            return station;
+        }
+
+        /// <summary>Buys and installs a piece of furniture or decor, billing the company.</summary>
+        public Fitting Buy(Fitting fitting, long tick = 0)
+        {
+            if (fitting == null) throw new ArgumentNullException(nameof(fitting));
+
+            DiningRoom.Add(fitting);
+
+            if (fitting.Cost > 0m)
+                Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, fitting.Cost, "Bought " + fitting.Name, Id);
+
+            return fitting;
+        }
+
+        /// <summary>Convenience for the common case: buy seating.</summary>
+        public Fitting BuyTables(string id, string name, decimal cost, int seats, decimal comfort = 0.5m, long tick = 0)
+        {
+            return Buy(new Fitting(id, name, cost, seats, comfort), tick);
+        }
 
         /// <summary>
         /// This location's own sourcing scope, which INHERITS FROM the company's.

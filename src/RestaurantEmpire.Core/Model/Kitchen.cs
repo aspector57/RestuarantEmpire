@@ -14,16 +14,18 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class KitchenStation
     {
-        public KitchenStation(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m)
+        public KitchenStation(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m, decimal cost = 0m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Station id is required.", nameof(id));
             if (concurrentCapacity < 1) throw new ArgumentOutOfRangeException(nameof(concurrentCapacity), "A station must handle at least one plate at a time.");
             if (speedMultiplier <= 0m) throw new ArgumentOutOfRangeException(nameof(speedMultiplier), "Speed multiplier must be positive.");
+            if (cost < 0m) throw new ArgumentOutOfRangeException(nameof(cost));
 
             Id = id;
             Name = name ?? id;
             ConcurrentCapacity = concurrentCapacity;
             SpeedMultiplier = speedMultiplier;
+            Cost = cost;
         }
 
         public string Id { get; }
@@ -34,6 +36,13 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>Above 1.0 is faster than baseline. Better equipment, and later better staff.</summary>
         public decimal SpeedMultiplier { get; }
+
+        /// <summary>
+        /// What this cost to buy. Opening a breakfast service means buying the espresso
+        /// machine it needs, which is precisely what makes longer hours a decision rather
+        /// than free upside.
+        /// </summary>
+        public decimal Cost { get; }
 
         /// <summary>Actual minutes this station takes on a dish, after its speed multiplier.</summary>
         public int MinutesFor(RecipeDefinition recipe)
@@ -146,10 +155,14 @@ namespace RestaurantEmpire.Core.Model
             _stations[station.Id] = station;
         }
 
-        /// <summary>Convenience for the common case.</summary>
-        public KitchenStation Install(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m)
+        /// <summary>
+        /// Puts a station in without charging for it. This is the raw mechanism — restoring
+        /// a save must not re-buy the ovens. To actually purchase one, use
+        /// <see cref="Restaurant.BuyStation"/>, which bills the books.
+        /// </summary>
+        public KitchenStation Install(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m, decimal cost = 0m)
         {
-            var station = new KitchenStation(id, name, concurrentCapacity, speedMultiplier);
+            var station = new KitchenStation(id, name, concurrentCapacity, speedMultiplier, cost);
             Install(station);
 
             return station;

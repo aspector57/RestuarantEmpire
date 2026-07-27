@@ -82,7 +82,6 @@ namespace RestaurantEmpire.Core.Content
         public string Id { get; set; }
         public string Name { get; set; }
         public string LocationType { get; set; }
-        public int SeatingCapacity { get; set; }
 
         /// <summary>Recipe ids on the menu.</summary>
         public List<string> Menu { get; set; }
@@ -90,6 +89,13 @@ namespace RestaurantEmpire.Core.Content
         public Dictionary<string, string> SupplierAssignments { get; set; }
         public Dictionary<string, decimal> Prices { get; set; }
         public List<StationState> Stations { get; set; }
+
+        /// <summary>
+        /// The dining room fit-out. Seating capacity is NOT stored — it is derived from
+        /// these, so a save can never claim more seats than it has furniture for.
+        /// </summary>
+        public List<FittingState> Fittings { get; set; }
+
         public List<StockState> Inventory { get; set; }
     }
 
@@ -99,6 +105,16 @@ namespace RestaurantEmpire.Core.Content
         public string Name { get; set; }
         public int ConcurrentCapacity { get; set; }
         public decimal SpeedMultiplier { get; set; }
+        public decimal Cost { get; set; }
+    }
+
+    public sealed class FittingState
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public decimal Cost { get; set; }
+        public int Seats { get; set; }
+        public decimal Comfort { get; set; }
     }
 
     public sealed class StockState

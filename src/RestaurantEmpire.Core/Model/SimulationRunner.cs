@@ -387,7 +387,8 @@ namespace RestaurantEmpire.Core.Model
             var satisfaction = SatisfactionModel.Evaluate(
                 table.Party, order.Ticket, recipe.Name,
                 _restaurant.Costing.IngredientQuality(order.RecipeId),
-                _restaurant.Costing.FoodCostRatio(order.RecipeId));
+                _restaurant.Costing.FoodCostRatio(order.RecipeId),
+                _restaurant.DiningRoom.Comfort);
 
             int sold;
             _unitsSold.TryGetValue(order.RecipeId, out sold);

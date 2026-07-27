@@ -112,11 +112,11 @@ namespace RestaurantEmpire.Core.Content
                     Id = restaurant.Id,
                     Name = restaurant.Name,
                     LocationType = restaurant.LocationType.ToString(),
-                    SeatingCapacity = restaurant.SeatingCapacity,
                     Menu = new List<string>(restaurant.Menu.RecipeIds),
                     SupplierAssignments = new Dictionary<string, string>(restaurant.SupplierPolicy.LocalAssignments),
                     Prices = new Dictionary<string, decimal>(restaurant.Pricing.LocalPrices),
                     Stations = new List<StationState>(),
+                    Fittings = new List<FittingState>(),
                     Inventory = new List<StockState>()
                 };
 
@@ -127,7 +127,20 @@ namespace RestaurantEmpire.Core.Content
                         Id = station.Id,
                         Name = station.Name,
                         ConcurrentCapacity = station.ConcurrentCapacity,
-                        SpeedMultiplier = station.SpeedMultiplier
+                        SpeedMultiplier = station.SpeedMultiplier,
+                        Cost = station.Cost
+                    });
+                }
+
+                foreach (var fitting in restaurant.DiningRoom.Fittings)
+                {
+                    state.Fittings.Add(new FittingState
+                    {
+                        Id = fitting.Id,
+                        Name = fitting.Name,
+                        Cost = fitting.Cost,
+                        Seats = fitting.Seats,
+                        Comfort = fitting.Comfort
                     });
                 }
 
@@ -296,8 +309,6 @@ namespace RestaurantEmpire.Core.Content
                 return;
             }
 
-            restaurant.SeatingCapacity = state.SeatingCapacity;
-
             var where = "'" + restaurant.Name + "'";
 
             if (state.Menu != null)
@@ -328,10 +339,36 @@ namespace RestaurantEmpire.Core.Content
                         continue;
                     }
 
+                    // Install, never Buy — reloading a save must not charge for the ovens again.
                     restaurant.Kitchen.Install(
                         station.Id, station.Name,
                         station.ConcurrentCapacity < 1 ? 1 : station.ConcurrentCapacity,
-                        station.SpeedMultiplier <= 0m ? 1.0m : station.SpeedMultiplier);
+                        station.SpeedMultiplier <= 0m ? 1.0m : station.SpeedMultiplier,
+                        station.Cost < 0m ? 0m : station.Cost);
+                }
+            }
+
+            if (state.Fittings != null)
+            {
+                foreach (var fitting in state.Fittings)
+                {
+                    if (string.IsNullOrWhiteSpace(fitting.Id))
+                    {
+                        warnings.Add("Dropped a fitting with no id in " + where + ".");
+                        continue;
+                    }
+
+                    try
+                    {
+                        restaurant.DiningRoom.Add(new Fitting(
+                            fitting.Id, fitting.Name, fitting.Cost < 0m ? 0m : fitting.Cost,
+                            fitting.Seats < 0 ? 0 : fitting.Seats,
+                            fitting.Comfort < 0m || fitting.Comfort > 1m ? 0.5m : fitting.Comfort));
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        warnings.Add("Dropped fitting '" + fitting.Id + "' in " + where + ": " + ex.Message);
+                    }
                 }
             }
 

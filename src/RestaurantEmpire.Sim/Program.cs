@@ -45,7 +45,7 @@ namespace RestaurantEmpire.Sim
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
-            restaurant.SeatingCapacity = seats;
+            if (seats > 0) restaurant.BuyTables("tables", "Tables and chairs", seats * 120m, seats, 0.55m);
 
             if (!definitions.HasSupplier(supplier))
             {
@@ -62,8 +62,10 @@ namespace RestaurantEmpire.Sim
             restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15, demand * 0.6));
             restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, demand));
 
+            // The fit-out is bought, not conjured — every slot at every station is capital out.
+            var perSlot = Dec(args, "--station-cost", 2800m);
             foreach (var stationId in restaurant.Menu.Recipes.Select(r => r.StationId).Distinct())
-                restaurant.Kitchen.Install(stationId, Title(stationId), stations);
+                restaurant.BuyStation(stationId, Title(stationId), perSlot * stations, stations);
 
             // Par levels: the standing policy the morning delivery is ordered against.
             var par = Dec(args, "--stock", 2000m);

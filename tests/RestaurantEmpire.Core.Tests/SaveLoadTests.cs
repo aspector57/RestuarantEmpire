@@ -26,7 +26,7 @@ namespace RestaurantEmpire.Core.Tests
 
             var flagship = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
             flagship.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
-            flagship.SeatingCapacity = 42;
+            flagship.BuyTables("tables", "Walnut tables", 5040m, 42, 0.75m);
             flagship.Kitchen.Install("oven", "Wood Oven", 2);
             flagship.Kitchen.Install("garde-manger", "Garde Manger");
             flagship.Kitchen.Install("saute", "Saute", 1, 1.5m);

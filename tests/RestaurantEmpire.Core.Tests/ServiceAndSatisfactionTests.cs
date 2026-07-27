@@ -195,7 +195,7 @@ namespace RestaurantEmpire.Core.Tests
         public void ASmallDiningRoomTurnsGuestsAway_EvenWhenTheKitchenCouldCope()
         {
             var restaurant = BuildRestaurant(out _, slotsPerStation: 4);
-            restaurant.SeatingCapacity = 4;
+            restaurant.BuyTables("tables", "Two small tables", 480m, 4);
 
             var night = RunDinner(restaurant);
 
