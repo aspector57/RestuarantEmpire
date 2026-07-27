@@ -16,11 +16,13 @@ namespace RestaurantEmpire.Core.Model
         internal ServiceResult(
             Dictionary<string, int> unitsSold, IList<Ticket> tickets, IList<string> diagnostics,
             decimal revenue, decimal foodCost, decimal wastedFoodCost,
-            int partiesArrived, int partiesTurnedAway, int partiesLostToMenu, int coversServed,
+            int partiesArrived, int partiesTurnedAway, int partiesLostToMenu, int partiesPutOffByTheWait,
+            int coversServed,
             int walkouts, int eightySixed, decimal averageSatisfaction,
             int longestWaitMinutes, string busiestStationId)
         {
             PartiesLostToMenu = partiesLostToMenu;
+            PartiesPutOffByTheWait = partiesPutOffByTheWait;
             _unitsSold = unitsSold;
             Tickets = new List<Ticket>(tickets).AsReadOnly();
             Diagnostics = new List<string>(diagnostics).AsReadOnly();
@@ -72,6 +74,12 @@ namespace RestaurantEmpire.Core.Model
         /// specific cost of opening a service you have no food for.
         /// </summary>
         public int PartiesLostToMenu { get; }
+
+        /// <summary>
+        /// Saw how backed up the room was and went elsewhere without sitting down. Lost
+        /// trade, but far cheaper than a walkout: no food was cooked for them.
+        /// </summary>
+        public int PartiesPutOffByTheWait { get; }
 
         public int CoversServed { get; }
 

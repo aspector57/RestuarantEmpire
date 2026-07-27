@@ -69,7 +69,7 @@ namespace RestaurantEmpire.Core.Model
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
-        private int _partiesLostToMenu;
+        private int _partiesLostToMenu, _partiesPutOffByTheWait;
         private int _walkoutStreak, _partyCounter, _occupiedSeats;
         private bool _cashFloorBreached, _walkoutAlarmRaisedThisService;
         private string _serviceOnLastTick;
@@ -131,7 +131,8 @@ namespace RestaurantEmpire.Core.Model
             return new ServiceResult(
                 new Dictionary<string, int>(_unitsSold), _tickets, _diagnostics,
                 _revenue, _foodCost, _wastedFoodCost,
-                _partiesArrived, _partiesTurnedAway, _partiesLostToMenu, _coversServed, _walkouts, _eightySixed,
+                _partiesArrived, _partiesTurnedAway, _partiesLostToMenu, _partiesPutOffByTheWait,
+                _coversServed, _walkouts, _eightySixed,
                 _coversServed == 0 ? 0m : _satisfactionTotal / _coversServed,
                 _longestWait, BusiestStation());
         }
@@ -211,8 +212,9 @@ namespace RestaurantEmpire.Core.Model
                     _walkoutStreak++;
                     _diagnostics.Add("Walked out after " + (tick - table.Party.ArrivalTick) +
                         " min waiting for " + _definitions.GetRecipe(order.RecipeId).Name +
-                        " (patience " + table.Party.PatienceMinutes + " min; " + order.Ticket.QueuedMinutes +
-                        " of that was the " + order.Ticket.StationId + " station backed up).");
+                        " (patience " + table.Party.PatienceMinutes + " min; the " + order.Ticket.StationId +
+                        " station was still " + Math.Max(0, order.Ticket.StartedTick - tick) +
+                        " min from even starting it).");
                 }
 
                 // Once per service, not once per streak. A kitchen that is underwater all
@@ -296,7 +298,7 @@ namespace RestaurantEmpire.Core.Model
                         "Cash has fallen to " + cash.ToString("0.00") + ", through your " +
                         Interrupts.CashFloor.Value.ToString("0.00") + " floor.", _restaurant.Id);
                 }
-                else if (cash >= Interrupts.CashFloor.Value)
+                else if (cash >= Interrupts.CashFloor.Value + Interrupts.CashRearmMargin)
                 {
                     _cashFloorBreached = false;   // rearm once recovered
                 }
@@ -318,20 +320,58 @@ namespace RestaurantEmpire.Core.Model
                 return null;
             }
 
-            // What is on the menu that anyone would actually want at this hour. Offering
-            // truffle risotto at 8am is allowed; ordering it is not.
+            // What this restaurant can actually put in front of someone right now: on the
+            // menu, wanted at this hour, and cookable with the equipment installed. A dish
+            // whose station was never bought is not really on the menu at all.
             var wanted = new List<string>();
+            string missingStation = null;
+
             foreach (var recipeId in _restaurant.Menu.RecipeIds)
             {
-                if (_definitions.GetRecipe(recipeId).SuitsDaypart(Dayparts.At(now))) wanted.Add(recipeId);
+                var candidate = _definitions.GetRecipe(recipeId);
+
+                if (!candidate.SuitsDaypart(Dayparts.At(now))) continue;
+
+                if (!_restaurant.Kitchen.HasStation(candidate.StationId))
+                {
+                    missingStation = candidate.StationId;
+                    continue;
+                }
+
+                wanted.Add(recipeId);
             }
 
             if (wanted.Count == 0)
             {
                 // They came in, read the menu, and left. You paid the labour anyway.
                 _partiesLostToMenu++;
-                _diagnostics.Add("A party of " + party.Size + " left without ordering — nothing on the menu suits " +
-                                 Dayparts.At(now).ToString().ToLowerInvariant() + ".");
+
+                _diagnostics.Add(missingStation != null
+                    ? "A party of " + party.Size + " left without ordering — the only thing they wanted needs a '" +
+                      missingStation + "' station and this kitchen has none."
+                    : "A party of " + party.Size + " left without ordering — nothing on the menu suits " +
+                      Dayparts.At(now).ToString().ToLowerInvariant() + ".");
+
+                return null;
+            }
+
+            // They can see how backed up the room is. If even the quickest thing they want
+            // would take longer than they are willing to wait, they do not sit down at all —
+            // which is what stops a slow night becoming a spiral of food cooked for people
+            // who already left.
+            var quickest = int.MaxValue;
+            foreach (var recipeId in wanted)
+            {
+                var wait = _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick);
+                if (wait < quickest) quickest = wait;
+            }
+
+            if (quickest > party.PatienceMinutes)
+            {
+                _partiesPutOffByTheWait++;
+                _diagnostics.Add("A party of " + party.Size + " saw the wait (about " +
+                                 (quickest == int.MaxValue ? "forever" : quickest + " min") +
+                                 ") and went somewhere else.");
                 return null;
             }
 

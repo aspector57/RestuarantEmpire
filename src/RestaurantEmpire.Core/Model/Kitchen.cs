@@ -237,6 +237,36 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>
+        /// How long a dish ordered right now would take to reach the pass, without ordering
+        /// it. Nothing is mutated and no ingredients are touched.
+        ///
+        /// This is what a guest can see from the door — the design says customers know the
+        /// "visible wait state" but never the kitchen's internals. Without it, people keep
+        /// sitting down at a kitchen that is an hour behind, walk out before their food
+        /// lands, and the food gets cooked and binned anyway. That is a death spiral no
+        /// amount of extra equipment can dig you out of.
+        /// </summary>
+        public int EstimatedWaitMinutes(RecipeDefinition recipe, long atTick)
+        {
+            if (recipe == null) throw new ArgumentNullException(nameof(recipe));
+
+            KitchenStation station;
+            if (!_kitchen.TryGet(recipe.StationId, out station)) return int.MaxValue;
+
+            var slots = _slotFreeAt[station.Id];
+            var earliest = slots[0];
+
+            for (var i = 1; i < slots.Length; i++)
+            {
+                if (slots[i] < earliest) earliest = slots[i];
+            }
+
+            var startsAt = earliest > atTick ? earliest : atTick;
+
+            return (int)(startsAt - atTick) + station.MinutesFor(recipe);
+        }
+
+        /// <summary>
         /// Fires one order. Consumes ingredients, finds the earliest free slot at the
         /// required station, and returns a ticket with real timings.
         ///

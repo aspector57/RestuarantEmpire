@@ -134,7 +134,12 @@ namespace RestaurantEmpire.Core.Tests
 
             var withoutMachine = RunBreakfast(cafe);
             Assert.Equal(0, withoutMachine.CoversServed);
-            Assert.True(withoutMachine.EightySixed > 0);
+            Assert.Equal(0m, withoutMachine.Revenue);
+
+            // Guests turn up and leave, and the reason names the missing machine. Nothing is
+            // cooked and binned, because a dish you cannot make is not really on the menu.
+            Assert.True(withoutMachine.PartiesLostToMenu > 0);
+            Assert.Equal(0, withoutMachine.EightySixed);
             Assert.Contains(withoutMachine.Diagnostics, d => d.Contains("coffee") && d.Contains("station"));
 
             // Buy the machine and the same morning works.

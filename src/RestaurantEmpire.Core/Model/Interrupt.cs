@@ -74,10 +74,18 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Whether an 86'd dish stops the sim.</summary>
         public bool StopOnStockout { get; set; }
 
+        /// <summary>
+        /// How far back above the floor cash must climb before it can raise the alarm
+        /// again. Without this, a restaurant hovering around zero trips the same alarm
+        /// every few minutes, which is noise rather than information.
+        /// </summary>
+        public decimal CashRearmMargin { get; set; }
+
         public InterruptPolicy()
         {
             WalkoutStreakThreshold = 3;
             CashFloor = 0m;
+            CashRearmMargin = 1000m;
             StopOnStockout = true;
         }
 

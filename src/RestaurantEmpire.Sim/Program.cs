@@ -38,7 +38,7 @@ namespace RestaurantEmpire.Sim
             var priceMultiplier = Dec(args, "--price", 1.0m);
             var stations = Int(args, "--stations", 3);
             var demand = Dbl(args, "--demand", 25);
-            var seats = Int(args, "--seats", 0);
+            var seats = Int(args, "--seats", 20);
             var seed = Int(args, "--seed", 4242);
 
             var company = new Company("player-co", "Your Restaurant Group", definitions, Dec(args, "--cash", 20000m));
@@ -143,6 +143,7 @@ namespace RestaurantEmpire.Sim
             private readonly decimal _labourPerDay, _overheadPerDay;
 
             public decimal StationSlotCost = 2800m;
+            public decimal SeatCost = 120m;
 
             private ServiceResult _lastSeen;
             private ServiceResult _lastBooked;
@@ -303,8 +304,8 @@ namespace RestaurantEmpire.Sim
                 {
                     Console.WriteLine();
                     Console.WriteLine("  cash " + _runner.ProjectedCash.ToString("N2"));
-                    Console.Write("  [1] buy a slot at a station   [2] change prices   " +
-                                  "[3] switch supplier   [4] change hours   [enter] back > ");
+                    Console.Write("  [1] buy a slot at a station   [2] change prices   [3] switch supplier\n" +
+                                  "  [4] change hours              [5] buy tables      [enter] back > ");
 
                     var input = Console.ReadLine();
                     if (input == null) return false;
@@ -391,6 +392,24 @@ namespace RestaurantEmpire.Sim
                                 }
                             }
                             else Console.WriteLine("    couldn't read those hours.");
+                            break;
+
+                        case "5":
+                            Console.Write("    how many more seats? (you have " + restaurant.SeatingCapacity + ") > ");
+                            var seatText = Console.ReadLine();
+                            if (seatText == null) return false;
+
+                            int moreSeats;
+                            if (int.TryParse(seatText.Trim(), out moreSeats) && moreSeats > 0)
+                            {
+                                var cost = moreSeats * SeatCost;
+                                restaurant.BuyTables("tables-" + restaurant.DiningRoom.Fittings.Count,
+                                    moreSeats + " more covers", cost, moreSeats, 0.55m, _runner.Clock.Tick);
+
+                                Console.WriteLine("    the room now seats " + restaurant.SeatingCapacity +
+                                                  ". Cost " + cost.ToString("N2") + ".");
+                            }
+                            else Console.WriteLine("    that isn't a number.");
                             break;
 
                         default:
