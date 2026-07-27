@@ -233,6 +233,44 @@ Result: **85 of 100 configurations profitable.** Starter builds sit at break-eve
 slightly negative on every site; growth is clearly rewarded; all four sites clear a living
 at their best build. Re-run the sweep by removing the `Skip` on `Sweep.OneHundredRuns`.
 
+### The two instruments bracket the truth — do not tune against either alone
+
+Re-measured after archetypes and the price fix, and the headline numbers disagree by a
+hundred points because **they measure two different players**:
+
+| Instrument | What it models | Result |
+|---|---|---|
+| `Sweep.OneHundredRuns` | 100 static builds, correctly staffed and stocked, chosen in advance | **100/100 profitable** |
+| `Campaign.TwelveMonths` | one journey from a real 30,000 opening, reinvesting as it goes | **4/4 sites BUST by month 12** |
+
+Neither is the win rate. The sweep hands the player a good build; the campaign makes the
+player earn it. **The gap between them is the game**, and the thing that carries a player
+across it is the Advisor. That gives M1(b) a number instead of a taste judgement: *does an
+Advisor-guided opening survive twelve months?*
+
+**Attribution, measured commit by commit rather than assumed:**
+
+| Commit | Profitable |
+|---|---:|
+| `81f26c0` campaign probe | 79/100 |
+| `041a3bf` archetypes + appetite | **100/100** |
+| `2c04082` price in dish selection | 100/100 (no change) |
+
+So **archetypes** caused the easing, by matching demand to what guests actually want — fewer
+parties leave without ordering. The price fix is balance-neutral: zeroing `PriceAppeal` and
+re-running the sweep gives byte-identical output. The "85 of 100" figure recorded above is
+stale — it predates the campaign-probe commit, where the same instrument reads 79.
+
+**The campaign probe's own policy is the naive mistake, and that is worth knowing.** It buys
+an oven whenever one fits and only buys tables when the floor cannot take another
+(`Campaign.cs`, the reinvest block) — so suburban finishes with nine kitchen units and twelve
+seats. That is *exactly* Aaron's playtest error: "I bought a ton of ovens and kept getting
+backed up." Four sites busting is therefore evidence that the naive strategy loses, which is
+correct design, **not** evidence that the economy needs softening.
+
+**So: do not tune prices, wages, rents or ingredient costs to chase either number.** The next
+honest move is an Advisor-guided campaign, not a balance patch.
+
 **Protect this shape when balancing.** A starting position that is immediately comfortable
 deletes the arc; one that cannot be dug out of deletes the game.
 
@@ -309,6 +347,21 @@ Ideas raised and consciously NOT built, with the reasoning, so they are choices 
 - **Fridge / storage capacity.** Would be a cap on `Inventory` par levels. Cheap to add, but it only bites once ingredients are charged when *bought* and can *spoil* — without those two it is a constraint with no consequence. Revisit together with them.
 - **Chef skill by daypart.** Aaron flagged the tension himself: breakfast is *easier* to cook than dinner, so "you need a specialist" doesn't follow cleanly. Employees are M1/M2 anyway. If it ever lands, the honest version is probably that a great dinner kitchen finds breakfast a distraction, not that it lacks the skill.
 - **Prep-time interference** (why a fine-dining kitchen won't do breakfast). Genuinely the real-world reason, but it needs a prep system that does not exist. The daypart menu already delivers most of the *feel* — a tasting-menu restaurant simply has nothing breakfast-appropriate to sell.
+
+- **Make in-house vs. buy in** (Aaron). Raising ingredient costs on the cheap fast dishes was
+  considered as a difficulty lever and rejected on Aaron's objection, which is correct: *"you
+  won't just buy focaccia, you will probably make it."* Flour and yeast are cheap; what
+  focaccia actually costs is kitchen time. Pricing that as groceries would model a lie.
+
+  The good version of the idea is his: **let the player choose per dish.** Buy it in — higher
+  ingredient cost, near-zero kitchen time. Make it in house — cheap ingredients, but it
+  consumes the capacity the dining room is competing for. That converts "cheap dishes are
+  strictly better" into a genuine trade, and it is legible cause and effect.
+
+  **Deliberately NOT built yet**, under the M2 bound above: it does not serve the M1(b) bar.
+  Revisit once the Advisor has closed M1(b), and note it pairs naturally with the deferred
+  purchase-vs-consumption accounting and spoilage, since all three are about capital and
+  capacity tied up before a plate is ever sold.
 
 The bar for adding any of these: does it create a decision that is fun to make? Not: is it realistic.
 
