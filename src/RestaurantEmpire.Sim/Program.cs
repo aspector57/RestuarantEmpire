@@ -36,7 +36,7 @@ namespace RestaurantEmpire.Sim
 
             var supplier = Arg(args, "--supplier", "valley-produce");
             var priceMultiplier = Dec(args, "--price", 1.0m);
-            var stations = Int(args, "--stations", 3);
+            var stations = Int(args, "--stations", 2);
             var demand = Dbl(args, "--demand", 25);
             var seats = Int(args, "--seats", 20);
             var seed = Int(args, "--seed", 4242);
@@ -55,7 +55,7 @@ namespace RestaurantEmpire.Sim
 
                 if (wanted) restaurant.Menu.Add(recipe.Id);
             }
-            if (seats > 0) restaurant.BuyTables("tables", "Tables and chairs", seats * 120m, seats, 0.55m);
+
 
             if (!definitions.HasSupplier(supplier))
             {
@@ -83,10 +83,18 @@ namespace RestaurantEmpire.Sim
                 restaurant.ServiceWindows.Add(new ServiceWindow(NameFor(from), from, to));
             }
 
-            // The fit-out is bought, not conjured — every slot at every station is capital out.
-            var perSlot = Dec(args, "--station-cost", 2800m);
+            // A real unit, with a real floor. The kitchen and the dining room compete for it.
+            restaurant.FloorArea = Dec(args, "--floor", 90m);
+
+            // Fit out from the catalogue, cheapest model of whatever the menu needs.
             foreach (var stationId in restaurant.Menu.Recipes.Select(r => r.StationId).Distinct())
-                restaurant.BuyStation(stationId, Title(stationId), perSlot * stations, stations);
+            {
+                var model = definitions.EquipmentFor(stationId).FirstOrDefault();
+                if (model == null) continue;
+
+                try { restaurant.BuyEquipment(model, stations); }
+                catch (InvalidOperationException ex) { Console.WriteLine("  !! " + ex.Message); }
+            }
 
             // Par levels: the standing policy the morning delivery is ordered against.
             var par = Dec(args, "--stock", 2000m);
@@ -94,6 +102,12 @@ namespace RestaurantEmpire.Sim
             {
                 restaurant.Inventory.SetPar(id, par * 0.35m, par);
                 restaurant.Inventory.Receive(id, par);
+            }
+
+            if (seats > 0)
+            {
+                try { restaurant.BuyTables("tables", "Tables and chairs", seats * 120m, seats, 0.55m); }
+                catch (InvalidOperationException ex) { Console.WriteLine("  !! " + ex.Message); }
             }
 
             var runner = new SimulationRunner(restaurant, new GameClock(), seed, new InterruptPolicy
@@ -112,13 +126,16 @@ namespace RestaurantEmpire.Sim
                 labourPerDay: Dec(args, "--labour-per-hour", 72m) * openHours,
                 overheadPerDay: Dec(args, "--overhead", 300m));
 
-            session.StationSlotCost = perSlot;
+
 
             Console.WriteLine();
             Console.WriteLine("  " + restaurant.Location.Name + "  ·  sourcing " + supplier +
                               "  ·  prices x" + priceMultiplier + "  ·  " + stations + " slot(s)/station  ·  " +
                               (seats == 0 ? "unlimited seats" : seats + " seats"));
             Console.WriteLine("  open: " + string.Join(", ", restaurant.ServiceWindows.Select(w => w.ToString())));
+            Console.WriteLine("  floor: " + restaurant.UsedFloorArea.ToString("0.0") + " of " +
+                              restaurant.FloorArea.ToString("0.0") + "m2 used  ·  " +
+                              restaurant.SeatingCapacity + " seats");
 
             foreach (var window in restaurant.ServiceWindows)
             {
@@ -313,38 +330,69 @@ namespace RestaurantEmpire.Sim
                     switch (input.Trim())
                     {
                         case "1":
+                            Console.WriteLine("    floor: " + restaurant.FreeFloorArea.ToString("0.0") + "m2 free of " +
+                                              restaurant.FloorArea.ToString("0.0") + "m2");
                             Console.Write("    which station? (" +
-                                string.Join(", ", restaurant.Kitchen.Stations.Select(s => s.Id + " x" + s.ConcurrentCapacity)) + ") > ");
+                                string.Join(", ", restaurant.Kitchen.Stations.Select(s => s.Id)) + ") > ");
                             var stationId = Console.ReadLine();
                             if (stationId == null) return false;
 
-                            KitchenStation existing;
-                            if (restaurant.Kitchen.TryGet(stationId.Trim(), out existing))
-                            {
-                                // Stations are immutable, so buying capacity replaces the
-                                // station with a bigger one and bills for the extra slot.
-                                restaurant.BuyStation(existing.Id, existing.Name, StationSlotCost,
-                                    existing.ConcurrentCapacity + 1, existing.SpeedMultiplier, _runner.Clock.Tick);
+                            var catalogue = _company.Definitions.EquipmentFor(stationId.Trim()).ToList();
+                            if (catalogue.Count == 0) { Console.WriteLine("    nothing sold for that station."); break; }
 
-                                Console.WriteLine("    " + existing.Name + " now runs " +
-                                    (existing.ConcurrentCapacity + 1) + " plates at once. Cost " +
-                                    StationSlotCost.ToString("N2") + ".");
+                            Console.WriteLine();
+                            for (var i = 0; i < catalogue.Count; i++)
+                            {
+                                var kit = catalogue[i];
+                                Console.WriteLine("      [" + (i + 1) + "] " + kit.Name.PadRight(28) +
+                                    kit.Cost.ToString("N0").PadLeft(7) + "   x" + kit.SpeedMultiplier +
+                                    " speed   " + kit.Footprint + "m2 each");
                             }
-                            else Console.WriteLine("    no such station.");
+
+                            Console.Write("    which model, and how many? e.g. '2 x3' > ");
+                            var order = Console.ReadLine();
+                            if (order == null) return false;
+
+                            var bits = order.Trim().Replace("x", " ").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            int pick, units = 1;
+                            if (bits.Length == 0 || !int.TryParse(bits[0], out pick) || pick < 1 || pick > catalogue.Count)
+                            { Console.WriteLine("    didn't follow that."); break; }
+                            if (bits.Length > 1) int.TryParse(bits[1], out units);
+
+                            try
+                            {
+                                var bought = restaurant.BuyEquipment(catalogue[pick - 1], Math.Max(1, units), _runner.Clock.Tick);
+                                Console.WriteLine("    " + bought.Name + " x" + bought.ConcurrentCapacity +
+                                    "   ·   " + restaurant.FreeFloorArea.ToString("0.0") + "m2 still free");
+                            }
+                            catch (InvalidOperationException ex) { Console.WriteLine("    " + ex.Message); }
                             break;
 
                         case "2":
-                            Console.Write("    multiply every price by > ");
-                            var multiplierText = Console.ReadLine();
-                            if (multiplierText == null) return false;
+                            Report.Menu(restaurant);
+                            Console.Write("    price one dish ('margherita 18') or scale them all ('all 1.2') > ");
+                            var priceInput = Console.ReadLine();
+                            if (priceInput == null) return false;
 
-                            decimal multiplier;
-                            if (decimal.TryParse(multiplierText.Trim(), out multiplier) && multiplier > 0m)
+                            var priceBits = priceInput.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            decimal amount;
+                            if (priceBits.Length != 2 || !decimal.TryParse(priceBits[1], out amount) || amount < 0m)
+                            { Console.WriteLine("    didn't follow that."); break; }
+
+                            if (priceBits[0] == "all")
                             {
-                                foreach (var id in restaurant.Menu.RecipeIds) _company.Pricing.AdjustPrice(id, multiplier);
-                                Report.Menu(restaurant);
+                                foreach (var id in restaurant.Menu.RecipeIds) _company.Pricing.AdjustPrice(id, amount);
                             }
-                            else Console.WriteLine("    that isn't a number.");
+                            else if (restaurant.Menu.Contains(priceBits[0]))
+                            {
+                                // The real menu-engineering move: reprice ONE dish and watch
+                                // the matrix rearrange around it.
+                                _company.Pricing.SetPrice(priceBits[0], amount);
+                            }
+                            else { Console.WriteLine("    no such dish on the menu."); break; }
+
+                            Report.Menu(restaurant);
+                            Report.Matrix(restaurant, _runner.Snapshot());
                             break;
 
                         case "3":

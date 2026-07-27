@@ -66,6 +66,7 @@ namespace RestaurantEmpire.Core.Model
         private readonly Dictionary<string, int> _stationMinutes = new Dictionary<string, int>(StringComparer.Ordinal);
 
         private readonly HashSet<string> _stockoutsReported = new HashSet<string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _recentWalkoutStations = new Dictionary<string, int>(StringComparer.Ordinal);
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
@@ -193,6 +194,7 @@ namespace RestaurantEmpire.Core.Model
                 _serviceOnLastTick = serviceNow;
                 _walkoutAlarmRaisedThisService = false;
                 _walkoutStreak = 0;
+                _recentWalkoutStations.Clear();
             }
 
             // 1. Guests who have run out of patience give up and leave. Their food is
@@ -210,6 +212,10 @@ namespace RestaurantEmpire.Core.Model
 
                     _walkouts++;
                     _walkoutStreak++;
+
+                    int blamed;
+                    _recentWalkoutStations.TryGetValue(order.Ticket.StationId, out blamed);
+                    _recentWalkoutStations[order.Ticket.StationId] = blamed + 1;
                     _diagnostics.Add("Walked out after " + (tick - table.Party.ArrivalTick) +
                         " min waiting for " + _definitions.GetRecipe(order.RecipeId).Name +
                         " (patience " + table.Party.PatienceMinutes + " min; the " + order.Ticket.StationId +
@@ -225,11 +231,11 @@ namespace RestaurantEmpire.Core.Model
                     _walkoutStreak >= Interrupts.WalkoutStreakThreshold)
                 {
                     interrupt = new Interrupt(InterruptKind.WalkoutStreak, tick, now,
-                        _walkoutStreak + " guests have walked out in a row — the kitchen is losing the room.",
-                        _restaurant.Id);
+                        DescribeTheBottleneck(_walkoutStreak), BusiestWalkoutStation());
 
                     _walkoutStreak = 0;
                     _walkoutAlarmRaisedThisService = true;
+                    _recentWalkoutStations.Clear();
                 }
             }
 
@@ -471,7 +477,8 @@ namespace RestaurantEmpire.Core.Model
             _revenue += _restaurant.Costing.MenuPrice(order.RecipeId);
             _coversServed++;
             _satisfactionTotal += satisfaction.Overall;
-            _walkoutStreak = 0;   // a served cover breaks the streak
+            _walkoutStreak = 0;              // a served cover breaks the streak
+            _recentWalkoutStations.Clear();  // and the blame tally that describes it
 
             if (satisfaction.Overall < 0.6m) _diagnostics.Add(satisfaction.Diagnosis);
         }
@@ -498,6 +505,57 @@ namespace RestaurantEmpire.Core.Model
             if (roll < 0.95) return 4;
 
             return _rng.Next(5, 8);
+        }
+
+        /// <summary>Which station most of the recent walkouts were waiting on.</summary>
+        private string BusiestWalkoutStation()
+        {
+            string worst = null;
+            var most = 0;
+
+            foreach (var pair in _recentWalkoutStations)
+            {
+                if (pair.Value > most) { most = pair.Value; worst = pair.Key; }
+            }
+
+            return worst;
+        }
+
+        /// <summary>
+        /// The interrupt's reasoning, and the specific move available.
+        ///
+        /// The design's Tier-2 Advisor pattern: a stop should carry WHY and WHAT CAN BE DONE,
+        /// not just WHAT WENT WRONG. "The kitchen is losing the room" is true and useless;
+        /// the player then has to infer the bottleneck from complaint text and go hunting for
+        /// a price. Everything below was already known at the moment the alarm fired.
+        /// </summary>
+        private string DescribeTheBottleneck(int streak)
+        {
+            var opening = streak + " guests walked out in a row.";
+
+            var station = BusiestWalkoutStation();
+            if (station == null) return opening + " The kitchen is losing the room.";
+
+            int blamed;
+            _recentWalkoutStations.TryGetValue(station, out blamed);
+
+            var why = " The " + station + " is the bottleneck — " + blamed + " of them were waiting on it.";
+
+            // What it would cost to do something about it, straight from the catalogue.
+            EquipmentDefinition cheapest = null;
+            foreach (var option in _definitions.EquipmentFor(station))
+            {
+                if (cheapest == null || option.Cost < cheapest.Cost) cheapest = option;
+            }
+
+            if (cheapest == null) return opening + why;
+
+            var room = _restaurant.HasRoomFor(cheapest.Footprint)
+                ? ""
+                : " — but the floor is full, so it would mean upgrading rather than adding.";
+
+            return opening + why + " Another " + cheapest.Name + " is " +
+                   cheapest.Cost.ToString("N0") + "; you have " + ProjectedCash.ToString("N0") + room;
         }
 
         private static ElapsedPeriods ElapsedBetween(long fromTick, long toTick)

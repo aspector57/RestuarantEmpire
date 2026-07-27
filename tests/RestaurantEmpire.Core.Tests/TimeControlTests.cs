@@ -312,5 +312,30 @@ namespace RestaurantEmpire.Core.Tests
             var runner = Dinner.Runner(Build(), 25, 4242);
             Assert.Throws<ArgumentOutOfRangeException>(() => runner.Advance(-1));
         }
+
+        [Fact]
+        public void AWalkoutInterruptNamesTheBottleneckAndWhatFixingItCosts()
+        {
+            // Aaron's playtest verdict on the old message: "the kitchen is losing the room"
+            // is true and useless. A stop has to carry WHY and WHAT CAN BE DONE, which is
+            // the design's Tier-2 Advisor pattern. All of this was already known when the
+            // alarm fired; it simply was not said.
+            var runner = Dinner.Runner(Build(slots: 1), 30, 4242,
+                new InterruptPolicy { WalkoutStreakThreshold = 3, CashFloor = null, StopOnStockout = false });
+
+            var step = runner.Advance(6 * 60);
+
+            Assert.True(step.StoppedEarly);
+            Assert.Equal(InterruptKind.WalkoutStreak, step.Interrupt.Kind);
+
+            // Names the station responsible, and blames it by number.
+            Assert.NotNull(step.Interrupt.SubjectId);
+            Assert.Contains(step.Interrupt.SubjectId, step.Interrupt.Message);
+            Assert.Contains("bottleneck", step.Interrupt.Message);
+
+            // And quotes the move available, with its price and your cash.
+            Assert.Contains("Another", step.Interrupt.Message);
+            Assert.Contains("you have", step.Interrupt.Message);
+        }
     }
 }

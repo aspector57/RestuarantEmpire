@@ -23,6 +23,7 @@ namespace RestaurantEmpire.Core.Content
         public const string IngredientsFileName = "ingredients.json";
         public const string SuppliersFileName = "suppliers.json";
         public const string RecipesDirectoryName = "recipes";
+        public const string EquipmentFileName = "equipment.json";
 
         public static DefinitionRegistry LoadFromDirectory(string dataDirectory)
         {
@@ -37,8 +38,9 @@ namespace RestaurantEmpire.Core.Content
             var ingredients = LoadIngredients(Path.Combine(dataDirectory, IngredientsFileName), warnings);
             var suppliers = LoadSuppliers(Path.Combine(dataDirectory, SuppliersFileName), ingredients, warnings);
             var recipes = LoadRecipes(Path.Combine(dataDirectory, RecipesDirectoryName), ingredients, warnings);
+            var equipment = LoadEquipment(Path.Combine(dataDirectory, EquipmentFileName), warnings);
 
-            return new DefinitionRegistry(ingredients.Values, suppliers, recipes, warnings);
+            return new DefinitionRegistry(ingredients.Values, suppliers, recipes, warnings, equipment);
         }
 
         private static Dictionary<string, IngredientDefinition> LoadIngredients(string path, List<string> warnings)
@@ -221,6 +223,30 @@ namespace RestaurantEmpire.Core.Content
             return result;
         }
 
+        private static List<EquipmentDefinition> LoadEquipment(string path, List<string> warnings)
+        {
+            var result = new List<EquipmentDefinition>();
+            if (!File.Exists(path)) return result;   // a kitchen catalogue is optional content
+
+            var file = JsonConvert.DeserializeObject<EquipmentFileDto>(File.ReadAllText(path));
+            if (file == null || file.Equipment == null) return result;
+
+            foreach (var dto in file.Equipment)
+            {
+                try
+                {
+                    result.Add(new EquipmentDefinition(dto.Id, dto.Station, dto.Name,
+                        dto.Cost, dto.Speed, dto.Footprint, dto.Quality));
+                }
+                catch (ArgumentException ex)
+                {
+                    warnings.Add("Dropped equipment '" + dto.Id + "': " + ex.Message);
+                }
+            }
+
+            return result;
+        }
+
         // ---- File shapes. Kept private: these mirror the JSON, the public model does not. ----
 
         private sealed class IngredientFileDto
@@ -246,6 +272,22 @@ namespace RestaurantEmpire.Core.Content
             public string Name { get; set; }
             public int QualityTier { get; set; }
             public Dictionary<string, decimal> Prices { get; set; }
+        }
+
+        private sealed class EquipmentFileDto
+        {
+            public List<EquipmentDto> Equipment { get; set; }
+        }
+
+        private sealed class EquipmentDto
+        {
+            public string Id { get; set; }
+            public string Station { get; set; }
+            public string Name { get; set; }
+            public decimal Cost { get; set; }
+            public decimal Speed { get; set; }
+            public decimal Footprint { get; set; }
+            public decimal Quality { get; set; }
         }
 
         private sealed class RecipeDto

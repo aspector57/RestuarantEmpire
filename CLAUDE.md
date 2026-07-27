@@ -62,6 +62,14 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 **Full interrupt quality is an M2 bar**, once the Advisor exists and can generate them properly. Judging variety and "was that worth stopping for?" against three hardcoded triggers would fail M1 for the wrong reason.
 
+### Floor space is the constraint on equipment (Aaron)
+
+"You shouldn't ever get to like 15 ovens" — correct, and the honest limit is not a cap but **floor space**.  is square metres of building; stations and fittings both consume it, so the kitchen and dining room compete for one floor. Fifteen ovens is legal and leaves you 21 covers.
+
+ is the catalogue: every station has a cheap, standard and premium model, and **premium is deliberately faster AND smaller per unit**. That makes upgrading a real alternative to expanding — when the building is full, better equipment is the only way left to add throughput. It is also the seed of the Sims-style shop Aaron wants.
+
+A 90m2 unit comfortably holds a working kitchen (3 ovens, 2 saute, 2 cold) and 40 covers, and nothing like fifteen of anything.  means unmeasured and constrains nothing, which keeps food trucks and test fixtures from needing a lease.
+
 ### Pricing is per-dish (Aaron)
 
 The real game prices each menu item individually. That is already how the model works —
@@ -85,7 +93,9 @@ The diagnosis, from his logs rather than from theory:
 
 **What NOT to do about it:** invent more interrupt types to manufacture variety. Variety is the Advisor's job at M2 and faking it now would build the wrong thing twice.
 
-**What is worth doing:** make the three existing interrupts carry their own reasoning and the specific move available — the design's Tier-2 Advisor pattern ("a question, with visible reasoning"). Nearly all the data already exists (`BusiestStationId`, per-station queue minutes, cash on hand, slot cost). That is a presentation change to existing triggers, not a new system.
+**Done.** The walkout interrupt now names the bottleneck station, blames it by number, and quotes the cheapest fix with its price against your cash. What remains unaddressed is repetition — that needs the Advisor at M2.
+
+**Was:** make the three existing interrupts carry their own reasoning and the specific move available — the design's Tier-2 Advisor pattern ("a question, with visible reasoning"). Nearly all the data already exists (`BusiestStationId`, per-station queue minutes, cash on hand, slot cost). That is a presentation change to existing triggers, not a new system.
 
 ### Opening hours are the operator's choice (Aaron)
 

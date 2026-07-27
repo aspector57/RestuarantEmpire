@@ -19,7 +19,7 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class Fitting
     {
-        public Fitting(string id, string name, decimal cost, int seats = 0, decimal comfort = 0.5m)
+        public Fitting(string id, string name, decimal cost, int seats = 0, decimal comfort = 0.5m, decimal footprint = -1m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Fitting id is required.", nameof(id));
             if (cost < 0m) throw new ArgumentOutOfRangeException(nameof(cost), "A fitting cannot cost less than nothing.");
@@ -31,6 +31,10 @@ namespace RestaurantEmpire.Core.Model
             Cost = cost;
             Seats = seats;
             Comfort = comfort;
+
+            // A cover needs about 1.4 square metres once you allow room to walk between
+            // tables; pure decor takes a token half-metre.
+            Footprint = footprint >= 0m ? footprint : (seats > 0 ? seats * 1.4m : 0.5m);
         }
 
         public string Id { get; }
@@ -44,6 +48,9 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>0 (a plastic stool under a bare bulb) to 1 (genuinely lovely). Weighted lightly.</summary>
         public decimal Comfort { get; }
+
+        /// <summary>Square metres of the building this occupies.</summary>
+        public decimal Footprint { get; }
 
         public override string ToString()
         {
@@ -74,6 +81,18 @@ namespace RestaurantEmpire.Core.Model
             {
                 var total = 0;
                 foreach (var fitting in _fittings) total += fitting.Seats;
+
+                return total;
+            }
+        }
+
+        /// <summary>Floor space the dining room occupies.</summary>
+        public decimal Footprint
+        {
+            get
+            {
+                var total = 0m;
+                foreach (var fitting in _fittings) total += fitting.Footprint;
 
                 return total;
             }

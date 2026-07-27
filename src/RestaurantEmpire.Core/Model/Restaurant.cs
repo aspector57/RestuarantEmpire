@@ -78,6 +78,72 @@ namespace RestaurantEmpire.Core.Model
         public DiningRoom DiningRoom { get; }
 
         /// <summary>
+        /// Square metres of building. Zero means unmeasured, and nothing is constrained —
+        /// which keeps a bare test fixture or a ghost kitchen from having to lease a unit.
+        ///
+        /// This is what stops "buy another oven" being the answer to everything. The kitchen
+        /// and the dining room share one floor, so fifteen ovens is not a strategy, it is a
+        /// dining room you no longer have. Getting both is what makes moving to a bigger
+        /// building the design's primary early-game growth axis.
+        /// </summary>
+        public decimal FloorArea { get; set; }
+
+        public decimal UsedFloorArea { get { return Kitchen.Footprint + DiningRoom.Footprint; } }
+
+        public decimal FreeFloorArea { get { return FloorArea - UsedFloorArea; } }
+
+        /// <summary>True when there is room for something of this size (always, if unmeasured).</summary>
+        public bool HasRoomFor(decimal squareMetres)
+        {
+            return FloorArea <= 0m || squareMetres <= FreeFloorArea;
+        }
+
+        /// <summary>
+        /// Buys equipment from the catalogue and installs it, billing the company.
+        ///
+        /// Adding units to a station you already have keeps the existing model; buying a
+        /// different model REPLACES the station, because you do not run two different ovens
+        /// as one line. That is the upgrade path: when the floor is full, a faster machine
+        /// in less space is the only way left to add throughput.
+        /// </summary>
+        public KitchenStation BuyEquipment(Definitions.EquipmentDefinition equipment, int units = 1, long tick = 0)
+        {
+            if (equipment == null) throw new ArgumentNullException(nameof(equipment));
+            if (units < 1) throw new ArgumentOutOfRangeException(nameof(units), "Buy at least one.");
+
+            KitchenStation existing;
+            var replacing = Kitchen.TryGet(equipment.StationId, out existing) && existing.EquipmentId != equipment.Id;
+            var keeping = Kitchen.TryGet(equipment.StationId, out existing) && existing.EquipmentId == equipment.Id;
+
+            var totalUnits = keeping ? existing.ConcurrentCapacity + units : units;
+            var spaceNeeded = (equipment.Footprint * totalUnits) - (existing == null ? 0m : existing.Footprint);
+
+            if (!HasRoomFor(spaceNeeded))
+            {
+                throw new InvalidOperationException(
+                    "No room: that needs " + spaceNeeded.ToString("0.0") + "m2 and only " +
+                    FreeFloorArea.ToString("0.0") + "m2 of " + FloorArea.ToString("0.0") + "m2 is free. " +
+                    "Sell something, buy a smaller model, or find a bigger building.");
+            }
+
+            var station = new KitchenStation(
+                equipment.StationId, equipment.Name, totalUnits,
+                equipment.SpeedMultiplier, equipment.Cost, equipment.Footprint, equipment.Id);
+
+            Kitchen.Install(station);
+
+            var charge = equipment.Cost * units;
+            if (charge > 0m)
+            {
+                Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, charge,
+                    (replacing ? "Replaced " + equipment.StationId + " with " : "Bought ") +
+                    units + "x " + equipment.Name, Id);
+            }
+
+            return station;
+        }
+
+        /// <summary>
         /// How many guests can sit down at once — DERIVED from the furniture actually
         /// bought, not declared. A bigger room is something you pay for.
         ///
@@ -109,6 +175,14 @@ namespace RestaurantEmpire.Core.Model
         public Fitting Buy(Fitting fitting, long tick = 0)
         {
             if (fitting == null) throw new ArgumentNullException(nameof(fitting));
+
+            if (!HasRoomFor(fitting.Footprint))
+            {
+                throw new InvalidOperationException(
+                    "No room: " + fitting.Name + " needs " + fitting.Footprint.ToString("0.0") +
+                    "m2 and only " + FreeFloorArea.ToString("0.0") + "m2 is free. " +
+                    "The kitchen and the dining room are competing for the same floor.");
+            }
 
             DiningRoom.Add(fitting);
 

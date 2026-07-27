@@ -14,7 +14,8 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class KitchenStation
     {
-        public KitchenStation(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m, decimal cost = 0m)
+        public KitchenStation(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m,
+            decimal cost = 0m, decimal footprintPerUnit = 0m, string equipmentId = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Station id is required.", nameof(id));
             if (concurrentCapacity < 1) throw new ArgumentOutOfRangeException(nameof(concurrentCapacity), "A station must handle at least one plate at a time.");
@@ -26,6 +27,8 @@ namespace RestaurantEmpire.Core.Model
             ConcurrentCapacity = concurrentCapacity;
             SpeedMultiplier = speedMultiplier;
             Cost = cost;
+            FootprintPerUnit = footprintPerUnit;
+            EquipmentId = equipmentId;
         }
 
         public string Id { get; }
@@ -43,6 +46,15 @@ namespace RestaurantEmpire.Core.Model
         /// than free upside.
         /// </summary>
         public decimal Cost { get; }
+
+        /// <summary>Square metres one unit takes up. The kitchen and the dining room share one building.</summary>
+        public decimal FootprintPerUnit { get; }
+
+        /// <summary>Total floor space this station occupies.</summary>
+        public decimal Footprint { get { return FootprintPerUnit * ConcurrentCapacity; } }
+
+        /// <summary>Which catalogue model this is, when it came from the shop.</summary>
+        public string EquipmentId { get; }
 
         /// <summary>Actual minutes this station takes on a dish, after its speed multiplier.</summary>
         public int MinutesFor(RecipeDefinition recipe)
@@ -147,6 +159,18 @@ namespace RestaurantEmpire.Core.Model
         }
 
         public IEnumerable<KitchenStation> Stations { get { return _stations.Values; } }
+
+        /// <summary>Floor space the whole kitchen occupies.</summary>
+        public decimal Footprint
+        {
+            get
+            {
+                var total = 0m;
+                foreach (var station in _stations.Values) total += station.Footprint;
+
+                return total;
+            }
+        }
         public int StationCount { get { return _stations.Count; } }
 
         public void Install(KitchenStation station)
@@ -160,9 +184,10 @@ namespace RestaurantEmpire.Core.Model
         /// a save must not re-buy the ovens. To actually purchase one, use
         /// <see cref="Restaurant.BuyStation"/>, which bills the books.
         /// </summary>
-        public KitchenStation Install(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m, decimal cost = 0m)
+        public KitchenStation Install(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m,
+            decimal cost = 0m, decimal footprintPerUnit = 0m, string equipmentId = null)
         {
-            var station = new KitchenStation(id, name, concurrentCapacity, speedMultiplier, cost);
+            var station = new KitchenStation(id, name, concurrentCapacity, speedMultiplier, cost, footprintPerUnit, equipmentId);
             Install(station);
 
             return station;

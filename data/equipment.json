@@ -1,0 +1,75 @@
+{
+  "_comment": [
+    "The catalogue you buy a kitchen from. Every station type has a cheap, a standard and a",
+    "premium model.",
+    "",
+    "The premium tier is deliberately faster AND smaller per unit. That is what makes",
+    "upgrading a real alternative to expanding: when the building is full, better equipment",
+    "is the only way left to add throughput. A pile of cheap ovens is the beginner move and",
+    "it eats the floor space your dining room needs.",
+    "",
+    "footprint is square metres per unit, including the clearance to actually work around it."
+  ],
+  "equipment": [
+    {
+      "id": "oven-secondhand", "station": "oven", "name": "Second-hand Deck Oven",
+      "cost": 1600, "speed": 0.75, "footprint": 5.0, "quality": 0.4
+    },
+    {
+      "id": "oven-commercial", "station": "oven", "name": "Commercial Deck Oven",
+      "cost": 3400, "speed": 1.0, "footprint": 4.0, "quality": 0.6
+    },
+    {
+      "id": "oven-hearth", "station": "oven", "name": "Stone Hearth Oven",
+      "cost": 9000, "speed": 1.6, "footprint": 3.2, "quality": 0.9
+    },
+
+    {
+      "id": "saute-basic", "station": "saute", "name": "Four-burner Range",
+      "cost": 1400, "speed": 0.8, "footprint": 4.0, "quality": 0.4
+    },
+    {
+      "id": "saute-commercial", "station": "saute", "name": "Six-burner Range",
+      "cost": 3000, "speed": 1.0, "footprint": 3.5, "quality": 0.6
+    },
+    {
+      "id": "saute-induction", "station": "saute", "name": "Induction Suite",
+      "cost": 8200, "speed": 1.55, "footprint": 2.8, "quality": 0.9
+    },
+
+    {
+      "id": "gm-basic", "station": "garde-manger", "name": "Prep Bench",
+      "cost": 700, "speed": 0.85, "footprint": 3.0, "quality": 0.4
+    },
+    {
+      "id": "gm-refrigerated", "station": "garde-manger", "name": "Refrigerated Prep Counter",
+      "cost": 2100, "speed": 1.0, "footprint": 2.6, "quality": 0.6
+    },
+    {
+      "id": "gm-pass", "station": "garde-manger", "name": "Cold Pass with Chiller",
+      "cost": 5400, "speed": 1.45, "footprint": 2.2, "quality": 0.9
+    },
+
+    {
+      "id": "coffee-filter", "station": "coffee", "name": "Batch Filter Brewer",
+      "cost": 900, "speed": 0.8, "footprint": 1.4, "quality": 0.3
+    },
+    {
+      "id": "coffee-espresso", "station": "coffee", "name": "Two-group Espresso Machine",
+      "cost": 4200, "speed": 1.0, "footprint": 1.8, "quality": 0.7
+    },
+    {
+      "id": "coffee-marzocco", "station": "coffee", "name": "Three-group La Marzocco",
+      "cost": 11000, "speed": 1.5, "footprint": 2.2, "quality": 1.0
+    },
+
+    {
+      "id": "grill-flat", "station": "grill", "name": "Flat-top Griddle",
+      "cost": 1500, "speed": 0.85, "footprint": 3.4, "quality": 0.5
+    },
+    {
+      "id": "grill-chargrill", "station": "grill", "name": "Chargrill",
+      "cost": 3600, "speed": 1.1, "footprint": 3.0, "quality": 0.8
+    }
+  ]
+}

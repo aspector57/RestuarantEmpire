@@ -30,17 +30,20 @@ namespace RestaurantEmpire.Core.Definitions
         private readonly Dictionary<string, IngredientDefinition> _ingredients;
         private readonly Dictionary<string, SupplierDefinition> _suppliers;
         private readonly Dictionary<string, RecipeDefinition> _recipes;
+        private readonly Dictionary<string, EquipmentDefinition> _equipment;
         private readonly List<string> _loadWarnings;
 
         public DefinitionRegistry(
             IEnumerable<IngredientDefinition> ingredients,
             IEnumerable<SupplierDefinition> suppliers,
             IEnumerable<RecipeDefinition> recipes,
-            IEnumerable<string> loadWarnings = null)
+            IEnumerable<string> loadWarnings = null,
+            IEnumerable<EquipmentDefinition> equipment = null)
         {
             _ingredients = new Dictionary<string, IngredientDefinition>();
             _suppliers = new Dictionary<string, SupplierDefinition>();
             _recipes = new Dictionary<string, RecipeDefinition>();
+            _equipment = new Dictionary<string, EquipmentDefinition>();
             _loadWarnings = loadWarnings == null ? new List<string>() : new List<string>(loadWarnings);
 
             if (ingredients != null)
@@ -51,6 +54,9 @@ namespace RestaurantEmpire.Core.Definitions
 
             if (recipes != null)
                 foreach (var r in recipes) _recipes[r.Id] = r;
+
+            if (equipment != null)
+                foreach (var e in equipment) _equipment[e.Id] = e;
         }
 
         public IEnumerable<IngredientDefinition> Ingredients { get { return _ingredients.Values; } }
@@ -60,6 +66,34 @@ namespace RestaurantEmpire.Core.Definitions
         public int IngredientCount { get { return _ingredients.Count; } }
         public int SupplierCount { get { return _suppliers.Count; } }
         public int RecipeCount { get { return _recipes.Count; } }
+        public int EquipmentCount { get { return _equipment.Count; } }
+
+        /// <summary>The whole catalogue you can buy a kitchen from.</summary>
+        public IEnumerable<EquipmentDefinition> Equipment { get { return _equipment.Values; } }
+
+        /// <summary>What you can buy for one station, cheapest first.</summary>
+        public IEnumerable<EquipmentDefinition> EquipmentFor(string stationId)
+        {
+            var matches = new List<EquipmentDefinition>();
+            foreach (var item in _equipment.Values)
+            {
+                if (item.StationId == stationId) matches.Add(item);
+            }
+
+            matches.Sort((a, b) => a.Cost.CompareTo(b.Cost));
+            return matches;
+        }
+
+        public bool HasEquipment(string id) { return id != null && _equipment.ContainsKey(id); }
+
+        public EquipmentDefinition GetEquipment(string id)
+        {
+            EquipmentDefinition found;
+            if (!_equipment.TryGetValue(id ?? string.Empty, out found))
+                throw new DefinitionNotFoundException("equipment", id);
+
+            return found;
+        }
 
         public IEnumerable<string> IngredientIds { get { return _ingredients.Keys; } }
 
