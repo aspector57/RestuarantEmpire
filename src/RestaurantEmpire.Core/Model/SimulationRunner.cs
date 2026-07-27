@@ -320,7 +320,7 @@ namespace RestaurantEmpire.Core.Model
 
         private Interrupt Seat(long tick, DateTime now)
         {
-            var party = RollParty(tick);
+            var party = RollParty(tick, now);
             _partiesArrived++;
 
             // "No seats" means unlimited ONLY in a building whose floor was never measured —
@@ -377,8 +377,13 @@ namespace RestaurantEmpire.Core.Model
                     continue;
                 }
 
-                // A featured dish goes in the hat several times — that IS the promotion.
-                var copies = _restaurant.Menu.IsFeatured(recipeId) ? Menu.FeaturedWeight : 1;
+                // How many entries this dish gets in the hat: what this guest fancies,
+                // multiplied up if it is being promoted. Before appetite existed every dish
+                // got exactly one entry, so popularity was uniform and half the menu matrix
+                // measured nothing.
+                var copies = party.AppetiteFor(candidate);
+                if (_restaurant.Menu.IsFeatured(recipeId)) copies *= Menu.FeaturedWeight;
+
                 for (var c = 0; c < copies; c++) wanted.Add(recipeId);
             }
 
@@ -539,16 +544,33 @@ namespace RestaurantEmpire.Core.Model
             if (satisfaction.Overall < 0.6m) _diagnostics.Add(satisfaction.Diagnosis);
         }
 
-        private CustomerParty RollParty(long tick)
+        private CustomerParty RollParty(long tick, DateTime now)
         {
             _partyCounter++;
+
+            // Who is out at this hour, in this sort of place. A business district at one
+            // o'clock is not a nightlife quarter at midnight.
+            var likely = ArchetypeProfile.LikelyAt(Dayparts.At(now),
+                _restaurant.Location == null ? "" : _restaurant.Location.Id);
+
+            var archetype = likely[_rng.Next(likely.Length)];
+            var profile = ArchetypeProfile.For(archetype);
+
+            // Most people have one thing they particularly love.
+            var tastes = new List<string>();
+            if (_rng.Chance(0.45))
+                tastes.Add(ArchetypeProfile.TastesWorthHaving[_rng.Next(ArchetypeProfile.TastesWorthHaving.Length)]);
+
+            var sensitivity = profile.PriceSensitivity * (0.9m + ((decimal)_rng.NextDouble() * 0.2m));
 
             return new CustomerParty(
                 "party-" + _partyCounter,
                 RollPartySize(),
                 tick,
-                _rng.Next(20, 36),
-                0.8m + (decimal)_rng.NextDouble() * 0.4m);
+                _rng.Next(profile.PatienceLow, profile.PatienceHigh + 1),
+                sensitivity,
+                archetype,
+                tastes);
         }
 
         private int RollPartySize()

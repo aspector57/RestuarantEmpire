@@ -72,16 +72,34 @@ It also surfaces opportunities, not only problems, and is capable of saying noth
 there is a test for a healthy restaurant getting no advice, because an Advisor that always
 has an opinion stops being read.
 
-### Found while building it: the popularity axis is currently degenerate
+**Customer archetypes and appetite** — which fixed the degenerate popularity axis.
 
-Guests pick dishes **uniformly at random**, so with four dishes every dish lands near a 25%
-share — comfortably above the 17.5% popularity bar. A Puzzle (high margin, LOW volume)
-therefore cannot arise naturally; only featuring something else pushes the others under.
+Guests used to pick dishes uniformly at random, so with four dishes every dish landed near
+a 25% share, comfortably above the 17.5% popularity bar. A Puzzle (high margin, LOW volume)
+could not arise naturally at all, and half the Kasavana-Smith matrix was measuring the RNG.
 
-That makes half of the Kasavana-Smith matrix decorative until dishes have different natural
-appeal. The design already has the answer scheduled here at M2: **Customer archetypes**, who
-want different things. Until that lands, the menu matrix is measuring the simulation's
-uniform RNG rather than anything about the menu.
+Now: recipes carry **tags** (`seafood`, `luxury`, `quick`, `sharing`, `vegetarian`...), and
+every party has an **archetype** plus a personal taste. Business Lunchers pull toward quick
+and light, Romantic Couples toward refined and rich, Families toward sharing and classic and
+away from luxury, Influencers hard toward luxury and seafood. Who is out depends on the hour
+AND the neighbourhood — a business district at 1pm is not a nightlife quarter at midnight.
+
+Aaron's addition of personal preferences ("loves seafood") sits on top of the archetype, so
+two Business Lunchers still order differently.
+
+The payoff, measured on one identical menu:
+
+| | tops the menu | notable |
+|---|---|---|
+| Business district, lunch | focaccia, flat white | truffle risotto is a **Puzzle** — nobody wants luxury at 1pm |
+| Nightlife quarter, dinner | **sea bass, risotto both Stars** | influencers chase refined and luxurious |
+| Suburban, dinner | **margherita** | families want pizza and sharing plates |
+
+A menu is no longer good or bad in the abstract. It is good or bad for the people who walk
+past, which is what the whole mechanic was quietly assuming.
+
+Also added a seafood dish, because the design's own Advisor example is "we're sitting on a
+lot of fish — want to feature the fish dish?" and there was no fish.
 
 ## Earlier milestone: M1 — Single Restaurant, Placeholder Graphics, the Core Loop
 

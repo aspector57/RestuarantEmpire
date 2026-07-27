@@ -1,0 +1,30 @@
+{
+  "id": "sea-bass",
+  "name": "Grilled Sea Bass",
+  "station": "grill",
+  "prepMinutes": 11,
+  "dayparts": [
+    "lunch",
+    "dinner"
+  ],
+  "tags": [
+    "seafood",
+    "light",
+    "refined"
+  ],
+  "menuPrice": 21.0,
+  "ingredients": [
+    {
+      "ingredientId": "sea-bass",
+      "quantity": 0.22
+    },
+    {
+      "ingredientId": "lemon",
+      "quantity": 0.05
+    },
+    {
+      "ingredientId": "olive-oil",
+      "quantity": 0.02
+    }
+  ]
+}

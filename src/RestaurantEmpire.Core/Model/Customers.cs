@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace RestaurantEmpire.Core.Model
 {
@@ -15,7 +16,8 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class CustomerParty
     {
-        public CustomerParty(string id, int size, long arrivalTick, int patienceMinutes, decimal priceSensitivity)
+        public CustomerParty(string id, int size, long arrivalTick, int patienceMinutes, decimal priceSensitivity,
+            CustomerArchetype archetype = CustomerArchetype.Local, IList<string> tastes = null)
         {
             if (size < 1) throw new ArgumentOutOfRangeException(nameof(size), "A party has at least one guest.");
             if (patienceMinutes < 0) throw new ArgumentOutOfRangeException(nameof(patienceMinutes));
@@ -25,6 +27,8 @@ namespace RestaurantEmpire.Core.Model
             ArrivalTick = arrivalTick;
             PatienceMinutes = patienceMinutes;
             PriceSensitivity = priceSensitivity;
+            Archetype = archetype;
+            Tastes = new List<string>(tastes ?? new List<string>()).AsReadOnly();
         }
 
         public string Id { get; }
@@ -39,6 +43,34 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>1.0 is neutral. Above 1.0 means they judge price harder.</summary>
         public decimal PriceSensitivity { get; }
+
+        /// <summary>What kind of guest this is, which decides most of what they want.</summary>
+        public CustomerArchetype Archetype { get; }
+
+        /// <summary>Tags this particular guest personally loves — someone who adores seafood.</summary>
+        public IReadOnlyList<string> Tastes { get; }
+
+        /// <summary>
+        /// How much more likely this party is to order a given dish, over a neutral one.
+        /// Their type pulls them one way and their own taste pulls them another.
+        /// </summary>
+        public int AppetiteFor(Definitions.RecipeDefinition recipe)
+        {
+            if (recipe == null) return 1;
+
+            var profile = ArchetypeProfile.For(Archetype);
+            var weight = 2;   // everyone will eat most things
+
+            for (var i = 0; i < recipe.Tags.Count; i++)
+            {
+                weight += profile.PullToward(recipe.Tags[i]);
+
+                for (var j = 0; j < Tastes.Count; j++)
+                    if (Tastes[j] == recipe.Tags[i]) weight += 3;
+            }
+
+            return weight < 1 ? 1 : weight;   // never quite zero; people surprise you
+        }
 
         public override string ToString()
         {

@@ -84,7 +84,7 @@ namespace RestaurantEmpire.Core.Definitions
         public RecipeDefinition(
             string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients,
             string stationId = DefaultStationId, int prepMinutes = DefaultPrepMinutes,
-            IList<Model.Daypart> dayparts = null)
+            IList<Model.Daypart> dayparts = null, IList<string> tags = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Recipe id is required.", nameof(id));
             if (menuPrice < 0m) throw new ArgumentOutOfRangeException(nameof(menuPrice), "Menu price cannot be negative.");
@@ -97,6 +97,20 @@ namespace RestaurantEmpire.Core.Definitions
             PrepMinutes = prepMinutes;
             Ingredients = new List<RecipeIngredient>(ingredients ?? new List<RecipeIngredient>()).AsReadOnly();
             Dayparts = new List<Model.Daypart>(dayparts ?? new List<Model.Daypart>()).AsReadOnly();
+            Tags = new List<string>(tags ?? new List<string>()).AsReadOnly();
+        }
+
+        /// <summary>
+        /// What kind of dish this is — seafood, vegetarian, luxury, quick, sharing. This is
+        /// what gives a dish natural appeal to some guests and not others, and therefore
+        /// what makes the popularity axis of the menu matrix mean anything.
+        /// </summary>
+        public IReadOnlyList<string> Tags { get; }
+
+        public bool HasTag(string tag)
+        {
+            for (var i = 0; i < Tags.Count; i++) { if (Tags[i] == tag) return true; }
+            return false;
         }
 
         /// <summary>Whether a guest would want this at the given time of day.</summary>

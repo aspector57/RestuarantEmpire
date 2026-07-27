@@ -3,6 +3,13 @@
   "name": "House Focaccia",
   "station": "oven",
   "prepMinutes": 6,
+  "tags": [
+    "bread",
+    "vegetarian",
+    "light",
+    "quick",
+    "sharing"
+  ],
   "menuPrice": 8.0,
   "ingredients": [
     {

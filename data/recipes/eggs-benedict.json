@@ -6,6 +6,11 @@
   "dayparts": [
     "breakfast"
   ],
+  "tags": [
+    "brunch",
+    "rich",
+    "classic"
+  ],
   "menuPrice": 13.0,
   "ingredients": [
     {

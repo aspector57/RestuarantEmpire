@@ -24,7 +24,9 @@
         "truffle": 1.8,
         "coffee-beans": 9.0,
         "eggs": 2.4,
-        "butter": 5.0
+        "butter": 5.0,
+        "sea-bass": 11.0,
+        "lemon": 1.6
       }
     },
     {
@@ -42,7 +44,9 @@
         "truffle": 2.6,
         "coffee-beans": 15.0,
         "eggs": 3.6,
-        "butter": 8.0
+        "butter": 8.0,
+        "sea-bass": 18.0,
+        "lemon": 2.4
       }
     },
     {
@@ -60,7 +64,9 @@
         "truffle": 6.5,
         "coffee-beans": 26.0,
         "eggs": 5.4,
-        "butter": 13.0
+        "butter": 13.0,
+        "sea-bass": 29.0,
+        "lemon": 3.8
       }
     }
   ]

@@ -7,6 +7,12 @@
     "lunch",
     "dinner"
   ],
+  "tags": [
+    "salad",
+    "vegetarian",
+    "light",
+    "refined"
+  ],
   "menuPrice": 11.0,
   "ingredients": [
     {

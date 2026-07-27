@@ -96,7 +96,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // Crucially: everything else still loaded.
             Assert.True(registry.HasRecipe("margherita"));
-            Assert.Equal(6, registry.RecipeCount);
+            Assert.Equal(7, registry.RecipeCount);
 
             Directory.Delete(dataDir, true);
         }
@@ -107,9 +107,9 @@ namespace RestaurantEmpire.Core.Tests
             var registry = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
             Assert.Empty(registry.LoadWarnings);
-            Assert.Equal(11, registry.IngredientCount);
+            Assert.Equal(13, registry.IngredientCount);
             Assert.Equal(3, registry.SupplierCount);
-            Assert.Equal(6, registry.RecipeCount);
+            Assert.Equal(7, registry.RecipeCount);
         }
 
         [Fact]

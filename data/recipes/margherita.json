@@ -7,6 +7,12 @@
     "lunch",
     "dinner"
   ],
+  "tags": [
+    "pizza",
+    "vegetarian",
+    "classic",
+    "sharing"
+  ],
   "menuPrice": 14.0,
   "ingredients": [
     {

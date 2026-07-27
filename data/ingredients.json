@@ -54,6 +54,16 @@
       "id": "butter",
       "name": "Butter",
       "unit": "kg"
+    },
+    {
+      "id": "sea-bass",
+      "name": "Sea Bass",
+      "unit": "kg"
+    },
+    {
+      "id": "lemon",
+      "name": "Lemons",
+      "unit": "kg"
     }
   ]
 }
