@@ -197,12 +197,25 @@ namespace RestaurantEmpire.Core.Content
                     continue;
                 }
 
+                // Dayparts are optional; a dish that names none sells at any hour.
+                var dayparts = new List<Model.Daypart>();
+                if (dto.Dayparts != null)
+                {
+                    foreach (var text in dto.Dayparts)
+                    {
+                        Model.Daypart parsed;
+                        if (Model.Dayparts.TryParse(text, out parsed)) dayparts.Add(parsed);
+                        else warnings.Add("Recipe '" + dto.Id + "' lists unknown daypart '" + text + "'; ignored.");
+                    }
+                }
+
                 // Station and prep time are optional in the file — a dish that names neither
                 // lands on the generic line at a default pace rather than failing to load.
                 result.Add(new RecipeDefinition(
                     dto.Id, dto.Name, dto.MenuPrice, lines,
                     string.IsNullOrWhiteSpace(dto.Station) ? RecipeDefinition.DefaultStationId : dto.Station,
-                    dto.PrepMinutes > 0 ? dto.PrepMinutes : RecipeDefinition.DefaultPrepMinutes));
+                    dto.PrepMinutes > 0 ? dto.PrepMinutes : RecipeDefinition.DefaultPrepMinutes,
+                    dayparts));
             }
 
             return result;
@@ -241,6 +254,7 @@ namespace RestaurantEmpire.Core.Content
             public string Name { get; set; }
             public string Station { get; set; }
             public int PrepMinutes { get; set; }
+            public List<string> Dayparts { get; set; }
             public decimal MenuPrice { get; set; }
             public List<RecipeIngredientDto> Ingredients { get; set; }
         }

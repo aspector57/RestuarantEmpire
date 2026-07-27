@@ -3,6 +3,9 @@
   "name": "Black Truffle Risotto",
   "station": "saute",
   "prepMinutes": 16,
+  "dayparts": [
+    "dinner"
+  ],
   "menuPrice": 37.0,
   "ingredients": [
     {

@@ -39,7 +39,7 @@ namespace RestaurantEmpire.Core.Tests
         {
             var restaurant = Build();
             restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Always Open", 0, 24, 12));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Always Open", 0, 24));
 
             var runner = new SimulationRunner(restaurant, new GameClock(), 4242, InterruptPolicy.None());
 
@@ -59,7 +59,7 @@ namespace RestaurantEmpire.Core.Tests
         public void ALateNightServiceCanRunPastMidnight()
         {
             // 22:00-02:00. Without wrap-around support a late-night place is unexpressible.
-            var window = new ServiceWindow("Late Night", 22, 2, 15);
+            var window = new ServiceWindow("Late Night", 22, 2);
 
             Assert.True(window.WrapsMidnight);
             Assert.Equal(4 * 60, window.LengthMinutes);
@@ -78,9 +78,9 @@ namespace RestaurantEmpire.Core.Tests
             // 24-hour window whose single peak lands arbitrarily at noon.
             var restaurant = Build();
             restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Breakfast", 6, 10, 8));
-            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15, 20));
-            restaurant.ServiceWindows.Add(new ServiceWindow("Late Night", 22, 2, 14));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Breakfast", 6, 10));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Late Night", 22, 2));
 
             var runner = new SimulationRunner(restaurant, new GameClock(), 4242, InterruptPolicy.None());
 
@@ -112,11 +112,11 @@ namespace RestaurantEmpire.Core.Tests
             // Recorded as a test so the day that changes, this fails and gets revisited.
             var shortDay = Build();
             shortDay.ServiceWindows.Clear();
-            shortDay.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, 20));
+            shortDay.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23));
 
             var allDay = Build();
             allDay.ServiceWindows.Clear();
-            allDay.ServiceWindows.Add(new ServiceWindow("Always Open", 0, 24, 20));
+            allDay.ServiceWindows.Add(new ServiceWindow("Always Open", 0, 24));
 
             var shortRunner = new SimulationRunner(shortDay, new GameClock(), 4242, InterruptPolicy.None());
             var allDayRunner = new SimulationRunner(allDay, new GameClock(), 4242, InterruptPolicy.None());
@@ -131,8 +131,8 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void AWindowNeedsARealLength()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new ServiceWindow("Nonsense", 12, 12, 10));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new ServiceWindow("Nonsense", 12, 25, 10));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new ServiceWindow("Nonsense", 12, 12));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new ServiceWindow("Nonsense", 12, 25));
         }
     }
 }

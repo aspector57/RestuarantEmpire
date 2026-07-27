@@ -3,6 +3,10 @@
   "name": "Caprese Salad",
   "station": "garde-manger",
   "prepMinutes": 4,
+  "dayparts": [
+    "lunch",
+    "dinner"
+  ],
   "menuPrice": 9.0,
   "ingredients": [
     {

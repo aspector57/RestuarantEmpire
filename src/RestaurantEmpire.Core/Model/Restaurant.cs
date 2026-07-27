@@ -26,6 +26,7 @@ namespace RestaurantEmpire.Core.Model
             Inventory = new Inventory(company.Definitions);
             Kitchen = new Kitchen();
             DiningRoom = new DiningRoom();
+            Location = Neighbourhood.SuburbanHighStreet();
             ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
             Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
@@ -51,11 +52,27 @@ namespace RestaurantEmpire.Core.Model
         public Kitchen Kitchen { get; }
 
         /// <summary>
+        /// Where this restaurant sits, and therefore how much passing trade exists at each
+        /// hour. The player chooses the hours; the neighbourhood decides whether anyone is
+        /// out there. Demand is an output of location, never a number the player sets.
+        /// </summary>
+        public Neighbourhood Location { get; set; }
+
+        /// <summary>
         /// When the doors are open. The clock runs continuously around these; outside them
         /// nobody arrives, which is exactly what makes most of a day compressible.
         /// Defaults to a conventional lunch and dinner — edit freely.
         /// </summary>
         public IList<ServiceWindow> ServiceWindows { get; }
+
+        /// <summary>
+        /// Potential parties per hour on the street right now — what the location offers,
+        /// before anything about this restaurant is considered.
+        /// </summary>
+        public double TrafficAt(DateTime now)
+        {
+            return Location == null ? 0.0 : Location.TrafficAt(now);
+        }
 
         /// <summary>Everything installed out front: tables, chairs, decor.</summary>
         public DiningRoom DiningRoom { get; }

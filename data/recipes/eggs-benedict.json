@@ -1,0 +1,24 @@
+{
+  "id": "eggs-benedict",
+  "name": "Eggs Benedict",
+  "station": "grill",
+  "prepMinutes": 8,
+  "dayparts": [
+    "breakfast"
+  ],
+  "menuPrice": 11.5,
+  "ingredients": [
+    {
+      "ingredientId": "eggs",
+      "quantity": 0.17
+    },
+    {
+      "ingredientId": "butter",
+      "quantity": 0.04
+    },
+    {
+      "ingredientId": "flour",
+      "quantity": 0.08
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "flat-white",
+  "name": "Flat White",
+  "station": "coffee",
+  "prepMinutes": 3,
+  "dayparts": [
+    "breakfast",
+    "lunch"
+  ],
+  "menuPrice": 3.6,
+  "ingredients": [
+    {
+      "ingredientId": "coffee-beans",
+      "quantity": 0.018
+    }
+  ]
+}

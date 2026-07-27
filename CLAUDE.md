@@ -77,9 +77,18 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 | **More labour to cover more hours** | **Scheduled — M1.** Economy tracks labour; nothing generates it until Employees. |
 | **Equipment each service needs** (an espresso machine for breakfast) | **Built.** `Restaurant.BuyStation` charges `CapitalExpenditure`; stations already gate dishes, so a breakfast recipe naming a `coffee` station cannot be cooked until the machine is bought. |
 | **Decor and furniture** | **Built.** `Restaurant.Buy`/`BuyTables` charge the books, and `SeatingCapacity` is now *derived* from furniture rather than declared — a bigger room is something you pay for. Comfort feeds satisfaction at the smallest of the four weights, per the design's insistence that decor nudges rather than decides. |
-| **Local traffic may not support every daypart** | **Gap, and the bigger one.** `ServiceWindow.PeakPartiesPerHour` is set by the player, so demand is an *input* rather than an output of neighbourhood and reputation. Until location demographics (design doc Phase 4, Restaurant) drive it, a player can simply declare their breakfast is busy. |
+| **Local traffic may not support every daypart** | **Built.** `Neighbourhood` gives an hourly traffic profile; `ServiceWindow` has no demand knob at all. The player picks hours, the location decides whether anyone is there. |
+| **A menu nobody wants at that hour** | **Built.** Recipes carry optional `dayparts`; guests only order what suits the hour, and a party that finds nothing leaves without ordering (`ServiceResult.PartiesLostToMenu`). |
 
-Until several of those land, "open 24/7" being close to optimal is a known temporary hole, not a balance finding.
+### Deferred deliberately — "we don't need to over-engineer this, the point is to have fun" (Aaron)
+
+Ideas raised and consciously NOT built, with the reasoning, so they are choices rather than oversights:
+
+- **Fridge / storage capacity.** Would be a cap on `Inventory` par levels. Cheap to add, but it only bites once ingredients are charged when *bought* and can *spoil* — without those two it is a constraint with no consequence. Revisit together with them.
+- **Chef skill by daypart.** Aaron flagged the tension himself: breakfast is *easier* to cook than dinner, so "you need a specialist" doesn't follow cleanly. Employees are M1/M2 anyway. If it ever lands, the honest version is probably that a great dinner kitchen finds breakfast a distraction, not that it lacks the skill.
+- **Prep-time interference** (why a fine-dining kitchen won't do breakfast). Genuinely the real-world reason, but it needs a prep system that does not exist. The daypart menu already delivers most of the *feel* — a tasting-menu restaurant simply has nothing breakfast-appropriate to sell.
+
+The bar for adding any of these: does it create a decision that is fun to make? Not: is it realistic.
 
 ### What this implies, flagged before building
 

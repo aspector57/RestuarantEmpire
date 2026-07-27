@@ -4,39 +4,36 @@ using System.Collections.Generic;
 namespace RestaurantEmpire.Core.Model
 {
     /// <summary>
-    /// A period of the day when the restaurant is open and guests arrive — lunch, dinner.
+    /// A period of the day when the restaurant is open — lunch, dinner, a late service.
     ///
-    /// The clock runs continuously, 24 hours rolling from one day into the next. Service
-    /// windows are what make most of that time uneventful: outside them nobody arrives, so
-    /// the small hours are exactly the stretches jump-ahead should compress away. That is
-    /// the design's Time contract — "active service windows (when Kitchen and Customers are
-    /// live)" — rather than services being discrete blocks that appear from nowhere.
+    /// A window says WHEN you unlock the door. It does NOT say how busy you are: that comes
+    /// from the <see cref="Neighbourhood"/> you're in. Opening a window over hours when the
+    /// street is empty is entirely allowed and entirely your problem — you pay the labour
+    /// and the lights either way.
+    ///
+    /// The clock runs continuously around these; outside them nobody arrives, which is what
+    /// makes most of a day compressible by jump-ahead.
     /// </summary>
     public sealed class ServiceWindow
     {
-        public ServiceWindow(string name, int startHour, int endHour, double peakPartiesPerHour)
+        public ServiceWindow(string name, int startHour, int endHour)
         {
             if (startHour < 0 || startHour > 23) throw new ArgumentOutOfRangeException(nameof(startHour));
             if (endHour < 0 || endHour > 24) throw new ArgumentOutOfRangeException(nameof(endHour));
             if (endHour == startHour) throw new ArgumentOutOfRangeException(nameof(endHour), "A window needs a length. For all day, use 0 to 24.");
-            if (peakPartiesPerHour < 0) throw new ArgumentOutOfRangeException(nameof(peakPartiesPerHour));
 
             Name = string.IsNullOrWhiteSpace(name) ? "Service" : name;
             StartHour = startHour;
             EndHour = endHour;
-            PeakPartiesPerHour = peakPartiesPerHour;
         }
 
         public string Name { get; }
         public int StartHour { get; }
         public int EndHour { get; }
 
-        /// <summary>Busiest arrival rate, reached in the middle of the window.</summary>
-        public double PeakPartiesPerHour { get; }
-
         /// <summary>
-        /// True for a late-night service that runs past midnight, like 22:00-02:00.
-        /// Hours are the operator's choice, so this has to be expressible.
+        /// True for a late service that runs past midnight, like 22:00-02:00. Hours are the
+        /// operator's choice, so this has to be expressible.
         /// </summary>
         public bool WrapsMidnight { get { return EndHour < StartHour; } }
 
@@ -57,28 +54,24 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>
-        /// Chance of a party arriving in this particular minute. Triangular: quiet at the
-        /// doors, a peak mid-service, tapering to close — which is what produces a rush the
-        /// kitchen has to survive rather than a flat trickle.
-        ///
-        /// Note what this means for a single all-day window: one long, shallow hump. A real
-        /// round-the-clock restaurant does not work like that — it has a breakfast rush, a
-        /// lunch rush and a late-night one. Express that as several windows with their own
-        /// peaks rather than one 24-hour window, which is both more accurate and gives each
-        /// service its own demand to staff against.
+        /// Total potential parties this window could see in the neighbourhood it sits in.
+        /// This is how a player can tell, before committing to the labour, whether a service
+        /// is worth opening at all.
         /// </summary>
-        public double ArrivalChanceAt(DateTime now)
+        public double PotentialPartiesIn(Neighbourhood neighbourhood)
         {
-            if (!IsOpenAt(now)) return 0.0;
+            if (neighbourhood == null) throw new ArgumentNullException(nameof(neighbourhood));
 
-            var minuteOfDay = (now.Hour * 60) + now.Minute;
-            var opens = StartHour * 60;
-            var minutesIn = minuteOfDay >= opens ? minuteOfDay - opens : minuteOfDay + ((24 * 60) - opens);
+            var total = 0.0;
+            var hour = StartHour;
 
-            var through = (double)minutesIn / LengthMinutes;
-            var peakWeight = 1.0 - Math.Abs((2.0 * through) - 1.0);
+            for (var i = 0; i < LengthMinutes / 60; i++)
+            {
+                total += neighbourhood.TrafficAtHour(hour);
+                hour = (hour + 1) % 24;
+            }
 
-            return (PeakPartiesPerHour / 60.0) * peakWeight;
+            return total;
         }
 
         public override string ToString()
@@ -89,8 +82,8 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>A conventional two-service day, used when a restaurant hasn't set its own hours.</summary>
         public static IEnumerable<ServiceWindow> DefaultDay()
         {
-            yield return new ServiceWindow("Lunch", 12, 15, 14);
-            yield return new ServiceWindow("Dinner", 18, 23, 25);
+            yield return new ServiceWindow("Lunch", 12, 15);
+            yield return new ServiceWindow("Dinner", 18, 23);
         }
     }
 }

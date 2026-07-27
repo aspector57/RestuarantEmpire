@@ -246,8 +246,8 @@ namespace RestaurantEmpire.Core.Tests
         {
             var restaurant = Build();
             restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15, 20));
-            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, 25));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23));
 
             var clock = new GameClock();                 // Monday 00:00
             var runner = new SimulationRunner(restaurant, clock, 4242, InterruptPolicy.None());

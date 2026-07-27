@@ -28,7 +28,11 @@ namespace RestaurantEmpire.Core.Tests
             Restaurant restaurant, double peakPartiesPerHour = 25, long seed = 99, InterruptPolicy? interrupts = null)
         {
             restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, peakPartiesPerHour));
+            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23));
+
+            // Demand comes from the street now, so a test that wants "a dinner rush of this
+            // size" says so by putting the restaurant somewhere with that traffic.
+            restaurant.Location = Neighbourhood.PeakedBetween("Test Dinner Strip", 18, 23, peakPartiesPerHour);
 
             var clock = new GameClock();
             clock.AdvanceHours(18);

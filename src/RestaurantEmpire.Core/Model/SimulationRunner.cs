@@ -69,6 +69,7 @@ namespace RestaurantEmpire.Core.Model
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
+        private int _partiesLostToMenu;
         private int _walkoutStreak, _partyCounter, _occupiedSeats;
         private bool _cashFloorBreached, _walkoutAlarmRaisedThisService;
         private string _serviceOnLastTick;
@@ -130,7 +131,7 @@ namespace RestaurantEmpire.Core.Model
             return new ServiceResult(
                 new Dictionary<string, int>(_unitsSold), _tickets, _diagnostics,
                 _revenue, _foodCost, _wastedFoodCost,
-                _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed,
+                _partiesArrived, _partiesTurnedAway, _partiesLostToMenu, _coversServed, _walkouts, _eightySixed,
                 _coversServed == 0 ? 0m : _satisfactionTotal / _coversServed,
                 _longestWait, BusiestStation());
         }
@@ -271,9 +272,12 @@ namespace RestaurantEmpire.Core.Model
             var window = CurrentWindow();
             if (window != null)
             {
+                // How busy it is comes from the street, not from the window. Opening over
+                // dead hours is allowed and simply produces nobody.
+                //
                 // Exactly one draw per open minute, whatever the chunk size — this is what
                 // keeps a month-long jump identical to a minute-by-minute one.
-                if (_rng.Chance(window.ArrivalChanceAt(now)))
+                if (_rng.Chance(_restaurant.TrafficAt(now) / 60.0))
                 {
                     var stockoutInterrupt = Seat(tick, now);
                     if (interrupt == null) interrupt = stockoutInterrupt;
@@ -314,6 +318,23 @@ namespace RestaurantEmpire.Core.Model
                 return null;
             }
 
+            // What is on the menu that anyone would actually want at this hour. Offering
+            // truffle risotto at 8am is allowed; ordering it is not.
+            var wanted = new List<string>();
+            foreach (var recipeId in _restaurant.Menu.RecipeIds)
+            {
+                if (_definitions.GetRecipe(recipeId).SuitsDaypart(Dayparts.At(now))) wanted.Add(recipeId);
+            }
+
+            if (wanted.Count == 0)
+            {
+                // They came in, read the menu, and left. You paid the labour anyway.
+                _partiesLostToMenu++;
+                _diagnostics.Add("A party of " + party.Size + " left without ordering — nothing on the menu suits " +
+                                 Dayparts.At(now).ToString().ToLowerInvariant() + ".");
+                return null;
+            }
+
             _occupiedSeats += party.Size;
 
             var table = new Table(party);
@@ -321,7 +342,7 @@ namespace RestaurantEmpire.Core.Model
 
             for (var cover = 0; cover < party.Size; cover++)
             {
-                var recipeId = _restaurant.Menu.RecipeIds[_rng.Next(_restaurant.Menu.Count)];
+                var recipeId = wanted[_rng.Next(wanted.Count)];
                 var recipe = _definitions.GetRecipe(recipeId);
                 var ticket = _pass.Fire(recipe, tick, _restaurant.Inventory);
 

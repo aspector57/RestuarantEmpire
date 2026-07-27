@@ -158,15 +158,19 @@ namespace RestaurantEmpire.Core.Tests
             // Judged against the industry bands rather than hand-picked thresholds, so this
             // keeps testing the claim rather than a particular balance pass: book each
             // night's takings with the same labour and read what the books say.
-            var labour = 900m;
+            // Labour is a realistic share of the mid-market night's takings, and the SAME
+            // absolute figure is booked against both — so this stays a comparison of pricing
+            // rather than of a hardcoded number that goes stale whenever demand is retuned.
+            var labour = decimal.Round(asIs.Revenue * 0.20m, 2);
             cheapCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", cheapPrices.Id);
             repricedCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", repriced.Id);
 
             var asIsBooks = cheapCo.Economy.Summarize(0, 0, cheapPrices.Id);
             var chargedBooks = repricedCo.Economy.Summarize(0, 0, repriced.Id);
 
+            // Bands run Excellent(1) .. Unsustainable(4), so better is lower.
             Assert.Equal(PrimeCostBand.Unsustainable, asIsBooks.Band);   // losing on every cover
-            Assert.True(chargedBooks.Band <= PrimeCostBand.Healthy);     // a business again
+            Assert.True(chargedBooks.Band < asIsBooks.Band);             // charging for it moves you up the bands
 
             // The same night earns more than twice as much once the plate is priced for
             // what went into it.

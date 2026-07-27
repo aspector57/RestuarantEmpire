@@ -44,7 +44,17 @@ namespace RestaurantEmpire.Sim
             var company = new Company("player-co", "Your Restaurant Group", definitions, Dec(args, "--cash", 20000m));
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
-            foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
+            // The menu is a choice. Offering nothing anyone wants at breakfast is allowed,
+            // and is exactly how you pay a morning's labour for an empty room.
+            var menuArg = Arg(args, "--menu", "all");
+            foreach (var recipe in definitions.Recipes)
+            {
+                var wanted = menuArg == "all"
+                    || menuArg.Split(',').Contains(recipe.Id)
+                    || (menuArg == "dinner" && recipe.SuitsDaypart(Daypart.Dinner));
+
+                if (wanted) restaurant.Menu.Add(recipe.Id);
+            }
             if (seats > 0) restaurant.BuyTables("tables", "Tables and chairs", seats * 120m, seats, 0.55m);
 
             if (!definitions.HasSupplier(supplier))
@@ -58,9 +68,20 @@ namespace RestaurantEmpire.Sim
             if (priceMultiplier != 1.0m)
                 foreach (var id in restaurant.Menu.RecipeIds) company.Pricing.AdjustPrice(id, priceMultiplier);
 
+            restaurant.Location = Where(Arg(args, "--location", "suburban"));
+
+            // The player picks the hours. Whether anybody is out there is the location's call.
             restaurant.ServiceWindows.Clear();
-            restaurant.ServiceWindows.Add(new ServiceWindow("Lunch", 12, 15, demand * 0.6));
-            restaurant.ServiceWindows.Add(new ServiceWindow("Dinner", 18, 23, demand));
+            foreach (var spec in Arg(args, "--hours", "12-15,18-23").Split(','))
+            {
+                var parts = spec.Split('-');
+                if (parts.Length != 2) continue;
+
+                int from, to;
+                if (!int.TryParse(parts[0], out from) || !int.TryParse(parts[1], out to)) continue;
+
+                restaurant.ServiceWindows.Add(new ServiceWindow(NameFor(from), from, to));
+            }
 
             // The fit-out is bought, not conjured — every slot at every station is capital out.
             var perSlot = Dec(args, "--station-cost", 2800m);
@@ -82,13 +103,30 @@ namespace RestaurantEmpire.Sim
                 StopOnStockout = true
             });
 
+            // Labour scales with how long the doors are open. Nothing in the core generates
+            // labour until Employees arrive at M1, but charging it flat per DAY made long
+            // hours look free, which is exactly the illusion the location model exists to kill.
+            var openHours = restaurant.ServiceWindows.Sum(w => w.LengthMinutes) / 60m;
+
             var session = new Session(runner, company,
-                labourPerDay: Dec(args, "--labour", 420m),
+                labourPerDay: Dec(args, "--labour-per-hour", 72m) * openHours,
                 overheadPerDay: Dec(args, "--overhead", 300m));
 
             Console.WriteLine();
-            Console.WriteLine("  sourcing " + supplier + "  ·  prices x" + priceMultiplier + "  ·  " +
-                              stations + " slot(s)/station  ·  " + (seats == 0 ? "unlimited seats" : seats + " seats"));
+            Console.WriteLine("  " + restaurant.Location.Name + "  ·  sourcing " + supplier +
+                              "  ·  prices x" + priceMultiplier + "  ·  " + stations + " slot(s)/station  ·  " +
+                              (seats == 0 ? "unlimited seats" : seats + " seats"));
+            Console.WriteLine("  open: " + string.Join(", ", restaurant.ServiceWindows.Select(w => w.ToString())));
+
+            foreach (var window in restaurant.ServiceWindows)
+            {
+                var potential = window.PotentialPartiesIn(restaurant.Location);
+                if (potential < 4)
+                {
+                    Console.WriteLine("  !! " + window.Name + " sees barely any passing trade here (" +
+                                      potential.ToString("0.0") + " parties across the whole service).");
+                }
+            }
 
             var autoDays = Int(args, "--auto", 0);
             return autoDays > 0 ? session.RunAuto(autoDays) : session.RunInteractive();
@@ -280,6 +318,26 @@ namespace RestaurantEmpire.Sim
             return null;
         }
 
+        private static Neighbourhood Where(string key)
+        {
+            switch ((key ?? string.Empty).ToLowerInvariant())
+            {
+                case "city": return Neighbourhood.CityCentre();
+                case "business": return Neighbourhood.BusinessDistrict();
+                case "nightlife": return Neighbourhood.NightlifeQuarter();
+                default: return Neighbourhood.SuburbanHighStreet();
+            }
+        }
+
+        private static string NameFor(int startHour)
+        {
+            if (startHour < 11) return "Breakfast";
+            if (startHour < 16) return "Lunch";
+            if (startHour < 22) return "Dinner";
+
+            return "Late Night";
+        }
+
         private static string Title(string id)
         {
             return string.Join(" ", id.Split('-').Select(w => char.ToUpperInvariant(w[0]) + w.Substring(1)));
@@ -318,11 +376,13 @@ the question it exists to answer is whether being stopped feels worth it.
   --supplier <id>        budget-wholesale | valley-produce | premium-harvest
   --price <mult>         multiply every menu price, e.g. 1.5
   --stations <n>         slots per kitchen station          (default 3)
-  --demand <n>           dinner peak parties/hour           (default 25)
+  --location <where>     suburban | city | business | nightlife
+  --hours <spec>         e.g. 7-10,12-15,18-23   (default 12-15,18-23)
+  --menu <what>          all | dinner | a,comma,list of recipe ids
   --seats <n>            dining room capacity, 0 = unlimited
   --cash <n>             opening cash                       (default 20000)
   --stock <n>            opening stock per ingredient       (default 2000)
-  --labour <n>           labour booked per day              (default 420)
+  --labour-per-hour <n>  labour per hour the doors are open (default 72)
   --overhead <n>         rent and utilities per day         (default 300)
   --walkout-streak <n>   walkouts in a row before stopping  (default 4)
   --cash-floor <n>       cash level that stops the sim      (default 0)

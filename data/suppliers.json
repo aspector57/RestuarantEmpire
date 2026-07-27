@@ -14,14 +14,17 @@
       "name": "Budget Wholesale Foods",
       "qualityTier": 1,
       "prices": {
-        "flour": 1.20,
-        "tomato": 2.00,
-        "mozzarella": 6.00,
-        "basil": 1.00,
-        "olive-oil": 6.00,
-        "arborio-rice": 3.00,
-        "parmesan": 12.00,
-        "truffle": 1.80
+        "flour": 1.2,
+        "tomato": 2.0,
+        "mozzarella": 6.0,
+        "basil": 1.0,
+        "olive-oil": 6.0,
+        "arborio-rice": 3.0,
+        "parmesan": 12.0,
+        "truffle": 1.8,
+        "coffee-beans": 9.0,
+        "eggs": 2.4,
+        "butter": 5.0
       }
     },
     {
@@ -29,14 +32,17 @@
       "name": "Valley Produce Co.",
       "qualityTier": 3,
       "prices": {
-        "flour": 1.80,
-        "tomato": 3.00,
-        "mozzarella": 9.00,
-        "basil": 1.60,
-        "olive-oil": 11.00,
-        "arborio-rice": 4.50,
-        "parmesan": 18.00,
-        "truffle": 2.60
+        "flour": 1.8,
+        "tomato": 3.0,
+        "mozzarella": 9.0,
+        "basil": 1.6,
+        "olive-oil": 11.0,
+        "arborio-rice": 4.5,
+        "parmesan": 18.0,
+        "truffle": 2.6,
+        "coffee-beans": 15.0,
+        "eggs": 3.6,
+        "butter": 8.0
       }
     },
     {
@@ -44,14 +50,17 @@
       "name": "Premium Harvest Partners",
       "qualityTier": 5,
       "prices": {
-        "flour": 2.60,
-        "tomato": 5.00,
-        "mozzarella": 14.00,
-        "basil": 2.80,
-        "olive-oil": 22.00,
-        "arborio-rice": 7.00,
-        "parmesan": 28.00,
-        "truffle": 6.50
+        "flour": 2.6,
+        "tomato": 5.0,
+        "mozzarella": 14.0,
+        "basil": 2.8,
+        "olive-oil": 22.0,
+        "arborio-rice": 7.0,
+        "parmesan": 28.0,
+        "truffle": 6.5,
+        "coffee-beans": 26.0,
+        "eggs": 5.4,
+        "butter": 13.0
       }
     }
   ]
