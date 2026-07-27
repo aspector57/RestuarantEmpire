@@ -84,6 +84,17 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>
+        /// What this location charges against the price the dish shipped with. 1.0 is as
+        /// designed; 3.0 means you are asking three times what it is worth, and guests
+        /// notice that from the menu without eating anything.
+        /// </summary>
+        public decimal Markup(string recipeId)
+        {
+            var designed = _definitions.GetRecipe(recipeId).MenuPrice;
+            return designed == 0m ? 1m : MenuPrice(recipeId) / designed;
+        }
+
+        /// <summary>
         /// How good this dish's ingredients currently are, 0 to 1, from the quality tiers of
         /// whichever suppliers are assigned right now.
         ///

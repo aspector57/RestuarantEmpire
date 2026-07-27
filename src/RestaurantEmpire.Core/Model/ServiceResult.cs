@@ -17,12 +17,13 @@ namespace RestaurantEmpire.Core.Model
             Dictionary<string, int> unitsSold, IList<Ticket> tickets, IList<string> diagnostics,
             decimal revenue, decimal foodCost, decimal wastedFoodCost,
             int partiesArrived, int partiesTurnedAway, int partiesLostToMenu, int partiesPutOffByTheWait,
-            int coversServed,
+            int partiesPutOffByThePrices, int coversServed,
             int walkouts, int eightySixed, decimal averageSatisfaction,
             int longestWaitMinutes, string busiestStationId)
         {
             PartiesLostToMenu = partiesLostToMenu;
             PartiesPutOffByTheWait = partiesPutOffByTheWait;
+            PartiesPutOffByThePrices = partiesPutOffByThePrices;
             _unitsSold = unitsSold;
             Tickets = new List<Ticket>(tickets).AsReadOnly();
             Diagnostics = new List<string>(diagnostics).AsReadOnly();
@@ -80,6 +81,12 @@ namespace RestaurantEmpire.Core.Model
         /// trade, but far cheaper than a walkout: no food was cooked for them.
         /// </summary>
         public int PartiesPutOffByTheWait { get; }
+
+        /// <summary>
+        /// Read the menu, decided it was not worth the money, and left. The cost of
+        /// overpricing — paid in trade you never see rather than in complaints.
+        /// </summary>
+        public int PartiesPutOffByThePrices { get; }
 
         public int CoversServed { get; }
 

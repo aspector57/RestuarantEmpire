@@ -114,7 +114,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // ...but by no more than the ambiance weight allows, even at the extremes.
             var gap = lovelyNight.AverageSatisfaction - bleakNight.AverageSatisfaction;
-            Assert.True(gap <= SatisfactionModel.AmbianceWeight,
+            Assert.True(gap <= SatisfactionModel.AmbianceWeight + 0.0001m,   // decimal averaging leaves a rounding tail
                 "decor moved satisfaction by " + gap + ", more than its capped weight");
 
             // And it is the smallest of the four weights, on purpose.

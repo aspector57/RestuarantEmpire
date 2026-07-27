@@ -213,5 +213,40 @@ namespace RestaurantEmpire.Core.Tests
             // Neither is the right answer. Once Reputation converts satisfaction into
             // volume at M1, that is precisely the bet the player will be making.
         }
+
+        [Fact]
+        public void GougingEmptiesTheRoom_BecauseGuestsCanReadAMenu()
+        {
+            // Aaron's playtest finding: tripling every price tripled revenue, because
+            // satisfaction had no consequence and unhappy guests came back anyway. A guest
+            // can judge value from the menu in the window without eating anything, so
+            // overpricing now costs trade rather than being free money.
+            var fair = Build(out _);
+            var fairNight = Dinner.Run(fair, 25, 4242);
+
+            var greedy = Build(out var greedyCo);
+            foreach (var id in greedy.Menu.RecipeIds) greedyCo.Pricing.AdjustPrice(id, 3m);
+            var greedyNight = Dinner.Run(greedy, 25, 4242);
+
+            Assert.Equal(0, fairNight.PartiesPutOffByThePrices);
+            Assert.True(greedyNight.PartiesPutOffByThePrices > 0);
+            Assert.True(greedyNight.CoversServed < fairNight.CoversServed / 2);
+            Assert.Contains(greedyNight.Diagnostics, d => d.Contains("read the prices and left"));
+        }
+
+        [Fact]
+        public void AModestMarkupIsStillWorthDoing()
+        {
+            // The threshold has to be forgiving, or pricing stops being a lever at all.
+            var fair = Build(out _);
+            var modest = Build(out var modestCo);
+            foreach (var id in modest.Menu.RecipeIds) modestCo.Pricing.AdjustPrice(id, 1.5m);
+
+            var fairNight = Dinner.Run(fair, 25, 4242);
+            var modestNight = Dinner.Run(modest, 25, 4242);
+
+            Assert.Equal(0, modestNight.PartiesPutOffByThePrices);
+            Assert.True(modestNight.Revenue > fairNight.Revenue);
+        }
     }
 }

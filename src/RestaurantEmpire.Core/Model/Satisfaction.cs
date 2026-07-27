@@ -94,9 +94,39 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Guests are fully happy with the wait up to this share of their patience.</summary>
         public const decimal ComfortableWaitShare = 0.40m;
 
+        /// <summary>
+        /// How good a deal a dish looks, 0 to 1, judged on MARKUP — what you charge against
+        /// what the dish is worth — rather than on food cost ratio.
+        ///
+        /// That distinction matters more than it looks. A flat white with 27p of coffee in
+        /// it runs a 7% food cost, and nobody thinks a £3.60 coffee is a swindle; coffee is
+        /// simply a high-margin product. Judging value by food cost ratio cannot tell an
+        /// ordinary coffee apart from a pizza sold at three times its worth, because both
+        /// land at the same ratio. Markup can, and it is also what a guest actually reacts
+        /// to: this costs more than it should.
+        ///
+        /// Exposed separately from <see cref="Evaluate"/> because a guest can judge it from
+        /// the menu in the window — they need not sit down and be disappointed to notice.
+        /// That is what stops "put every price up 3x" being free money.
+        /// </summary>
+        public static decimal ScoreValue(decimal markup, decimal priceSensitivity)
+        {
+            if (priceSensitivity <= 0m) priceSensitivity = 1m;
+            if (markup <= 0m) return 1m;   // comped, and nobody complains about free
+
+            return Clamp((1m / markup) / priceSensitivity);
+        }
+
+        /// <summary>
+        /// Below this, a guest reading the menu decides it is not worth it and goes
+        /// elsewhere. Deliberately forgiving — a modest markup should cost you nothing,
+        /// and only real gouging should empty the room.
+        /// </summary>
+        public const decimal WalkAwayValueThreshold = 0.40m;
+
         public static SatisfactionResult Evaluate(
             CustomerParty party, Ticket ticket, string dishName,
-            decimal ingredientQuality, decimal foodCostRatio, decimal comfort = 0.5m)
+            decimal ingredientQuality, decimal markup, decimal comfort = 0.5m)
         {
             if (party == null) throw new ArgumentNullException(nameof(party));
             if (ticket == null) throw new ArgumentNullException(nameof(ticket));
@@ -116,7 +146,7 @@ namespace RestaurantEmpire.Core.Model
 
             var speed = ScoreSpeed(ticket.WaitMinutes, party.PatienceMinutes);
             var quality = Clamp(ingredientQuality);
-            var value = Clamp((foodCostRatio / FairFoodCostRatio) / party.PriceSensitivity);
+            var value = ScoreValue(markup, party.PriceSensitivity);
             var ambiance = Clamp(comfort);
 
             var overall = (quality * FoodQualityWeight)

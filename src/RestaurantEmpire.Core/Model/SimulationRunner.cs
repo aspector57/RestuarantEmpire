@@ -69,7 +69,7 @@ namespace RestaurantEmpire.Core.Model
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
-        private int _partiesLostToMenu, _partiesPutOffByTheWait;
+        private int _partiesLostToMenu, _partiesPutOffByTheWait, _partiesPutOffByThePrices;
         private int _walkoutStreak, _partyCounter, _occupiedSeats;
         private bool _cashFloorBreached, _walkoutAlarmRaisedThisService;
         private string _serviceOnLastTick;
@@ -131,7 +131,7 @@ namespace RestaurantEmpire.Core.Model
             return new ServiceResult(
                 new Dictionary<string, int>(_unitsSold), _tickets, _diagnostics,
                 _revenue, _foodCost, _wastedFoodCost,
-                _partiesArrived, _partiesTurnedAway, _partiesLostToMenu, _partiesPutOffByTheWait,
+                _partiesArrived, _partiesTurnedAway, _partiesLostToMenu, _partiesPutOffByTheWait, _partiesPutOffByThePrices,
                 _coversServed, _walkouts, _eightySixed,
                 _coversServed == 0 ? 0m : _satisfactionTotal / _coversServed,
                 _longestWait, BusiestStation());
@@ -355,23 +355,36 @@ namespace RestaurantEmpire.Core.Model
                 return null;
             }
 
-            // They can see how backed up the room is. If even the quickest thing they want
-            // would take longer than they are willing to wait, they do not sit down at all —
-            // which is what stops a slow night becoming a spiral of food cooked for people
-            // who already left.
-            var quickest = int.MaxValue;
+            // Two things a guest can judge from the doorway, before committing to anything.
+            var costing = _restaurant.Costing;
+            var totalWait = 0L;
+            var totalValue = 0m;
+
             foreach (var recipeId in wanted)
             {
-                var wait = _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick);
-                if (wait < quickest) quickest = wait;
+                totalWait += _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick);
+                totalValue += SatisfactionModel.ScoreValue(costing.Markup(recipeId), party.PriceSensitivity);
             }
 
-            if (quickest > party.PatienceMinutes)
+            // The typical wait for whatever they end up ordering, not the luckiest case —
+            // they pick at random, so an optimistic estimate just seats people who will walk.
+            var expectedWait = totalWait / wanted.Count;
+
+            if (expectedWait > party.PatienceMinutes)
             {
                 _partiesPutOffByTheWait++;
                 _diagnostics.Add("A party of " + party.Size + " saw the wait (about " +
-                                 (quickest == int.MaxValue ? "forever" : quickest + " min") +
-                                 ") and went somewhere else.");
+                                 expectedWait + " min) and went somewhere else.");
+                return null;
+            }
+
+            // And they can read the prices. Nobody has to eat an overpriced dinner to work
+            // out it is overpriced — which is what makes gouging cost you trade rather than
+            // being free money.
+            if (totalValue / wanted.Count < SatisfactionModel.WalkAwayValueThreshold)
+            {
+                _partiesPutOffByThePrices++;
+                _diagnostics.Add("A party of " + party.Size + " read the prices and left.");
                 return null;
             }
 
@@ -448,7 +461,7 @@ namespace RestaurantEmpire.Core.Model
             var satisfaction = SatisfactionModel.Evaluate(
                 table.Party, order.Ticket, recipe.Name,
                 _restaurant.Costing.IngredientQuality(order.RecipeId),
-                _restaurant.Costing.FoodCostRatio(order.RecipeId),
+                _restaurant.Costing.Markup(order.RecipeId),
                 _restaurant.DiningRoom.Comfort);
 
             int sold;
