@@ -248,6 +248,10 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class KitchenPass
     {
+        /// <summary>How many plates one cook can have going at once. A line, not a pan.</summary>
+        public const int PlatesPerCook = 2;
+
+
         private readonly Kitchen _kitchen;
         private readonly Dictionary<string, long[]> _slotFreeAt;
         private readonly long[] _cookFreeAt;
@@ -257,10 +261,14 @@ namespace RestaurantEmpire.Core.Model
             _kitchen = kitchen;
             _slotFreeAt = new Dictionary<string, long[]>(StringComparer.Ordinal);
 
-            // A plate needs a free machine AND somebody to stand at it. Equipment you have
-            // not staffed is equipment you are not using, which is what stops "buy another
-            // oven" from being a complete answer and makes hiring a real decision.
-            _cookFreeAt = new long[cooks < 0 ? 0 : cooks];
+            // A plate needs a free machine AND somebody to work it. Equipment you have not
+            // staffed is equipment you are not using, which is what stops "buy another oven"
+            // being a complete answer and makes hiring a real decision.
+            //
+            // But a cook works a LINE, not a single pan — they run several things at once,
+            // which is the whole point of a brigade. Modelling one cook as one plate forced
+            // a headcount that bankrupted every restaurant in a hundred-run sweep.
+            _cookFreeAt = new long[(cooks < 0 ? 0 : cooks) * PlatesPerCook];
             for (var i = 0; i < _cookFreeAt.Length; i++) _cookFreeAt[i] = serviceStartTick;
 
             foreach (var station in kitchen.Stations)

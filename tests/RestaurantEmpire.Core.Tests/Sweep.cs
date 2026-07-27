@@ -18,7 +18,7 @@ namespace RestaurantEmpire.Core.Tests
 
         private sealed class Run
         {
-            public string Site, Size;
+            public string Site = "", Size = "";
             public long Seed;
             public decimal Net, PrimeRatio, Revenue;
             public int Covers, Walkouts, Interrupts, TurnedAway, LostToMenu, PutOffByWait, PutOffByPrice;
@@ -78,8 +78,8 @@ namespace RestaurantEmpire.Core.Tests
             // staff the room you actually got, not the one you planned
             servers = Math.Max(1, (int)Math.Ceiling(actualSeats / 14.0));
 
-            for (var i = 0; i < cooks; i++) r.Payroll.Hire(new Employee("c" + i, "Cook", StaffRole.Cook, 18m));
-            for (var i = 0; i < servers; i++) r.Payroll.Hire(new Employee("s" + i, "Server", StaffRole.Server, 14.40m));
+            for (var i = 0; i < cooks; i++) r.Payroll.Hire(new Employee("c" + i, "Cook", StaffRole.Cook, 16m));
+            for (var i = 0; i < servers; i++) r.Payroll.Hire(new Employee("s" + i, "Server", StaffRole.Server, 12m));
 
             foreach (var id in definitions.IngredientIds) { r.Inventory.SetPar(id, 400m, 3000m); r.Inventory.Receive(id, 3000m); }
 
@@ -115,7 +115,7 @@ namespace RestaurantEmpire.Core.Tests
             };
         }
 
-        [Fact(Skip = "Measuring instrument, not a test. Run explicitly: dotnet test --filter Sweep")]
+        [Fact(Skip = "Measuring instrument, not a test. Run by removing this Skip.")]
         public void OneHundredRuns()
         {
             var sizes = new[]

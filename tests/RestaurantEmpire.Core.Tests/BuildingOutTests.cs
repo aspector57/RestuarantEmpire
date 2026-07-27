@@ -64,10 +64,10 @@ namespace RestaurantEmpire.Core.Tests
             // Aaron's case exactly: you cannot just knock down the wall.
             var restaurant = Build(out _, Neighbourhood.CityCentre(), floorArea: 90m);
 
-            Assert.Equal(20m, restaurant.ExpansionHeadroom);   // 110 cap, at 90
+            Assert.Equal(40m, restaurant.ExpansionHeadroom);   // 130 cap, at 90
 
-            restaurant.ExtendBuilding(20m);                    // take everything there is
-            Assert.Equal(110m, restaurant.FloorArea);
+            restaurant.ExtendBuilding(40m);                    // take everything there is
+            Assert.Equal(130m, restaurant.FloorArea);
             Assert.Equal(0m, restaurant.ExpansionHeadroom);
 
             var blocked = Assert.Throws<InvalidOperationException>(() => restaurant.ExtendBuilding(10m));
@@ -81,11 +81,11 @@ namespace RestaurantEmpire.Core.Tests
         {
             // The moment the two systems meet: no room to build, so the only way to add
             // throughput is better equipment in the same space.
-            var restaurant = Build(out var company, Neighbourhood.CityCentre(), floorArea: 110m);
+            var restaurant = Build(out var company, Neighbourhood.CityCentre(), floorArea: 130m);
             var definitions = company.Definitions;
 
-            restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 8);  // 40.0m2
-            restaurant.BuyTables("tables", "Tables", 6000m, 50);                      // 70.0m2
+            restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 10); // 50.0m2
+            restaurant.BuyTables("tables", "Tables", 6800m, 57);                      // 79.8m2
 
             Assert.True(restaurant.FreeFloorArea < 1m);
             Assert.Equal(0m, restaurant.ExpansionHeadroom);
@@ -93,12 +93,12 @@ namespace RestaurantEmpire.Core.Tests
 
             // Adding another cheap oven is impossible...
             Assert.Throws<InvalidOperationException>(
-                () => restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 9));
+                () => restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 11));
 
             // ...but replacing eight second-hand ovens with eight hearth ovens fits, and is
             // more than twice the throughput in less space.
             var before = restaurant.Kitchen.Get("oven").SpeedMultiplier;
-            restaurant.BuyEquipment(definitions.GetEquipment("oven-hearth"), 8);
+            restaurant.BuyEquipment(definitions.GetEquipment("oven-hearth"), 10);
 
             Assert.True(restaurant.Kitchen.Get("oven").SpeedMultiplier > before * 2m);
             Assert.True(restaurant.FreeFloorArea > 14m);   // and it freed up room as well

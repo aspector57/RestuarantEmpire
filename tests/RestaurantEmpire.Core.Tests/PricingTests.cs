@@ -40,7 +40,7 @@ namespace RestaurantEmpire.Core.Tests
         {
             var flagship = Build(out _);
 
-            Assert.Equal(12.00m, flagship.Costing.MenuPrice("margherita"));
+            Assert.Equal(14.00m, flagship.Costing.MenuPrice("margherita"));
             Assert.Equal("menu default", flagship.Pricing.ResolvedFromScopeName("margherita"));
             Assert.Empty(flagship.Pricing.LocalPrices);
         }
@@ -98,9 +98,9 @@ namespace RestaurantEmpire.Core.Tests
         {
             var flagship = Build(out var company);
 
-            // margherita costs 2.597 at Valley Produce.
-            Assert.Equal(9.403m, flagship.Costing.ContributionMargin("margherita"));
-            Assert.Equal(0.216m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
+            // margherita costs 2.597 at Valley Produce, and ships at 14.00.
+            Assert.Equal(11.403m, flagship.Costing.ContributionMargin("margherita"));
+            Assert.Equal(0.186m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
 
             company.Pricing.SetPrice("margherita", 18.00m);
 
@@ -117,10 +117,10 @@ namespace RestaurantEmpire.Core.Tests
             var flagship = Build(out var company);
 
             company.Pricing.AdjustPrice("margherita", 1.25m);
-            Assert.Equal(15.00m, flagship.Costing.MenuPrice("margherita"));   // 12.00 * 1.25
+            Assert.Equal(17.50m, flagship.Costing.MenuPrice("margherita"));   // 14.00 * 1.25
 
             flagship.Pricing.AdjustPrice("margherita", 1.20m);
-            Assert.Equal(18.00m, flagship.Costing.MenuPrice("margherita"));   // 15.00 * 1.20, set locally
+            Assert.Equal(21.00m, flagship.Costing.MenuPrice("margherita"));   // 17.50 * 1.20, set locally
             Assert.True(flagship.Pricing.HasLocalOverride("margherita"));
         }
 

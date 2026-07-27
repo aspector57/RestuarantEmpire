@@ -7,7 +7,7 @@
     "lunch",
     "dinner"
   ],
-  "menuPrice": 12.0,
+  "menuPrice": 14.0,
   "ingredients": [
     {
       "ingredientId": "flour",

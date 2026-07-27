@@ -17,7 +17,7 @@ namespace RestaurantEmpire.Core.Tests
     public class MenuEngineeringTests
     {
         // Contribution margins on Valley Produce:
-        //   margherita 9.403 · caprese-salad 6.346 · house-focaccia 5.988 · truffle-risotto 22.160
+        //   margherita 11.403 · caprese-salad 8.346 · house-focaccia 6.988 · truffle-risotto 19.160
         private static readonly Dictionary<string, int> AWeekOfSales = new Dictionary<string, int>
         {
             { "margherita",      500 }, // 50% of covers
@@ -50,15 +50,15 @@ namespace RestaurantEmpire.Core.Tests
             Assert.Equal(0.175m, analysis.PopularityThreshold);
 
             // Sales-weighted average margin across the week.
-            Assert.Equal(8.78754m, analysis.AverageContributionMargin);
+            Assert.Equal(10.38754m, analysis.AverageContributionMargin);
 
-            // High margin (9.403) + high volume (50%) -> protect it.
+            // High margin (11.403) + high volume (50%) -> protect it.
             Assert.Equal(MenuClassification.Star, analysis["margherita"].Classification);
 
-            // Low margin (6.346) + high volume (34%) -> popular but barely profitable.
+            // Low margin (8.346) + high volume (34%) -> popular but barely profitable.
             Assert.Equal(MenuClassification.Plowhorse, analysis["caprese-salad"].Classification);
 
-            // High margin (22.160) + low volume (6%) -> profitable, nobody orders it.
+            // High margin (19.160) + low volume (6%) -> profitable, nobody orders it.
             Assert.Equal(MenuClassification.Puzzle, analysis["truffle-risotto"].Classification);
 
             // Low margin (5.988) + low volume (10%) -> cut or relaunch.
@@ -79,17 +79,17 @@ namespace RestaurantEmpire.Core.Tests
 
             var before = MenuEngineering.Analyze(flagship, AWeekOfSales);
             Assert.Equal(MenuClassification.Puzzle, before["truffle-risotto"].Classification);
-            Assert.Equal(22.16m, before["truffle-risotto"].ContributionMargin);
-            Assert.Equal(0.401m, decimal.Round(flagship.Costing.FoodCostRatio("truffle-risotto"), 3));
+            Assert.Equal(19.16m, before["truffle-risotto"].ContributionMargin);
+            Assert.Equal(0.436m, decimal.Round(flagship.Costing.FoodCostRatio("truffle-risotto"), 3));
 
             // One write. Nothing else touched.
             company.SupplierPolicy.Assign("truffle", "premium-harvest");
 
             var after = MenuEngineering.Analyze(flagship, AWeekOfSales);
 
-            // The dish's margin collapses from 22.16 to 2.66 and it drops to a Dog: at 93%
+            // The dish's margin collapses from 19.16 to -0.34 and it drops to a Dog: at 93%
             // food cost it is now sold at a near loss.
-            Assert.Equal(2.66m, after["truffle-risotto"].ContributionMargin);
+            Assert.Equal(-0.34m, after["truffle-risotto"].ContributionMargin);
             Assert.Equal(MenuClassification.Dog, after["truffle-risotto"].Classification);
             Assert.True(flagship.Costing.FoodCostRatio("truffle-risotto") > 0.9m);
 
@@ -108,10 +108,10 @@ namespace RestaurantEmpire.Core.Tests
             var flagship = BuildFlagship(out _);
             var costing = flagship.Costing;
 
-            Assert.Equal(0.145m, decimal.Round(costing.FoodCostRatio("house-focaccia"), 3));
-            Assert.Equal(0.216m, decimal.Round(costing.FoodCostRatio("margherita"), 3));
-            Assert.Equal(0.295m, decimal.Round(costing.FoodCostRatio("caprese-salad"), 3));
-            Assert.Equal(0.401m, decimal.Round(costing.FoodCostRatio("truffle-risotto"), 3));
+            Assert.Equal(0.126m, decimal.Round(costing.FoodCostRatio("house-focaccia"), 3));  // 0.1265 rounds to even
+            Assert.Equal(0.186m, decimal.Round(costing.FoodCostRatio("margherita"), 3));
+            Assert.Equal(0.241m, decimal.Round(costing.FoodCostRatio("caprese-salad"), 3));
+            Assert.Equal(0.436m, decimal.Round(costing.FoodCostRatio("truffle-risotto"), 3));
         }
 
         [Fact]
@@ -129,7 +129,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // Sourcing alone swings this dish from a 14% food cost to a 34% one — the
             // single biggest lever the player has over the books.
-            Assert.Equal(0.345m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
+            Assert.Equal(0.295m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
         }
 
         [Fact]
@@ -142,8 +142,8 @@ namespace RestaurantEmpire.Core.Tests
             // The caprese earns less than a third of the risotto per plate, but sells 340
             // covers against 60 — so it contributes far more money overall. This is exactly
             // why the matrix judges on two axes instead of ranking by margin.
-            Assert.Equal(6.346m * 340, analysis["caprese-salad"].TotalContribution);
-            Assert.Equal(22.16m * 60, analysis["truffle-risotto"].TotalContribution);
+            Assert.Equal(8.346m * 340, analysis["caprese-salad"].TotalContribution);
+            Assert.Equal(19.16m * 60, analysis["truffle-risotto"].TotalContribution);
             Assert.True(analysis["caprese-salad"].TotalContribution >
                         analysis["truffle-risotto"].TotalContribution);
         }

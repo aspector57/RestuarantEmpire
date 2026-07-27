@@ -99,6 +99,27 @@ key money and fit-out, a suburban one roughly 19,500.
 Combined with the traffic and the ceiling, choosing a location is now a four-way trade:
 footfall, room to grow, land price, and how much of your capital survives opening day.
 
+### Balance: hard but doable (Aaron), and how it was reached
+
+Aaron's bar: *"the math needs to be realistic but also remember this is a game and we want
+to be able to win. It shouldn't be easy but it should definitely be doable."*
+
+A 100-run sweep (4 sites x 5 sizes x 5 seeds) drove three changes:
+
+1. **A cook works a line, not a pan.** `KitchenPass.PlatesPerCook = 2`. Modelling one cook
+   as one plate forced a headcount that bankrupted every restaurant in the sweep — 0/100
+   configurations profitable at some settings. This was the single biggest error.
+2. **Wages 16/12** rather than 18/14.40, and menu prices up roughly 15%.
+3. **Realistic rents**, roughly doubled. Rent is the fixed cost that actually kills small
+   restaurants, so it is what makes the opening squeeze real without punishing growth.
+
+Result: **85 of 100 configurations profitable.** Starter builds sit at break-even to
+slightly negative on every site; growth is clearly rewarded; all four sites clear a living
+at their best build. Re-run the sweep by removing the `Skip` on `Sweep.OneHundredRuns`.
+
+**Protect this shape when balancing.** A starting position that is immediately comfortable
+deletes the arc; one that cannot be dug out of deletes the game.
+
 ### The scale arc, measured
 
 A starting restaurant SHOULD lose money — the question is whether investing digs you out.

@@ -15,9 +15,9 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class SourcingChainTests
     {
-        private const decimal MargheritaOnValley = 9.403m;   // tomato at 3.00
-        private const decimal MargheritaOnPremium = 9.003m;  // tomato at 5.00
-        private const decimal MargheritaOnBudget = 9.603m;   // tomato at 2.00
+        private const decimal MargheritaOnValley = 11.403m;   // tomato at 3.00
+        private const decimal MargheritaOnPremium = 11.003m;  // tomato at 5.00
+        private const decimal MargheritaOnBudget = 11.603m;   // tomato at 2.00
 
         private static Company BuildTwoLocations(out Restaurant flagship, out Restaurant truck)
         {
