@@ -363,7 +363,19 @@ namespace RestaurantEmpire.Core.Model
             // menu, wanted at this hour, and cookable with the equipment installed. A dish
             // whose station was never bought is not really on the menu at all.
             var wanted = new List<string>();
+            var appetites = new List<decimal>();
             string missingStation = null;
+
+            // What the average dish here costs, so a price can be judged against its menu
+            // rather than against an absolute the guest could not know.
+            var averagePrice = 0m;
+            var priced = 0;
+            foreach (var recipeId in _restaurant.Menu.RecipeIds)
+            {
+                averagePrice += _restaurant.Costing.MenuPrice(recipeId);
+                priced++;
+            }
+            if (priced > 0) averagePrice /= priced;
 
             foreach (var recipeId in _restaurant.Menu.RecipeIds)
             {
@@ -377,14 +389,14 @@ namespace RestaurantEmpire.Core.Model
                     continue;
                 }
 
-                // How many entries this dish gets in the hat: what this guest fancies,
-                // multiplied up if it is being promoted. Before appetite existed every dish
-                // got exactly one entry, so popularity was uniform and half the menu matrix
-                // measured nothing.
-                var copies = party.AppetiteFor(candidate);
-                if (_restaurant.Menu.IsFeatured(recipeId)) copies *= Menu.FeaturedWeight;
+                var price = _restaurant.Costing.MenuPrice(recipeId);
+                var relative = averagePrice <= 0m ? 1m : price / averagePrice;
 
-                for (var c = 0; c < copies; c++) wanted.Add(recipeId);
+                var appetite = party.AppetiteFor(candidate, relative);
+                if (_restaurant.Menu.IsFeatured(recipeId)) appetite *= Menu.FeaturedWeight;
+
+                wanted.Add(recipeId);
+                appetites.Add(appetite);
             }
 
             if (wanted.Count == 0)
@@ -462,7 +474,7 @@ namespace RestaurantEmpire.Core.Model
 
             for (var cover = 0; cover < party.Size; cover++)
             {
-                var recipeId = wanted[_rng.Next(wanted.Count)];
+                var recipeId = PickByAppetite(wanted, appetites);
                 var recipe = _definitions.GetRecipe(recipeId);
                 var ticket = _pass.Fire(recipe, tick, _restaurant.Inventory);
 
@@ -571,6 +583,26 @@ namespace RestaurantEmpire.Core.Model
                 sensitivity,
                 archetype,
                 tastes);
+        }
+
+        /// <summary>Weighted choice — a dish twice as appealing is ordered twice as often.</summary>
+        private string PickByAppetite(List<string> options, List<decimal> weights)
+        {
+            var total = 0m;
+            for (var i = 0; i < weights.Count; i++) total += weights[i];
+
+            if (total <= 0m) return options[_rng.Next(options.Count)];
+
+            var roll = (decimal)_rng.NextDouble() * total;
+            var running = 0m;
+
+            for (var i = 0; i < options.Count; i++)
+            {
+                running += weights[i];
+                if (roll < running) return options[i];
+            }
+
+            return options[options.Count - 1];
         }
 
         private int RollPartySize()

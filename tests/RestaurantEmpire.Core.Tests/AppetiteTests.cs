@@ -45,6 +45,20 @@ namespace RestaurantEmpire.Core.Tests
             return restaurant;
         }
 
+        /// <summary>
+        /// Puzzles among dishes that actually SOLD.
+        ///
+        /// A dish nobody ordered has a zero popularity share and an above-average margin, so
+        /// the matrix classifies it a Puzzle — correctly, but uninformatively. A breakfast
+        /// dish left on a dinner menu will therefore always produce a Puzzle no matter what
+        /// prices do, which would let these tests pass on an artifact rather than on the
+        /// mechanism they are meant to be measuring.
+        /// </summary>
+        private static System.Collections.Generic.List<MenuItemAnalysis> SoldPuzzles(MenuAnalysis analysis)
+        {
+            return analysis.OfClass(MenuClassification.Puzzle).Where(i => i.UnitsSold > 0).ToList();
+        }
+
         private static MenuAnalysis TradeFor(Restaurant restaurant, ServiceWindow window, int startHour, int days = 14)
         {
             restaurant.ServiceWindows.Clear();
@@ -85,8 +99,9 @@ namespace RestaurantEmpire.Core.Tests
                 "share spread is only " + bottom.ToString("0.000") + " to " + top.ToString("0.000") +
                 " — that is still close to uniform");
 
-            // And the quadrant that was previously unreachable now appears.
-            Assert.NotEmpty(lunch.OfClass(MenuClassification.Puzzle));
+            // And the quadrant that was previously unreachable now appears — on a dish
+            // people are genuinely buying, not on an unsold one.
+            Assert.NotEmpty(SoldPuzzles(lunch));
         }
 
         [Fact]
@@ -195,6 +210,66 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(definitions.GetRecipe("truffle-risotto").HasTag("luxury"));
             Assert.True(definitions.GetRecipe("house-focaccia").HasTag("quick"));
             Assert.Empty(definitions.LoadWarnings);
+        }
+
+        // ---- Price is the load-bearing half, and this is the experiment that showed it ----
+
+        [Fact]
+        public void PriceDrivesOrderRate_NotJustTheScoreAfterwards()
+        {
+            // The gap this fixes: PriceSensitivity existed from the start but was only ever
+            // read on the way OUT, in the satisfaction score, deciding whether a meal felt
+            // like value once eaten. It was judging, never choosing — so a guest ordered the
+            // 34 risotto as readily as the 14 margherita and grumbled afterwards.
+            var thrifty = new CustomerParty("a", 2, 0, 30, 1.4m, CustomerArchetype.Local);
+            var expensed = new CustomerParty("b", 2, 0, 30, 0.7m, CustomerArchetype.Local);
+
+            // A dish at twice the menu average.
+            Assert.True(thrifty.PriceAppeal(2m) < thrifty.PriceAppeal(1m));
+            Assert.True(thrifty.PriceAppeal(2m) < expensed.PriceAppeal(2m));
+
+            // At the menu average, price is not a factor for anybody.
+            Assert.Equal(1m, thrifty.PriceAppeal(1m));
+            Assert.Equal(1m, expensed.PriceAppeal(1m));
+        }
+
+        [Fact]
+        public void TheDearestDishStaysOrderable_JustLessOften()
+        {
+            // A floor, so an expensive dish is a Puzzle rather than decoration.
+            var family = new CustomerParty("a", 4, 0, 30, 1.35m, CustomerArchetype.Family);
+
+            Assert.True(family.PriceAppeal(4m) > 0m);
+            Assert.True(family.PriceAppeal(4m) < family.PriceAppeal(1m) / 2m);
+        }
+
+        [Fact]
+        public void FlatteningEveryPriceCollapsesThePuzzleQuadrant()
+        {
+            // The experiment, pinned. If every dish costs the same, the only thing left
+            // separating them is taste — and taste alone does not create enough spread to
+            // push anything under the popularity bar. Price is what makes a high-margin,
+            // low-volume dish possible, which is the definition of a Puzzle.
+            var realPrices = Build(out _, Neighbourhood.SuburbanHighStreet());
+            var realPrices2 = TradeFor(realPrices, new ServiceWindow("Dinner", 18, 23), 18);
+
+            var flat = Build(out var flatCompany, Neighbourhood.SuburbanHighStreet());
+            foreach (var id in flat.Menu.RecipeIds) flatCompany.Pricing.SetPrice(id, 16m);
+            var withoutPrices = TradeFor(flat, new ServiceWindow("Dinner", 18, 23), 18);
+
+            Assert.NotEmpty(SoldPuzzles(realPrices2));
+            Assert.Empty(SoldPuzzles(withoutPrices));
+
+            // And the spread genuinely narrows rather than merely reshuffling.
+            var soldWith = realPrices2.Items.Where(i => i.UnitsSold > 0).ToList();
+            var soldWithout = withoutPrices.Items.Where(i => i.UnitsSold > 0).ToList();
+
+            var spreadWith = soldWith.Max(i => i.PopularityShare) / soldWith.Min(i => i.PopularityShare);
+            var spreadWithout = soldWithout.Max(i => i.PopularityShare) / soldWithout.Min(i => i.PopularityShare);
+
+            Assert.True(spreadWith > spreadWithout * 1.5m,
+                "price contributed a spread of " + spreadWith.ToString("0.0") + "x against " +
+                spreadWithout.ToString("0.0") + "x without it");
         }
     }
 }

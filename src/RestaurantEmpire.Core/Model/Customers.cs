@@ -51,25 +51,63 @@ namespace RestaurantEmpire.Core.Model
         public IReadOnlyList<string> Tastes { get; }
 
         /// <summary>
-        /// How much more likely this party is to order a given dish, over a neutral one.
-        /// Their type pulls them one way and their own taste pulls them another.
+        /// How much more likely this party is to order a given dish than a neutral one.
+        ///
+        /// TWO THINGS DECIDE THIS, and the first one is the important one.
+        ///
+        /// PRICE. A guest looks at what a dish costs before ordering it, judged against the
+        /// rest of the menu and against how much they care. That is the actual real-world
+        /// mechanism behind a high-margin, low-volume dish — the definition of a Puzzle on
+        /// the Kasavana-Smith matrix — and its absence is why no Puzzle could form.
+        /// `PriceSensitivity` existed on this class from the start but was only ever
+        /// consulted on the way OUT, in the satisfaction score, to decide whether the meal
+        /// felt like value after it had been eaten. It was judging, never choosing. Phase 4's
+        /// Customers contract lists "budget/price sensitivity" among what a customer knows;
+        /// this is that contract finally being honoured on the way in.
+        ///
+        /// TASTE. Then their type and their own preferences pull them around — a family
+        /// toward something to share, someone who loves seafood toward the fish. This adds
+        /// variety on top of the price signal rather than substituting for it.
         /// </summary>
-        public int AppetiteFor(Definitions.RecipeDefinition recipe)
+        /// <param name="relativePrice">This dish's price over the menu's average.</param>
+        public decimal AppetiteFor(Definitions.RecipeDefinition recipe, decimal relativePrice = 1m)
         {
-            if (recipe == null) return 1;
+            if (recipe == null) return 1m;
 
             var profile = ArchetypeProfile.For(Archetype);
-            var weight = 2;   // everyone will eat most things
+            var taste = 2m;   // everyone will eat most things
 
             for (var i = 0; i < recipe.Tags.Count; i++)
             {
-                weight += profile.PullToward(recipe.Tags[i]);
+                taste += profile.PullToward(recipe.Tags[i]);
 
                 for (var j = 0; j < Tastes.Count; j++)
-                    if (Tastes[j] == recipe.Tags[i]) weight += 3;
+                    if (Tastes[j] == recipe.Tags[i]) taste += 3m;
             }
 
-            return weight < 1 ? 1 : weight;   // never quite zero; people surprise you
+            if (taste < 1m) taste = 1m;   // never quite zero; people surprise you
+
+            return taste * PriceAppeal(relativePrice);
+        }
+
+        /// <summary>
+        /// How much a price puts this guest off, relative to the rest of the menu.
+        ///
+        /// At the menu average this is 1. A dish at twice the average roughly halves a
+        /// neutral guest's appetite for it, and does considerably worse with a family
+        /// watching the bill than with someone on the company card.
+        /// </summary>
+        public decimal PriceAppeal(decimal relativePrice)
+        {
+            if (relativePrice <= 0m) return 1m;
+
+            // Deliberately gentle and linear rather than a curve: dear dishes sell less,
+            // they do not become unorderable. A floor keeps the priciest dish on the menu
+            // rather than making it decoration.
+            var appeal = 1m - ((relativePrice - 1m) * PriceSensitivity * 0.55m);
+
+            if (appeal < 0.12m) return 0.12m;
+            return appeal > 1.6m ? 1.6m : appeal;
         }
 
         public override string ToString()

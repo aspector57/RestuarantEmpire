@@ -6,7 +6,7 @@ A restaurant management/tycoon game. Full design rationale lives in `docs/design
 
 ---
 
-## Current milestone: M0 — Headless Simulation
+## Earlier milestone: M0 — Headless Simulation
 
 **No graphics. No engine. Plain C# with zero engine dependencies, validated by unit tests and logs.**
 
@@ -72,11 +72,69 @@ It also surfaces opportunities, not only problems, and is capable of saying noth
 there is a test for a healthy restaurant getting no advice, because an Advisor that always
 has an opinion stops being read.
 
-**Customer archetypes and appetite** — which fixed the degenerate popularity axis.
+### M2 is authorized ONLY insofar as it serves the M1(b) bar (Aaron)
+
+Starting M2 while M1(b) fails looks like a violation of "do not build ahead" and is not: it
+is the roadmap error flagged before M1 started, surfacing exactly as predicted. M1(b)'s
+diagnosis was interrupts that name a problem but not an action. **The Advisor is the thing
+that fixes that — you cannot pass M1(b) without it.** Building it is the remediation.
+
+But the scope is bounded explicitly, or the precedent erodes the rule:
+
+> **M2 work is authorized only insofar as it serves the M1(b) bar. The Advisor and customer
+> archetypes qualify. R&D, promotion ladders, and Power Rankings do not** — those are the
+> "while we're in here" additions the rule exists to stop.
+
+**Customer archetypes, appetite, and price** — which fixed the degenerate popularity axis.
 
 Guests used to pick dishes uniformly at random, so with four dishes every dish landed near
 a 25% share, comfortably above the 17.5% popularity bar. A Puzzle (high margin, LOW volume)
 could not arise naturally at all, and half the Kasavana-Smith matrix was measuring the RNG.
+
+**PRICE was the missing mechanism, and archetypes were not the prerequisite.** Aaron's
+correction, and it was right. `CustomerParty.PriceSensitivity` existed from the very first
+commit but was only ever read on the way OUT — in `SatisfactionModel.ScoreValue`, judging
+whether a meal felt like value after it had been eaten — and nowhere in dish selection. So a
+guest ordered the £34 risotto as readily as the £14 margherita and grumbled afterwards. High
+price affected the post-hoc score and never the order rate, which is precisely why no Puzzle
+could form: high-margin/low-volume is *definitionally* about volume.
+
+**This was an implementation gap against a contract that already existed, not a design gap.**
+Phase 4's Customers contract lists "budget/price sensitivity" among what a customer knows. It
+got half-implemented — **judging, never choosing.** Worth watching for the same shape
+elsewhere: a field that exists, is populated, and is only read on one side of the decision it
+was meant to inform.
+
+The experiment that settled it — one menu, one site, prices flattened to a single number so
+only taste could differentiate dishes:
+
+| | share spread | quadrants reached |
+|---|---:|---|
+| Real prices | **2.6x** | Star, Plowhorse, **Puzzle** |
+| Every price flattened to 16 | 1.5x | Star, Plowhorse — **no Puzzle** |
+
+Archetypes alone produce a 1.5x spread: real texture, but not enough to push anything under
+the popularity bar. `FlatteningEveryPriceCollapsesThePuzzleQuadrant` pins this.
+
+**What archetypes DO add, measured afterwards rather than assumed:** they decide *which* dish
+lands in each quadrant. Same menu, same prices, different crowd —
+
+| Crowd | The Puzzle | Where the margherita lands |
+|---|---|---|
+| Business district, lunch | **Pizza Margherita** | **Puzzle** |
+| Nightlife quarter, dinner | Black Truffle Risotto | Plowhorse |
+| Suburban, dinner | Black Truffle Risotto | **Star** |
+
+So the two do genuinely different jobs: **price decides whether the low-popularity quadrant
+can exist at all; archetypes decide who is in it.** The order Aaron proposed — cheap price
+fix first, then check whether archetypes earn their keep — is the one that produced this
+table, and it is the order to repeat next time.
+
+**Careful with tests that pass on an artifact.** A dish nobody ordered has a zero popularity
+share and an above-average margin, so the matrix classifies it a Puzzle — correctly but
+uninformatively. A breakfast dish left on a dinner menu therefore yields a Puzzle no matter
+what prices do. The first version of the price test passed for exactly that reason. Assertions
+about the matrix should filter to dishes that actually sold (`SoldPuzzles`).
 
 Now: recipes carry **tags** (`seafood`, `luxury`, `quick`, `sharing`, `vegetarian`...), and
 every party has an **archetype** plus a personal taste. Business Lunchers pull toward quick
@@ -214,6 +272,12 @@ The diagnosis, from his logs rather than from theory:
 - **The stop names a problem but not an action.** It says the kitchen is losing the room. It does not say the oven is the bottleneck, that a slot costs £2,800, or that you can afford three. The player is left to infer all of it from four lines of complaint text.
 - He also noted, fairly, that judging this from text alone is hard — which is a real limit on what this harness can settle.
 
+**Do not over-tune interrupts against the terminal harness before graphics land.** This is a
+limit on the *instrument*, not a caveat on the reading. There is a real risk of tuning
+interrupts until they feel right in a scrolling text log and finding the whole calculus shifts
+once a walkout is something you *watch* happen. Tune them enough to test the loop; save the
+fine-tuning for when the presentation is real.
+
 **What NOT to do about it:** invent more interrupt types to manufacture variety. Variety is the Advisor's job at M2 and faking it now would build the wrong thing twice.
 
 **Done.** The walkout interrupt now names the bottleneck station, blames it by number, and quotes the cheapest fix with its price against your cash. What remains unaddressed is repetition — that needs the Advisor at M2.
@@ -312,6 +376,11 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
+- **Tests protect what is already right; playing is what finds what is wrong.** 182 tests found
+  none of the four defects that actually mattered — the walkout death spiral, the price-gouging
+  exploit, the equipment/cook ratio, and the false win rate. All four came from Aaron playing.
+  **The ratio of effort should keep shifting toward playing from here.** Tests are still written
+  first for exit criteria and still pin every fix, but they are a ratchet, not a search.
 - **Write the test first**, especially for the exit tests above. M0 is verified by tests, not by playing.
 - **Keep the simulation core free of presentation concerns.** Read surfaces (Dashboard/Advisor) are one component and are a lens over state — never a source of truth.
 - **When the design doc and an implementation convenience conflict**, raise it rather than quietly diverging — several rules here exist specifically because a well-known game got them wrong.
