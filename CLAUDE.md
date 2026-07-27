@@ -89,6 +89,31 @@ Outgrowing a city site is therefore a real, unfixable predicament — and the on
 
 **Not built, and deliberately:** extra floors, and any spatial layout at all. Floor area is a single number, not a grid. A real build mode with placement is Furniture/Layout at M1 proper, and the FreeSO/FreeSims references in the design doc are the model for it.
 
+### A site costs money to take on, and to keep (Aaron)
+
+Each `Neighbourhood` carries a `LeasePremium` (key money, paid once before you have sold
+anything) and a `MonthlyRent`. Starting capital is a fixed bankroll, so **the site you pick
+determines how much you have left to trade with**: a city pitch leaves roughly 10,500 after
+key money and fit-out, a suburban one roughly 19,500.
+
+Combined with the traffic and the ceiling, choosing a location is now a four-way trade:
+footfall, room to grow, land price, and how much of your capital survives opening day.
+
+### The scale arc, measured
+
+A starting restaurant SHOULD lose money — the question is whether investing digs you out.
+Suburban, dinner only, thirty days:
+
+| Kitchen / seats | Revenue | Labour as % | Net |
+|---|---|---|---|
+| 1 unit / 12 | 5,711 | 95% | −3,831 |
+| 3 units / 30 | 18,806 | 72% | −3,098 |
+| 4 units / 40 | 27,697 | 58% | **+1,381** |
+
+So you open underwater with a runway of a few months and have to reach roughly forty
+covers to survive. That is the intended shape and it is worth protecting during balance
+work: a starting position that is immediately profitable would remove the whole arc.
+
 ### Pricing is per-dish (Aaron)
 
 The real game prices each menu item individually. That is already how the model works —

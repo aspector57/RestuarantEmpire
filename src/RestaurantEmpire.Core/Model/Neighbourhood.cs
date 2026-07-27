@@ -25,7 +25,8 @@ namespace RestaurantEmpire.Core.Model
         private readonly double[] _trafficByHour;
 
         public Neighbourhood(string id, string name, double[] trafficByHour,
-            decimal maxFloorArea = 0m, decimal extensionCostPerSquareMetre = 500m)
+            decimal maxFloorArea = 0m, decimal extensionCostPerSquareMetre = 500m,
+            decimal leasePremium = 0m, decimal monthlyRent = 0m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Neighbourhood id is required.", nameof(id));
             if (trafficByHour == null || trafficByHour.Length != 24)
@@ -41,6 +42,8 @@ namespace RestaurantEmpire.Core.Model
             _trafficByHour = (double[])trafficByHour.Clone();
             MaxFloorArea = maxFloorArea;
             ExtensionCostPerSquareMetre = extensionCostPerSquareMetre;
+            LeasePremium = leasePremium;
+            MonthlyRent = monthlyRent;
         }
 
         /// <summary>
@@ -56,6 +59,19 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>What another square metre costs here. City land is not high street land.</summary>
         public decimal ExtensionCostPerSquareMetre { get; }
+
+        /// <summary>
+        /// What it costs just to get the keys — deposit, key money, the landlord's premium
+        /// for a good pitch. Paid once, before you have sold anything, so a prime site eats
+        /// the capital you were going to fit out and trade with.
+        /// </summary>
+        public decimal LeasePremium { get; }
+
+        /// <summary>Rent, per month. The bill that arrives whether anyone came in or not.</summary>
+        public decimal MonthlyRent { get; }
+
+        /// <summary>Rent apportioned per day, which is how the books actually see it.</summary>
+        public decimal DailyRent { get { return MonthlyRent / 30m; } }
 
         /// <summary>Room left to build into, given what the site is already using.</summary>
         public decimal ExpansionHeadroom(decimal currentFloorArea)
@@ -121,7 +137,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood CityCentre()
         {
-            return new Neighbourhood("city-centre", "City Centre", maxFloorArea: 110m, extensionCostPerSquareMetre: 950m, trafficByHour: new double[]
+            return new Neighbourhood(leasePremium: 12000m, monthlyRent: 4500m, id: "city-centre", name: "City Centre", maxFloorArea: 110m, extensionCostPerSquareMetre: 950m, trafficByHour: new double[]
             {
             //  00   01   02   03   04   05   06   07   08   09   10   11
                 2,   1,   0,   0,   0,   1,   4,  10,  16,  10,   7,  12,
@@ -137,7 +153,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood BusinessDistrict()
         {
-            return new Neighbourhood("business-district", "Business District", maxFloorArea: 150m, extensionCostPerSquareMetre: 720m, trafficByHour: new double[]
+            return new Neighbourhood(leasePremium: 8000m, monthlyRent: 3200m, id: "business-district", name: "Business District", maxFloorArea: 150m, extensionCostPerSquareMetre: 720m, trafficByHour: new double[]
             {
                 0,   0,   0,   0,   0,   0,   5,  16,  22,  12,   6,  14,
                30,  32,  14,   5,   4,   6,   8,   5,   2,   1,   0,   0
@@ -150,7 +166,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood SuburbanHighStreet()
         {
-            return new Neighbourhood("suburban-high-street", "Suburban High Street", maxFloorArea: 280m, extensionCostPerSquareMetre: 340m, trafficByHour: new double[]
+            return new Neighbourhood(leasePremium: 3000m, monthlyRent: 1500m, id: "suburban-high-street", name: "Suburban High Street", maxFloorArea: 280m, extensionCostPerSquareMetre: 340m, trafficByHour: new double[]
             {
                 0,   0,   0,   0,   0,   0,   1,   3,   5,   4,   5,   8,
                13,  12,   7,   5,   6,  10,  19,  23,  20,  12,   3,   1
@@ -163,7 +179,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood NightlifeQuarter()
         {
-            return new Neighbourhood("nightlife-quarter", "Nightlife Quarter", maxFloorArea: 140m, extensionCostPerSquareMetre: 660m, trafficByHour: new double[]
+            return new Neighbourhood(leasePremium: 7000m, monthlyRent: 2900m, id: "nightlife-quarter", name: "Nightlife Quarter", maxFloorArea: 140m, extensionCostPerSquareMetre: 660m, trafficByHour: new double[]
             {
                22,  20,  14,   6,   2,   1,   0,   0,   0,   1,   2,   4,
                 9,  11,   8,   6,   7,  11,  17,  22,  26,  28,  27,  25

@@ -318,11 +318,19 @@ namespace RestaurantEmpire.Core.Model
             var party = RollParty(tick);
             _partiesArrived++;
 
-            if (_restaurant.SeatingCapacity > 0 && _occupiedSeats + party.Size > _restaurant.SeatingCapacity)
+            // "No seats" means unlimited ONLY in a building whose floor was never measured —
+            // a food truck, a ghost kitchen, a bare test fixture. In a real unit, no tables
+            // means nobody sits down. Without that distinction, failing to fit your tables
+            // silently removed the constraint and looked like a triumph.
+            var seats = _restaurant.SeatingCapacity;
+            var unconstrained = seats == 0 && _restaurant.FloorArea <= 0m;
+
+            if (!unconstrained && _occupiedSeats + party.Size > seats)
             {
                 _partiesTurnedAway++;
-                _diagnostics.Add("Turned away a party of " + party.Size + " — dining room full (" +
-                                 _restaurant.SeatingCapacity + " seats).");
+                _diagnostics.Add(seats == 0
+                    ? "Turned away a party of " + party.Size + " — there is nowhere to sit."
+                    : "Turned away a party of " + party.Size + " — dining room full (" + seats + " seats).");
                 return null;
             }
 

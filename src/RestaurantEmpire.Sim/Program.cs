@@ -46,7 +46,7 @@ namespace RestaurantEmpire.Sim
 
             // The menu is a choice. Offering nothing anyone wants at breakfast is allowed,
             // and is exactly how you pay a morning's labour for an empty room.
-            var menuArg = Arg(args, "--menu", "all");
+            var menuArg = Arg(args, "--menu", "margherita,house-focaccia,caprese-salad");
             foreach (var recipe in definitions.Recipes)
             {
                 var wanted = menuArg == "all"
@@ -73,7 +73,7 @@ namespace RestaurantEmpire.Sim
 
             // The player picks the hours. Whether anybody is out there is the location's call.
             restaurant.ServiceWindows.Clear();
-            foreach (var spec in Arg(args, "--hours", "12-15,18-23").Split(','))
+            foreach (var spec in Arg(args, "--hours", "18-23").Split(','))
             {
                 var parts = spec.Split('-');
                 if (parts.Length != 2) continue;
@@ -82,6 +82,12 @@ namespace RestaurantEmpire.Sim
                 if (!int.TryParse(parts[0], out from) || !int.TryParse(parts[1], out to)) continue;
 
                 restaurant.ServiceWindows.Add(new ServiceWindow(NameFor(from), from, to));
+            }
+
+            if (restaurant.Location.LeasePremium > 0m)
+            {
+                company.Economy.Record(0, LedgerCategory.CapitalExpenditure, restaurant.Location.LeasePremium,
+                    "Key money and deposit on " + restaurant.Location.Name, restaurant.Id);
             }
 
             // A real unit, with a real floor. The kitchen and the dining room compete for it.
@@ -108,7 +114,11 @@ namespace RestaurantEmpire.Sim
             if (seats > 0)
             {
                 try { restaurant.BuyTables("tables", "Tables and chairs", seats * 120m, seats, 0.55m); }
-                catch (InvalidOperationException ex) { Console.WriteLine("  !! " + ex.Message); }
+                catch (InvalidOperationException ex)
+                {
+                    Console.WriteLine("  !! " + ex.Message);
+                    Console.WriteLine("  !! YOU HAVE NO TABLES. Nobody can sit down. Buy a smaller kitchen or a bigger unit.");
+                }
             }
 
             var runner = new SimulationRunner(restaurant, new GameClock(), seed, new InterruptPolicy
@@ -118,14 +128,21 @@ namespace RestaurantEmpire.Sim
                 StopOnStockout = true
             });
 
-            // Labour scales with how long the doors are open. Nothing in the core generates
-            // labour until Employees arrive at M1, but charging it flat per DAY made long
-            // hours look free, which is exactly the illusion the location model exists to kill.
+            // Labour scales with how long the doors are open AND with how big the operation
+            // is. A flat brigade meant a twelve-seat room paid for four staff, which is not
+            // a balance problem so much as an obviously wrong model. Nothing in the core
+            // generates labour until Employees arrive at M1; this is the harness's stand-in.
             var openHours = restaurant.ServiceWindows.Sum(w => w.LengthMinutes) / 60m;
+            var stationUnits = restaurant.Kitchen.Stations.Sum(s => s.ConcurrentCapacity);
+            var staff = StaffNeeded(restaurant.SeatingCapacity, stationUnits);
+
+            Console.WriteLine();
+            Console.WriteLine("  staffing " + staff + " on shift at " + Dec(args, "--wage", 18m).ToString("N0") +
+                              "/hr across " + openHours.ToString("0.#") + " open hours");
 
             var session = new Session(runner, company,
-                labourPerDay: Dec(args, "--labour-per-hour", 72m) * openHours,
-                overheadPerDay: Dec(args, "--overhead", 300m));
+                labourPerDay: Dec(args, "--wage", 18m) * staff * openHours,
+                overheadPerDay: Dec(args, "--overhead", restaurant.Location.DailyRent));
 
 
 
@@ -570,8 +587,8 @@ namespace RestaurantEmpire.Sim
             Console.WriteLine();
             Console.WriteLine("  WHERE DO YOU WANT TO OPEN?");
             Console.WriteLine();
-            Console.WriteLine("      site                    busiest hour   best trade      can grow to    land");
-            Console.WriteLine("      ----------------------------------------------------------------------------");
+            Console.WriteLine("      site                    busiest hour   best trade   grow to      land   key money      rent");
+            Console.WriteLine("      ---------------------------------------------------------------------------------------");
 
             for (var i = 0; i < sites.Length; i++)
             {
@@ -579,14 +596,16 @@ namespace RestaurantEmpire.Sim
                 var peakHour = 0;
                 for (var h = 0; h < 24; h++) { if (site.TrafficAtHour(h) > site.TrafficAtHour(peakHour)) peakHour = h; }
 
-                Console.WriteLine(string.Format("      [{0}] {1,-20} {2,8}   {3,10}   {4,10}m2   {5,6}/m2",
+                Console.WriteLine(string.Format("      [{0}] {1,-20} {2,8}   {3,10}   {4,5}m2   {5,5}/m2   {6,9}   {7,6}/mo",
                     i + 1, site.Name, peakHour.ToString("00") + ":00",
                     site.BusiestHourTraffic.ToString("0") + " parties",
-                    site.MaxFloorArea.ToString("0"), site.ExtensionCostPerSquareMetre.ToString("N0")));
+                    site.MaxFloorArea.ToString("0"), site.ExtensionCostPerSquareMetre.ToString("N0"),
+                    site.LeasePremium.ToString("N0"), site.MonthlyRent.ToString("N0")));
             }
 
             Console.WriteLine();
-            Console.WriteLine("      The busiest pitches have the least room to build into. Choose accordingly.");
+            Console.WriteLine("      The busiest pitches have the least room to build into, and cost the most");
+            Console.WriteLine("      to take on. Key money comes straight out of what you had to trade with.");
             Console.Write("  > ");
 
             var input = Console.ReadLine();
@@ -597,6 +616,17 @@ namespace RestaurantEmpire.Sim
 
             Console.WriteLine("  (defaulting to the suburbs)");
             return sites[3];
+        }
+
+        /// <summary>
+        /// Roughly how many people it takes to run a room this size: someone on the pass,
+        /// a server per fourteen or so covers, and another pair of hands once the kitchen
+        /// has more than a few stations going.
+        /// </summary>
+        private static int StaffNeeded(int seats, int stationUnits)
+        {
+            var floor = seats <= 0 ? 1 : (int)Math.Ceiling(seats / 14.0);
+            return 1 + floor + (stationUnits / 4);
         }
 
         private static Neighbourhood Where(string key)
@@ -658,13 +688,13 @@ the question it exists to answer is whether being stopped feels worth it.
   --price <mult>         multiply every menu price, e.g. 1.5
   --stations <n>         slots per kitchen station          (default 3)
   --location <where>     suburban | city | business | nightlife
-  --hours <spec>         e.g. 7-10,12-15,18-23   (default 12-15,18-23)
+  --hours <spec>         e.g. 7-10,12-15,18-23   (default 18-23)
   --menu <what>          all | dinner | a,comma,list of recipe ids
   --seats <n>            dining room capacity, 0 = unlimited
   --cash <n>             opening cash                       (default 20000)
   --stock <n>            opening stock per ingredient       (default 2000)
-  --labour-per-hour <n>  labour per hour the doors are open (default 72)
-  --overhead <n>         rent and utilities per day         (default 300)
+  --wage <n>             per person per hour; headcount scales with the room (default 18)
+  --overhead <n>         rent per day  (default: whatever the site charges)
   --walkout-streak <n>   walkouts in a row before stopping  (default 4)
   --cash-floor <n>       cash level that stops the sim      (default 0)
   --seed <n>             a different world
