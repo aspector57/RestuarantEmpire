@@ -68,7 +68,8 @@ namespace RestaurantEmpire.Sim
             if (priceMultiplier != 1.0m)
                 foreach (var id in restaurant.Menu.RecipeIds) company.Pricing.AdjustPrice(id, priceMultiplier);
 
-            restaurant.Location = Where(Arg(args, "--location", "suburban"));
+            var namedLocation = Arg(args, "--location", null);
+            restaurant.Location = namedLocation != null ? Where(namedLocation) : ChooseASite();
 
             // The player picks the hours. Whether anybody is out there is the location's call.
             restaurant.ServiceWindows.Clear();
@@ -127,6 +128,20 @@ namespace RestaurantEmpire.Sim
                 overheadPerDay: Dec(args, "--overhead", 300m));
 
 
+
+            var fitOut = company.Economy.SummarizeAll(restaurant.Id).CapitalExpenditure;
+            if (fitOut > 0m)
+            {
+                Console.WriteLine();
+                Console.WriteLine("  FITTING OUT");
+                foreach (var entry in company.Economy.Entries)
+                {
+                    if (entry.Category == LedgerCategory.CapitalExpenditure)
+                        Console.WriteLine("    " + entry.Amount.ToString("N2").PadLeft(10) + "   " + entry.Description);
+                }
+
+                Console.WriteLine("    " + fitOut.ToString("N2").PadLeft(10) + "   spent before you opened the doors");
+            }
 
             Console.WriteLine();
             Console.WriteLine("  " + restaurant.Location.Name + "  ·  sourcing " + supplier +
@@ -533,6 +548,55 @@ namespace RestaurantEmpire.Sim
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The first real decision of a run: where to open.
+        ///
+        /// Worth making in the game rather than on the command line, because the trade is
+        /// genuinely interesting — the best passing trade comes with the least room to grow
+        /// and the dearest land, so a great pitch can be one you outgrow and cannot fix.
+        /// </summary>
+        private static Neighbourhood ChooseASite()
+        {
+            var sites = new[]
+            {
+                Neighbourhood.CityCentre(),
+                Neighbourhood.BusinessDistrict(),
+                Neighbourhood.NightlifeQuarter(),
+                Neighbourhood.SuburbanHighStreet()
+            };
+
+            Console.WriteLine();
+            Console.WriteLine("  WHERE DO YOU WANT TO OPEN?");
+            Console.WriteLine();
+            Console.WriteLine("      site                    busiest hour   best trade      can grow to    land");
+            Console.WriteLine("      ----------------------------------------------------------------------------");
+
+            for (var i = 0; i < sites.Length; i++)
+            {
+                var site = sites[i];
+                var peakHour = 0;
+                for (var h = 0; h < 24; h++) { if (site.TrafficAtHour(h) > site.TrafficAtHour(peakHour)) peakHour = h; }
+
+                Console.WriteLine(string.Format("      [{0}] {1,-20} {2,8}   {3,10}   {4,10}m2   {5,6}/m2",
+                    i + 1, site.Name, peakHour.ToString("00") + ":00",
+                    site.BusiestHourTraffic.ToString("0") + " parties",
+                    site.MaxFloorArea.ToString("0"), site.ExtensionCostPerSquareMetre.ToString("N0")));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("      The busiest pitches have the least room to build into. Choose accordingly.");
+            Console.Write("  > ");
+
+            var input = Console.ReadLine();
+            int pick;
+
+            if (input != null && int.TryParse(input.Trim(), out pick) && pick >= 1 && pick <= sites.Length)
+                return sites[pick - 1];
+
+            Console.WriteLine("  (defaulting to the suburbs)");
+            return sites[3];
         }
 
         private static Neighbourhood Where(string key)

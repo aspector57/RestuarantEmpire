@@ -21,7 +21,7 @@ No graphics yet — that is M1's Unity layer. But the loop is real and you can p
 the terminal:
 
 ```bash
-dotnet run --project src/RestaurantEmpire.Sim          # drive it yourself
+dotnet run --project src/RestaurantEmpire.Sim          # drive it yourself; it asks where to open
 dotnet run --project src/RestaurantEmpire.Sim -- --help
 ```
 
