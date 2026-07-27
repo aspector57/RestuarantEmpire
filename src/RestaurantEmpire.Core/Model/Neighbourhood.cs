@@ -24,7 +24,8 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly double[] _trafficByHour;
 
-        public Neighbourhood(string id, string name, double[] trafficByHour)
+        public Neighbourhood(string id, string name, double[] trafficByHour,
+            decimal maxFloorArea = 0m, decimal extensionCostPerSquareMetre = 500m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Neighbourhood id is required.", nameof(id));
             if (trafficByHour == null || trafficByHour.Length != 24)
@@ -38,6 +39,28 @@ namespace RestaurantEmpire.Core.Model
             Id = id;
             Name = name ?? id;
             _trafficByHour = (double[])trafficByHour.Clone();
+            MaxFloorArea = maxFloorArea;
+            ExtensionCostPerSquareMetre = extensionCostPerSquareMetre;
+        }
+
+        /// <summary>
+        /// The biggest this site could ever be built out to. Zero means unconstrained.
+        ///
+        /// This is the honest version of "you cannot just knock down the wall and build into
+        /// the building next door". A city centre pitch has wonderful passing trade and
+        /// almost nowhere to grow; a suburban high street has less trade and a car park
+        /// behind it. Choosing a location is therefore a bet on your ceiling as much as on
+        /// your footfall — and the two pull in opposite directions on purpose.
+        /// </summary>
+        public decimal MaxFloorArea { get; }
+
+        /// <summary>What another square metre costs here. City land is not high street land.</summary>
+        public decimal ExtensionCostPerSquareMetre { get; }
+
+        /// <summary>Room left to build into, given what the site is already using.</summary>
+        public decimal ExpansionHeadroom(decimal currentFloorArea)
+        {
+            return MaxFloorArea <= 0m ? decimal.MaxValue : MaxFloorArea - currentFloorArea;
         }
 
         public string Id { get; }
@@ -98,7 +121,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood CityCentre()
         {
-            return new Neighbourhood("city-centre", "City Centre", new double[]
+            return new Neighbourhood("city-centre", "City Centre", maxFloorArea: 110m, extensionCostPerSquareMetre: 950m, trafficByHour: new double[]
             {
             //  00   01   02   03   04   05   06   07   08   09   10   11
                 2,   1,   0,   0,   0,   1,   4,  10,  16,  10,   7,  12,
@@ -114,7 +137,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood BusinessDistrict()
         {
-            return new Neighbourhood("business-district", "Business District", new double[]
+            return new Neighbourhood("business-district", "Business District", maxFloorArea: 150m, extensionCostPerSquareMetre: 720m, trafficByHour: new double[]
             {
                 0,   0,   0,   0,   0,   0,   5,  16,  22,  12,   6,  14,
                30,  32,  14,   5,   4,   6,   8,   5,   2,   1,   0,   0
@@ -127,7 +150,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood SuburbanHighStreet()
         {
-            return new Neighbourhood("suburban-high-street", "Suburban High Street", new double[]
+            return new Neighbourhood("suburban-high-street", "Suburban High Street", maxFloorArea: 280m, extensionCostPerSquareMetre: 340m, trafficByHour: new double[]
             {
                 0,   0,   0,   0,   0,   0,   1,   3,   5,   4,   5,   8,
                13,  12,   7,   5,   6,  10,  19,  23,  20,  12,   3,   1
@@ -140,7 +163,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public static Neighbourhood NightlifeQuarter()
         {
-            return new Neighbourhood("nightlife-quarter", "Nightlife Quarter", new double[]
+            return new Neighbourhood("nightlife-quarter", "Nightlife Quarter", maxFloorArea: 140m, extensionCostPerSquareMetre: 660m, trafficByHour: new double[]
             {
                22,  20,  14,   6,   2,   1,   0,   0,   0,   1,   2,   4,
                 9,  11,   8,   6,   7,  11,  17,  22,  26,  28,  27,  25

@@ -36,12 +36,12 @@ namespace RestaurantEmpire.Sim
 
             var supplier = Arg(args, "--supplier", "valley-produce");
             var priceMultiplier = Dec(args, "--price", 1.0m);
-            var stations = Int(args, "--stations", 2);
+            var stations = Int(args, "--stations", 1);
             var demand = Dbl(args, "--demand", 25);
-            var seats = Int(args, "--seats", 20);
+            var seats = Int(args, "--seats", 12);
             var seed = Int(args, "--seed", 4242);
 
-            var company = new Company("player-co", "Your Restaurant Group", definitions, Dec(args, "--cash", 20000m));
+            var company = new Company("player-co", "Your Restaurant Group", definitions, Dec(args, "--cash", 30000m));
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             // The menu is a choice. Offering nothing anyone wants at breakfast is allowed,
@@ -135,7 +135,9 @@ namespace RestaurantEmpire.Sim
             Console.WriteLine("  open: " + string.Join(", ", restaurant.ServiceWindows.Select(w => w.ToString())));
             Console.WriteLine("  floor: " + restaurant.UsedFloorArea.ToString("0.0") + " of " +
                               restaurant.FloorArea.ToString("0.0") + "m2 used  ·  " +
-                              restaurant.SeatingCapacity + " seats");
+                              restaurant.SeatingCapacity + " seats  ·  site allows up to " +
+                              restaurant.Location.MaxFloorArea.ToString("0.0") + "m2 at " +
+                              restaurant.Location.ExtensionCostPerSquareMetre.ToString("N0") + "/m2");
 
             foreach (var window in restaurant.ServiceWindows)
             {
@@ -322,7 +324,8 @@ namespace RestaurantEmpire.Sim
                     Console.WriteLine();
                     Console.WriteLine("  cash " + _runner.ProjectedCash.ToString("N2"));
                     Console.Write("  [1] buy a slot at a station   [2] change prices   [3] switch supplier\n" +
-                                  "  [4] change hours              [5] buy tables      [enter] back > ");
+                                  "  [4] change hours              [5] buy tables      [6] extend the building\n" +
+                                  "  [enter] back > ");
 
                     var input = Console.ReadLine();
                     if (input == null) return false;
@@ -458,6 +461,36 @@ namespace RestaurantEmpire.Sim
                                                   ". Cost " + cost.ToString("N2") + ".");
                             }
                             else Console.WriteLine("    that isn't a number.");
+                            break;
+
+                        case "6":
+                            Console.WriteLine("    building is " + restaurant.FloorArea.ToString("0.0") + "m2, " +
+                                restaurant.FreeFloorArea.ToString("0.0") + "m2 of it free.");
+
+                            var headroom = restaurant.ExpansionHeadroom;
+                            if (headroom <= 0m)
+                            {
+                                Console.WriteLine("    " + restaurant.Location.Name +
+                                    " will not let this site get any bigger. Upgrading equipment is the way to grow now.");
+                                break;
+                            }
+
+                            Console.Write("    how many more m2? (up to " + headroom.ToString("0.0") + " at " +
+                                restaurant.Location.ExtensionCostPerSquareMetre.ToString("N0") + "/m2) > ");
+                            var areaText = Console.ReadLine();
+                            if (areaText == null) return false;
+
+                            decimal extra;
+                            if (!decimal.TryParse(areaText.Trim(), out extra) || extra <= 0m)
+                            { Console.WriteLine("    that isn't a number."); break; }
+
+                            try
+                            {
+                                restaurant.ExtendBuilding(extra, _runner.Clock.Tick);
+                                Console.WriteLine("    the building is now " + restaurant.FloorArea.ToString("0.0") +
+                                    "m2, with " + restaurant.FreeFloorArea.ToString("0.0") + "m2 free.");
+                            }
+                            catch (InvalidOperationException ex) { Console.WriteLine("    " + ex.Message); }
                             break;
 
                         default:

@@ -90,6 +90,50 @@ namespace RestaurantEmpire.Core.Model
 
         public decimal UsedFloorArea { get { return Kitchen.Footprint + DiningRoom.Footprint; } }
 
+        /// <summary>
+        /// How much bigger this building could ever get, given where it is. Zero means the
+        /// site is already built out to its limit.
+        /// </summary>
+        public decimal ExpansionHeadroom
+        {
+            get { return Location == null ? decimal.MaxValue : Location.ExpansionHeadroom(FloorArea); }
+        }
+
+        /// <summary>
+        /// Builds out into more of the site — the crude first form of build mode.
+        ///
+        /// It is capital-gated and, more interestingly, LOCATION-gated. In a city centre you
+        /// cannot simply knock through into the building next door, so a wonderful pitch can
+        /// be one you outgrow and cannot fix. On a suburban high street there is a car park
+        /// behind you and land is a third of the price.
+        ///
+        /// That is the trade the location choice is really making: footfall against ceiling.
+        /// </summary>
+        public void ExtendBuilding(decimal extraSquareMetres, long tick = 0)
+        {
+            if (extraSquareMetres <= 0m)
+                throw new ArgumentOutOfRangeException(nameof(extraSquareMetres), "Extend by something.");
+
+            if (Location == null)
+                throw new InvalidOperationException("This restaurant has no location, so there is nothing to build into.");
+
+            var headroom = ExpansionHeadroom;
+            if (extraSquareMetres > headroom)
+            {
+                throw new InvalidOperationException(
+                    "Cannot extend: " + Location.Name + " allows this site up to " +
+                    Location.MaxFloorArea.ToString("0.0") + "m2 and you are at " + FloorArea.ToString("0.0") +
+                    "m2, so there is only " + (headroom < 0m ? 0m : headroom).ToString("0.0") +
+                    "m2 to build into. You cannot knock through into the building next door.");
+            }
+
+            var cost = extraSquareMetres * Location.ExtensionCostPerSquareMetre;
+
+            FloorArea += extraSquareMetres;
+            Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, cost,
+                "Extended into " + extraSquareMetres.ToString("0.0") + "m2 more of the site", Id);
+        }
+
         public decimal FreeFloorArea { get { return FloorArea - UsedFloorArea; } }
 
         /// <summary>True when there is room for something of this size (always, if unmeasured).</summary>

@@ -70,6 +70,25 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 A 90m2 unit comfortably holds a working kitchen (3 ovens, 2 saute, 2 cold) and 40 covers, and nothing like fifteen of anything. `FloorArea = 0` means unmeasured and constrains nothing, which keeps food trucks and test fixtures from needing a lease.
 
+### Build mode, and why a location has a ceiling (Aaron)
+
+Aaron's framing: *"builder mode where if you have the space you can add another floor or extend the building — which won't always be possible, for example in the city you can't just knock down the wall and build into the building next to you."*
+
+Built so far, as the crude first form: `Neighbourhood.MaxFloorArea` caps how big a site can ever get, `ExtensionCostPerSquareMetre` prices the land, and `Restaurant.ExtendBuilding` buys more of it. Refused past the cap with a message that says why.
+
+The tension is deliberate and is what makes location a real choice rather than "pick the busiest": **the best traffic comes with the least room to grow.**
+
+| | Lunch traffic | Site cap | Land |
+|---|---|---|---|
+| City Centre | highest | 110m2 | 950/m2 |
+| Business District | high | 150m2 | 720/m2 |
+| Nightlife Quarter | (evenings) | 140m2 | 660/m2 |
+| Suburban High Street | modest | 280m2 | 340/m2 |
+
+Outgrowing a city site is therefore a real, unfixable predicament — and the only remaining move is upgrading equipment into the same space, which is exactly what the premium tier exists for. There is a test covering that moment.
+
+**Not built, and deliberately:** extra floors, and any spatial layout at all. Floor area is a single number, not a grid. A real build mode with placement is Furniture/Layout at M1 proper, and the FreeSO/FreeSims references in the design doc are the model for it.
+
 ### Pricing is per-dish (Aaron)
 
 The real game prices each menu item individually. That is already how the model works —
