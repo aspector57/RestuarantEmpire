@@ -70,7 +70,9 @@ namespace RestaurantEmpire.Core.Model
         /// variety on top of the price signal rather than substituting for it.
         /// </summary>
         /// <param name="relativePrice">This dish's price over the menu's average.</param>
-        public decimal AppetiteFor(Definitions.RecipeDefinition recipe, decimal relativePrice = 1m)
+        /// <param name="ingredientQuality">0.2 (budget) to 1.0 (premium), from the assigned supplier.</param>
+        public decimal AppetiteFor(Definitions.RecipeDefinition recipe, decimal relativePrice = 1m,
+            decimal ingredientQuality = 0m)
         {
             if (recipe == null) return 1m;
 
@@ -87,7 +89,7 @@ namespace RestaurantEmpire.Core.Model
 
             if (taste < 1m) taste = 1m;   // never quite zero; people surprise you
 
-            return taste * PriceAppeal(relativePrice);
+            return taste * PriceAppeal(relativePrice) * QualityAppeal(ingredientQuality, relativePrice);
         }
 
         /// <summary>
@@ -108,6 +110,37 @@ namespace RestaurantEmpire.Core.Model
 
             if (appeal < 0.12m) return 0.12m;
             return appeal > 1.6m ? 1.6m : appeal;
+        }
+
+        /// <summary>
+        /// Whether the cooking justifies the asking price.
+        ///
+        /// Budget ingredients are not a problem in themselves — a cheap dish made of cheap
+        /// things is honest, and plenty of people want it. What guests object to is the
+        /// MISMATCH: premium prices on budget cooking. So this compares what the ingredients
+        /// actually are against what the price implies they should be.
+        ///
+        /// Before this, `MenuCosting.IngredientQuality` fed the satisfaction score and
+        /// nothing else, so a night on budget stock scored 0.563 against 0.731 — and served
+        /// exactly the same number of covers, with exactly the same walkouts. Quality was a
+        /// number the game wrote down and never acted on, which made the cheapest supplier
+        /// strictly dominant and free. That is the same "judging, never choosing" gap that
+        /// `PriceSensitivity` had, in the one system this whole project is built around.
+        /// </summary>
+        public decimal QualityAppeal(decimal ingredientQuality, decimal relativePrice)
+        {
+            if (ingredientQuality <= 0m) return 1m;   // nothing sourced yet — no opinion
+
+            // What the price implies. At the menu average a guest expects the house standard;
+            // at twice the average they expect the best you have.
+            var expected = relativePrice * 0.5m;
+            if (expected < 0.2m) expected = 0.2m;
+            if (expected > 1m) expected = 1m;
+
+            var appeal = 1m + ((ingredientQuality - expected) * PriceSensitivity * 0.8m);
+
+            if (appeal < 0.15m) return 0.15m;
+            return appeal > 1.5m ? 1.5m : appeal;
         }
 
         public override string ToString()

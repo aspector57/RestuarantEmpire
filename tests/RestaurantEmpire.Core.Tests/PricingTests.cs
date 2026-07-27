@@ -206,12 +206,22 @@ namespace RestaurantEmpire.Core.Tests
             foreach (var id in premium.Menu.RecipeIds) premiumCo.Pricing.AdjustPrice(id, 1.5m);
             var premiumNight = Dinner.Run(premium, 25, 99);
 
-            Assert.Equal(midNight.Revenue, premiumNight.Revenue);                             // identical takings
-            Assert.True(midNight.FoodCost < premiumNight.FoodCost);                           // mid-tier keeps more
-            Assert.True(premiumNight.AverageSatisfaction > midNight.AverageSatisfaction);     // premium pleases more
+            Assert.True(midNight.FoodCost < premiumNight.FoodCost);                       // mid-tier buys cheaper
+            Assert.True(premiumNight.AverageSatisfaction > midNight.AverageSatisfaction); // premium pleases more
 
-            // Neither is the right answer. Once Reputation converts satisfaction into
-            // volume at M1, that is precisely the bet the player will be making.
+            // AND premium now SELLS more, which is the part that used to be missing. This
+            // assertion was previously Assert.Equal(midNight.Revenue, premiumNight.Revenue)
+            // — "identical takings" — and it held only because ingredient quality fed the
+            // satisfaction score and nothing else. Budget stock served exactly as many
+            // covers as premium, so the cheapest supplier was strictly dominant and free.
+            // The old comment here anticipated this: "once satisfaction converts into volume,
+            // that is precisely the bet the player will be making." It converts now.
+            Assert.True(premiumNight.Revenue > midNight.Revenue);
+
+            // Neither is the right answer, which is the point: premium takes more at the
+            // till and hands more of it to the supplier. That is a real bet, not a free lunch.
+            Assert.True(midNight.FoodCost / midNight.Revenue
+                      < premiumNight.FoodCost / premiumNight.Revenue);
         }
 
         [Fact]

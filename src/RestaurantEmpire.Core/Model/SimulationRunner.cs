@@ -392,7 +392,8 @@ namespace RestaurantEmpire.Core.Model
                 var price = _restaurant.Costing.MenuPrice(recipeId);
                 var relative = averagePrice <= 0m ? 1m : price / averagePrice;
 
-                var appetite = party.AppetiteFor(candidate, relative);
+                var appetite = party.AppetiteFor(candidate, relative,
+                    _restaurant.Costing.IngredientQuality(recipeId));
                 if (_restaurant.Menu.IsFeatured(recipeId)) appetite *= Menu.FeaturedWeight;
 
                 wanted.Add(recipeId);
@@ -421,7 +422,8 @@ namespace RestaurantEmpire.Core.Model
             foreach (var recipeId in wanted)
             {
                 totalWait += _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick, party.Size);
-                totalValue += SatisfactionModel.ScoreValue(costing.Markup(recipeId), party.PriceSensitivity);
+                totalValue += SatisfactionModel.ScoreValue(costing.Markup(recipeId),
+                    party.PriceSensitivity, costing.IngredientQuality(recipeId));
             }
 
             // The typical wait for whatever they end up ordering, not the luckiest case —

@@ -133,7 +133,12 @@ namespace RestaurantEmpire.Core.Tests
             // Prime cost must not be gameable by hiding a cost. A walkout is expensive twice:
             // no revenue, and the plate still went in the bin.
             var restaurant = BuildTradingRestaurant(out _, openingCash: 0m);
-            restaurant.Kitchen.Install("saute", "Saute", 1);   // deliberately choke one station
+
+            // Choke the OVEN, not the saute. Saute cooks the risotto, and since quality and
+            // price entered the ordering decision guests order that rarely — so choking it
+            // no longer backs anything up and produced no walkouts to account for. The oven
+            // cooks what people actually want, which is what makes a queue.
+            restaurant.Kitchen.Install("oven", "Oven", 1);
 
             var night = Dinner.Run(restaurant, 14, 99);
 

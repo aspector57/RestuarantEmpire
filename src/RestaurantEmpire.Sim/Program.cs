@@ -287,7 +287,7 @@ namespace RestaurantEmpire.Sim
                 {
                     Report.Header(_runner);
                     Console.WriteLine();
-                    Console.Write("  [h]our [d]ay [w]eek [m]onth   [a]ct   [b]ooks [k]menu [x]matrix   [q]uit > ");
+                    Console.Write("  [h]our [d]ay [w]eek [m]onth   [a]ct   [b]ooks [k]menu [x]matrix [r]atings   [q]uit > ");
 
                     var input = Console.ReadLine();
                     if (input == null) { Summary(); return 0; }   // piped stdin ran out
@@ -305,6 +305,7 @@ namespace RestaurantEmpire.Sim
                         case "b": Report.Books(_company, _runner.Restaurant); continue;
                         case "k": Report.Menu(_runner.Restaurant); continue;
                         case "x": Report.Matrix(_runner.Restaurant, _runner.Snapshot()); continue;
+                        case "r": Report.Stars(_runner.Restaurant, _runner.Clock.Tick); continue;
                         case "a": if (!Act()) { Summary(); return 0; } continue;
 
                         case "q": Summary(); return 0;

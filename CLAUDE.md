@@ -159,6 +159,80 @@ past, which is what the whole mechanic was quietly assuming.
 Also added a seafood dish, because the design's own Advisor example is "we're sitting on a
 lot of fish — want to feature the fish dish?" and there was no fish.
 
+### Ingredient quality became something guests ACT on (Aaron), and a star readout
+
+Aaron's call: *"if you use cheap ingredients and charge a premium, people will notice and
+either complain or not order it."* He was describing a live exploit.
+
+`MenuCosting.IngredientQuality` was correct and live — supplier tier resolved through the
+inheritance chain, no caching — and it fed the satisfaction score and **nothing else**.
+Measured on one seed with only the supplier swapped:
+
+| Supplier | Covers | Walkouts | Satisfaction |
+|---|---:|---:|---:|
+| Budget Wholesale (tier 1) | 4,089 | 151 | 0.563 |
+| Valley Produce (tier 3) | 4,089 | 151 | 0.731 |
+
+**Identical covers, identical walkouts.** Since budget stock costs ~40% less, the cheapest
+supplier was strictly dominant and free — in the sourcing system this entire project exists
+to get right. The third instance of the same shape: a field that is populated, is read on the
+judging side, and never on the choosing side. See also `PriceSensitivity` above.
+
+**The first fix did not work, and measuring is what showed it.** Quality went into
+`CustomerParty.AppetiteFor`, which decides which dish off a menu. But appetite is *relative* —
+when one supplier serves every dish, a quality multiplier is a common factor across all of
+them and **cancels out exactly**. Covers moved 120 -> 123. It could never make anyone eat
+somewhere else, because it only ever redistributed within the menu.
+
+**So quality belongs in `SatisfactionModel.ScoreValue`**, which is read at the DOOR. Value is
+what you get over what you give, and only the second half was modelled; what arrives is part
+of what was paid for. Same function now serves the pre-order balk and the post-meal score, so
+judging and choosing cannot drift apart. Quality stays in `AppetiteFor` too, where it does a
+different and still-real job: discriminating between dishes when suppliers are mixed per
+ingredient.
+
+**Partially closed, and the residue is recorded rather than tuned away:**
+
+| | Gross profit | Left on reading the menu |
+|---|---:|---:|
+| Budget stock, honest prices | 1,257 | 0 |
+| Mid-tier, honest prices | 1,225 | 0 |
+| **Budget stock, 1.6x prices** | 2,143 | **11** |
+| **Mid-tier, 1.6x prices** | **2,215** | 0 |
+
+Gouging on cheap stock is now punished — mid-tier overtakes it. But cheap stock at *fair*
+prices is still marginally ahead, because value saturates when prices are honest and quality
+cannot push anyone out the door. **That residue needs meals to be REMEMBERED** — reputation
+converting satisfaction into future volume — which is the option Aaron deliberately deferred.
+Do not close it by cranking the 0.6/0.8 constants in `ScoreValue` until budget loses; that is
+tuning until the number pleases you, which this project has already been caught doing once.
+
+**The star readout (`DishRating`), and why the breakdown is the whole point.** Five stars per
+dish, split into food / speed / value / room under the guest's own weights. The total is a
+DISPLAY of the four components and never drives behaviour — the components drive behaviour on
+their own. A bare "2.4 stars" would violate Binding Principle 2 directly: the player could not
+tell whether the risotto is dear for what it is, slow out of the kitchen, or made with budget
+cheese, and those are three different fixes at three different prices. `[r]atings` in the
+harness. Nothing is stored; it is a live lens, so switching supplier moves every dish at once.
+
+Two subtleties worth keeping: `Weakest` compares WEIGHTED losses, so it never sends the player
+to redecorate over a dish failing on ingredients; and a value score below the walk-away
+threshold overrides a healthy total, because a £60 margherita on premium stock still scores
+four stars and would otherwise report "people are happy with this" about a dish nobody buys.
+
+**Two existing tests changed, and neither was weakened.** `AtTheSamePrices_PremiumBuysHappiness`
+asserted *identical takings* between mid and premium — which held only because quality could
+not affect volume. Its own closing comment had predicted this: *"once satisfaction converts
+into volume, that is precisely the bet the player will be making."* It now asserts premium
+sells MORE and keeps a worse food-cost ratio, which is a stronger claim. And
+`FoodCostIncludesPlatesCookedForGuestsWhoWalkedOut` choked the saute station, which cooks the
+risotto — a dish guests now rarely order, so nothing backed up and there were no walkouts to
+account for. It chokes the oven instead. The assertions are untouched.
+
+**Effect on the instruments:** sweep unchanged at 100/100; the campaign now has **city
+surviving twelve months** (3,748 cash) where all four sites busted before. First winning path
+that probe has ever produced.
+
 ## Earlier milestone: M1 — Single Restaurant, Placeholder Graphics, the Core Loop
 
 Not started. Scope per the design doc's Phase 8, plus the Time Control & Interrupts model from Phase 5, which is M1's primary time interface rather than a convenience feature.

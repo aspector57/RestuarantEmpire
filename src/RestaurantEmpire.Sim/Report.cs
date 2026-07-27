@@ -98,6 +98,53 @@ namespace RestaurantEmpire.Sim
             }
         }
 
+        /// <summary>
+        /// What guests make of each dish, out of five, broken into the four things that
+        /// decide it. The breakdown is the point: a bare score would tell you the risotto is
+        /// disappointing without telling you whether to change supplier, buy an oven, or drop
+        /// the price — three different fixes at three very different costs.
+        /// </summary>
+        public static void Stars(Restaurant restaurant, long atTick = 0)
+        {
+            var ratings = DishRatings.For(restaurant, atTick);
+            if (ratings.Count == 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine("  Nothing on the menu yet.");
+                return;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  WHAT PEOPLE THINK          price   rating       food  speed  value   room");
+
+            foreach (var r in ratings)
+            {
+                Console.WriteLine(string.Format("    {0,-22} {1,6:N2}   {2} {3,4:N1}   {4}  {5}  {6}  {7}",
+                    r.Name, r.MenuPrice, StarBar(r.Stars), r.Stars,
+                    Bar(r.Ingredients), Bar(r.Speed), Bar(r.Value), Bar(r.Room)));
+                Console.WriteLine("        " + r.Verdict);
+            }
+        }
+
+        private static string StarBar(decimal stars)
+        {
+            var filled = (int)System.Math.Round(stars, System.MidpointRounding.AwayFromZero);
+            if (filled < 0) filled = 0;
+            if (filled > 5) filled = 5;
+
+            return new string('*', filled) + new string('.', 5 - filled);
+        }
+
+        /// <summary>A component as a short bar, so the weak one is obvious at a glance.</summary>
+        private static string Bar(decimal score)
+        {
+            var filled = (int)System.Math.Round(score * 5m, System.MidpointRounding.AwayFromZero);
+            if (filled < 0) filled = 0;
+            if (filled > 5) filled = 5;
+
+            return new string('#', filled) + new string('-', 5 - filled);
+        }
+
         public static void Matrix(Restaurant restaurant, ServiceResult trading)
         {
             if (trading.TotalUnitsSold == 0) { Console.WriteLine("  nothing sold yet."); return; }

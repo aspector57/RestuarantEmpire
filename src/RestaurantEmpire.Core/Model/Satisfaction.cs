@@ -109,12 +109,30 @@ namespace RestaurantEmpire.Core.Model
         /// the menu in the window — they need not sit down and be disappointed to notice.
         /// That is what stops "put every price up 3x" being free money.
         /// </summary>
-        public static decimal ScoreValue(decimal markup, decimal priceSensitivity)
+        public static decimal ScoreValue(decimal markup, decimal priceSensitivity,
+            decimal ingredientQuality = 0m)
         {
             if (priceSensitivity <= 0m) priceSensitivity = 1m;
             if (markup <= 0m) return 1m;   // comped, and nobody complains about free
 
-            return Clamp((1m / markup) / priceSensitivity);
+            var worth = 1m / markup;
+
+            // WHAT ARRIVES IS PART OF WHAT YOU PAID FOR. Value is what you get over what you
+            // give, and until now only the second half was modelled — so switching every
+            // ingredient to the cheapest supplier raised margin, lowered the satisfaction
+            // score, and changed absolutely nothing else. Measured before this: budget stock
+            // served 4,089 covers with 151 walkouts, premium served 4,089 covers with 151
+            // walkouts. Identical. The cheapest supplier was strictly dominant and free,
+            // inside the one system this whole project exists to get right.
+            //
+            // Putting quality HERE rather than only in dish selection is the point. Appetite
+            // decides which dish off a menu, so a quality change applied evenly to every dish
+            // is a common factor and cancels out completely — it cannot make anyone eat
+            // somewhere else. This can, because it is read at the door.
+            if (ingredientQuality > 0m)
+                worth *= 0.6m + (ingredientQuality * 0.8m);   // tier 1 -> 0.76x, tier 5 -> 1.40x
+
+            return Clamp(worth / priceSensitivity);
         }
 
         /// <summary>
@@ -146,7 +164,7 @@ namespace RestaurantEmpire.Core.Model
 
             var speed = ScoreSpeed(ticket.WaitMinutes, party.PatienceMinutes);
             var quality = Clamp(ingredientQuality);
-            var value = ScoreValue(markup, party.PriceSensitivity);
+            var value = ScoreValue(markup, party.PriceSensitivity, ingredientQuality);
             var ambiance = Clamp(comfort);
 
             var overall = (quality * FoodQualityWeight)
@@ -158,7 +176,11 @@ namespace RestaurantEmpire.Core.Model
                 Diagnose(dishName, ticket, quality, speed, value, ambiance));
         }
 
-        private static decimal ScoreSpeed(int waitMinutes, int patienceMinutes)
+        /// <summary>
+        /// How the wait felt, 0 to 1. Public so a dish rating can be built from exactly the
+        /// same arithmetic a guest uses, rather than a second opinion that could drift.
+        /// </summary>
+        public static decimal ScoreSpeed(int waitMinutes, int patienceMinutes)
         {
             var comfortable = patienceMinutes * ComfortableWaitShare;
 
