@@ -225,10 +225,14 @@ namespace RestaurantEmpire.Core.Model
             return (serviceMinutes / station.MinutesFor(recipe)) * station.ConcurrentCapacity;
         }
 
-        /// <summary>Opens a fresh pass for one service. Queue state is per-service, never carried over.</summary>
-        public KitchenPass OpenPass(long serviceStartTick)
+        /// <summary>
+        /// Opens a fresh pass for one service. Queue state is per-service, never carried over.
+        /// Pass the number of cooks on shift to have the brigade limit throughput; zero means
+        /// staffing is not being modelled and only the equipment constrains the kitchen.
+        /// </summary>
+        public KitchenPass OpenPass(long serviceStartTick, int cooks = 0)
         {
-            return new KitchenPass(this, serviceStartTick);
+            return new KitchenPass(this, serviceStartTick, cooks);
         }
     }
 
@@ -246,11 +250,18 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly Kitchen _kitchen;
         private readonly Dictionary<string, long[]> _slotFreeAt;
+        private readonly long[] _cookFreeAt;
 
-        internal KitchenPass(Kitchen kitchen, long serviceStartTick)
+        internal KitchenPass(Kitchen kitchen, long serviceStartTick, int cooks = 0)
         {
             _kitchen = kitchen;
             _slotFreeAt = new Dictionary<string, long[]>(StringComparer.Ordinal);
+
+            // A plate needs a free machine AND somebody to stand at it. Equipment you have
+            // not staffed is equipment you are not using, which is what stops "buy another
+            // oven" from being a complete answer and makes hiring a real decision.
+            _cookFreeAt = new long[cooks < 0 ? 0 : cooks];
+            for (var i = 0; i < _cookFreeAt.Length; i++) _cookFreeAt[i] = serviceStartTick;
 
             foreach (var station in kitchen.Stations)
             {
@@ -271,7 +282,7 @@ namespace RestaurantEmpire.Core.Model
         /// lands, and the food gets cooked and binned anyway. That is a death spiral no
         /// amount of extra equipment can dig you out of.
         /// </summary>
-        public int EstimatedWaitMinutes(RecipeDefinition recipe, long atTick)
+        public int EstimatedWaitMinutes(RecipeDefinition recipe, long atTick, int plates = 1)
         {
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
 
@@ -288,7 +299,26 @@ namespace RestaurantEmpire.Core.Model
 
             var startsAt = earliest > atTick ? earliest : atTick;
 
-            return (int)(startsAt - atTick) + station.MinutesFor(recipe);
+            // A guest at the door is waiting on whichever is scarcer, the machine or the cook.
+            for (var i = 0; i < _cookFreeAt.Length; i++)
+            {
+                if (i == 0 || _cookFreeAt[i] < earliest) earliest = _cookFreeAt[i];
+            }
+
+            if (_cookFreeAt.Length > 0 && earliest > startsAt) startsAt = earliest;
+
+            // A table of four puts FOUR plates in the queue, and it is the last one landing
+            // that decides whether they stayed. Quoting the wait for a single dish is an
+            // optimistic promise that seats parties who then walk out — which showed up in
+            // a balance sweep as more walkouts than covers served.
+            var atOnce = station.ConcurrentCapacity;
+            if (_cookFreeAt.Length > 0 && _cookFreeAt.Length < atOnce) atOnce = _cookFreeAt.Length;
+            if (atOnce < 1) atOnce = 1;
+
+            var rounds = (plates + atOnce - 1) / atOnce;
+            if (rounds < 1) rounds = 1;
+
+            return (int)(startsAt - atTick) + (rounds * station.MinutesFor(recipe));
         }
 
         /// <summary>
@@ -330,9 +360,24 @@ namespace RestaurantEmpire.Core.Model
             }
 
             var startedTick = slots[chosen] > placedTick ? slots[chosen] : placedTick;
+
+            // ...and the earliest free pair of hands, when the brigade is being modelled.
+            var cook = -1;
+            if (_cookFreeAt.Length > 0)
+            {
+                cook = 0;
+                for (var i = 1; i < _cookFreeAt.Length; i++)
+                {
+                    if (_cookFreeAt[i] < _cookFreeAt[cook]) cook = i;
+                }
+
+                if (_cookFreeAt[cook] > startedTick) startedTick = _cookFreeAt[cook];
+            }
+
             var completedTick = startedTick + station.MinutesFor(recipe);
 
             slots[chosen] = completedTick;
+            if (cook >= 0) _cookFreeAt[cook] = completedTick;
 
             return new Ticket(recipe.Id, station.Id, placedTick, startedTick, completedTick);
         }

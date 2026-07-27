@@ -26,6 +26,7 @@ namespace RestaurantEmpire.Core.Model
             Inventory = new Inventory(company.Definitions);
             Kitchen = new Kitchen();
             DiningRoom = new DiningRoom();
+            Payroll = new Payroll();
             Location = Neighbourhood.SuburbanHighStreet();
             ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
@@ -76,6 +77,19 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>Everything installed out front: tables, chairs, decor.</summary>
         public DiningRoom DiningRoom { get; }
+
+        /// <summary>
+        /// Who works here. Hiring and firing are the player's call at any moment — and staff
+        /// are what make the assets work, so an unstaffed kitchen is idle equipment and an
+        /// unstaffed floor is empty seats.
+        /// </summary>
+        public Payroll Payroll { get; }
+
+        /// <summary>
+        /// How many covers the floor staff can actually look after at once. One server
+        /// handles roughly fourteen. Zero servers means nobody gets seated at all.
+        /// </summary>
+        public int ServableSeats { get { return Payroll.CountOf(StaffRole.Server) * 14; } }
 
         /// <summary>
         /// Square metres of building. Zero means unmeasured, and nothing is constrained —

@@ -245,6 +245,12 @@ namespace RestaurantEmpire.Core.Model
 
                 Record(tick, LedgerCategory.FoodCost, result.FoodCost, note, restaurant.Id);
             }
+
+            if (result.LabourCost > 0m)
+            {
+                Record(tick, LedgerCategory.LaborCost, result.LabourCost,
+                    restaurant.Payroll.Headcount + " on the payroll", restaurant.Id);
+            }
         }
 
         /// <summary>

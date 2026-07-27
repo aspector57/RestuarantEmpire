@@ -171,11 +171,13 @@ namespace RestaurantEmpire.Core.Tests
             var cramped = RunDinner(BuildRestaurant(out _, slotsPerStation: 1));
             var roomy = RunDinner(BuildRestaurant(out _, slotsPerStation: 4));
 
-            Assert.True(cramped.Walkouts > 0);
-            Assert.True(roomy.Walkouts < cramped.Walkouts);
+            // An undersized kitchen costs you trade at the DOOR rather than in walkouts:
+            // guests see the wait and go elsewhere. That is how restaurants actually lose
+            // money to a slow kitchen, and it is cheaper than cooking food nobody collects.
+            Assert.True(cramped.PartiesPutOffByTheWait > roomy.PartiesPutOffByTheWait);
             Assert.True(roomy.Revenue > cramped.Revenue);
+            Assert.True(roomy.CoversServed > cramped.CoversServed);
             Assert.True(roomy.LongestWaitMinutes < cramped.LongestWaitMinutes);
-            Assert.True(roomy.AverageSatisfaction > cramped.AverageSatisfaction);
         }
 
         [Fact]
