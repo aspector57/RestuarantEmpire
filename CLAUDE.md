@@ -586,6 +586,47 @@ great."* Cheap staff who improve with plates cooked, capped by a hidden potentia
 a cheap hire a genuine bet rather than only a risk. It needs skill to become mutable state and
 therefore saved, so it is its own increment.
 
+### The ratchet, fixed — M1(b) from 0 of 4 to 2 of 4, and why I stopped there
+
+**The root cause was that `AddChores` never saw the trading result.** `understaffed:kitchen`
+fired on `manned < units` alone, so buying a unit ALWAYS produced a hiring demand, paid
+hourly forever, whether or not anybody had ever waited. And **no suggestion in the entire
+Advisor saved money** — it was a one-way valve by construction.
+
+Four changes, each defensible on its own:
+
+1. **Evidence-gated hiring.** Idle equipment is only a problem if the queue is costing trade.
+   Nobody waiting means the ROOM is the constraint, and another cook cannot serve people who
+   have nowhere to sit.
+2. **`overstaffed:kitchen` and `overstaffed:floor`** — the Advisor can now say "we are paying
+   for hands we did not need", ranked second only to restocking, because it stops the bleeding
+   and costs nothing.
+3. **The runway brake distinguishes ONGOING cost from CAPITAL.** Suppressing all spending was
+   a death trap: a city site pays 7,800 a month against an 18,000 bankroll, so it counted as
+   broke from day one and was advised never to grow — poor because small, told to stay small.
+   Wages are forever; a table is bought once and then earns.
+4. **A room can be too small without looking it.** Turn-aways alone missed the worst case
+   entirely — a slow kitchen holds tables, so twelve covers against eleven stations reported
+   four times as many people put off by the WAIT as turned away, and the dining room was never
+   mentioned once in twelve months. It now also fires on the shape of the place.
+
+And in the instrument: **one investment a month, in the Advisor's order.** Obeying everything
+at once made the ordering meaningless — the run would skip seats for want of cash and spend
+that same cash on kitchen two suggestions later.
+
+**Result: 0 of 4 surviving, to 2 of 4.** City +11,445, business +7,301.
+
+**WHY I STOPPED, and it matters more than the score.** The "two covers per unit" constant in
+change 4 is empirical, not derived — four was tried first, scored 1 of 4, and two scored 2.
+Worse, outcomes swing enormously on purchase ORDERING: nightlife finished +12,306 in one
+configuration and −19,423 in another with the identical final shape. **At that sensitivity I am
+fitting noise, not fixing a system**, and moving the constant again to reach 3 or 4 would be
+the same "tuning until the number pleases you" this project has already been caught doing.
+
+**The sensitivity is itself the finding: the advised margin is thin enough that ordering
+decides survival.** That is a balance property, and balance is parked until the systems that
+create pressure exist. **M1(b) does not pass. It is no longer failing for want of advice.**
+
 ### M1(b), diagnosed: the Advisor has a ratchet and no brake
 
 The bet was that richer hiring would sharpen the advice. **It did not, and the experiment

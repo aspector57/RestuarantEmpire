@@ -460,8 +460,25 @@ namespace RestaurantEmpire.Core.Tests
                 var trading = booked;
 
                 // ---- the entire policy: do what the Advisor says, and nothing else ----
+                // ONE INVESTMENT A MONTH, in the Advisor's own order of urgency.
+                //
+                // Obeying every suggestion at once is not how anybody plays, and it made the
+                // ordering meaningless: the run would skip buying seats for want of cash and
+                // then spend that same cash on kitchen two suggestions later, which is exactly
+                // the trap it had just been advised out of. Chores are free and always done;
+                // capital waits its turn.
+                var spentThisMonth = false;
                 foreach (var s in new Advisor(r).Review(trading))
+                {
+                    var capital = s.Id.StartsWith("opportunity:") || s.Id.StartsWith("understaffed:");
+                    if (capital && spentThisMonth) continue;
+
+                    var before = company.Economy.CashOnHand;
                     Act(company, r, definitions, s, taken, month, hireTheBest);
+
+                    if (capital && company.Economy.CashOnHand != before) spentThisMonth = true;
+                    if (capital && s.Id.StartsWith("understaffed:")) spentThisMonth = true;
+                }
 
                 if (month == 3) m3 = company.Economy.CashOnHand;
                 if (month == 6) m6 = company.Economy.CashOnHand;
@@ -535,6 +552,11 @@ namespace RestaurantEmpire.Core.Tests
                 if (TakeSomeoneOn(r, StaffRole.Server, month, hireTheBest)) Count("hire server");
                 return;
             }
+
+            // The Advisor can finally suggest spending LESS, so the campaign has to be able
+            // to hear it. Without this the brake exists and nothing ever pulls it.
+            if (id == "overstaffed:kitchen") { r.Payroll.FireOne(StaffRole.Cook); Count("let a cook go"); return; }
+            if (id == "overstaffed:floor") { r.Payroll.FireOne(StaffRole.Server); Count("let a server go"); return; }
 
             if (id.StartsWith("feature:")) { r.Menu.Feature(s.SubjectId); Count("feature"); return; }
 

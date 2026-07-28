@@ -117,7 +117,7 @@ namespace RestaurantEmpire.Core.Model
         {
             var found = new List<Suggestion>();
 
-            AddChores(found);
+            AddChores(found, trading);
             AddProposals(found, trading);
             AddOpportunities(found, trading);
 
@@ -147,7 +147,15 @@ namespace RestaurantEmpire.Core.Model
             var kept = new List<Suggestion>();
             for (var i = 0; i < found.Count; i++)
             {
-                if (broke && Spends(found[i].Id)) continue;
+                // Only ONGOING commitments are withheld when the runway is thin, never
+                // capital that raises what the place can earn.
+                //
+                // Suppressing all spending was a death trap: a city site pays 7,800 a month
+                // against an 18,000 opening bankroll, so it counted as broke from nearly day
+                // one and was advised never to grow — poor because it was small, and told to
+                // stay small. A struggling restaurant genuinely should not add payroll. It may
+                // very well need to add covers, because covers are how it stops struggling.
+                if (broke && CommitsOngoingCost(found[i].Id)) continue;
                 kept.Add(found[i]);
             }
 
@@ -155,28 +163,30 @@ namespace RestaurantEmpire.Core.Model
             return kept;
         }
 
-        private static bool Spends(string id)
+        /// <summary>
+        /// Wages are paid every hour forever. A table is paid for once and then earns.
+        /// </summary>
+        private static bool CommitsOngoingCost(string id)
         {
-            return id == "opportunity:room" || id == "opportunity:capacity"
-                || id == "opportunity:space" || id == "opportunity:upgrade"
-                || id.StartsWith("understaffed:");
+            return id.StartsWith("understaffed:");
         }
 
         private static int Urgency(string id)
         {
             if (id.StartsWith("restock:")) return 0;          // free, and it unblocks sales
-            if (id == "risk:runway") return 1;                 // know before you spend
-            if (id == "opportunity:room") return 2;            // nobody queues who cannot sit
-            if (id == "understaffed:floor") return 3;          // seats you cannot serve
-            if (id == "opportunity:capacity") return 4;        // then the kitchen behind them
-            if (id == "understaffed:kitchen") return 5;
-            if (id.StartsWith("feature:")) return 6;
-            return 7;
+            if (id.StartsWith("overstaffed:")) return 1;       // stops the bleeding, costs nothing
+            if (id == "risk:runway") return 2;                 // know before you spend
+            if (id == "opportunity:room") return 3;            // nobody queues who cannot sit
+            if (id == "understaffed:floor") return 4;          // seats you cannot serve
+            if (id == "opportunity:capacity") return 5;        // then the kitchen behind them
+            if (id == "understaffed:kitchen") return 6;
+            if (id.StartsWith("feature:")) return 7;
+            return 8;
         }
 
         // ---- Tier 1: chores. Flatly stated, never a question. ----
 
-        private void AddChores(List<Suggestion> found)
+        private void AddChores(List<Suggestion> found, ServiceResult trading)
         {
             foreach (var stock in _restaurant.Inventory.BelowPar)
             {
@@ -191,14 +201,57 @@ namespace RestaurantEmpire.Core.Model
             var units = _restaurant.Kitchen.Stations.Sum(s => s.ConcurrentCapacity);
             var manned = _restaurant.Payroll.CountOf(StaffRole.Cook) * KitchenPass.PlatesPerCook;
 
-            if (_restaurant.Payroll.Headcount > 0 && manned < units)
+            // THE RATCHET, AND ITS BRAKE.
+            //
+            // This fired on `manned < units` alone, so buying a unit ALWAYS produced a hiring
+            // demand, and the hire was paid for every hour thereafter whether or not anybody
+            // was ever kept waiting. Buy kitchen, hire for it, repeat: an advised restaurant
+            // wound its payroll up until the cash ran out, and every suggestion along the way
+            // was individually correct. There was also no suggestion anywhere in the Advisor
+            // that SAVED money, so it was a one-way valve by construction.
+            //
+            // Idle equipment is only a problem if the queue is costing you trade. Nobody
+            // waiting means the room is the constraint, and another cook cannot serve people
+            // who have nowhere to sit.
+            var queueIsCosting = trading == null
+                || trading.PartiesPutOffByTheWait > 0 || trading.Walkouts > 0;
+
+            if (_restaurant.Payroll.Headcount > 0 && manned < units && queueIsCosting)
             {
                 found.Add(new Suggestion(
                     "understaffed:kitchen", AdvisorTier.Chore,
                     "We've got more kitchen than hands.",
                     "You own " + units + " units of equipment; " + _restaurant.Payroll.CountOf(StaffRole.Cook) +
-                    " cooks can work " + manned + " of them at once. The rest sits idle.",
+                    " cooks can work " + manned + " of them at once. The rest sits idle" +
+                    (trading == null ? "." : ", and " +
+                        (trading.PartiesPutOffByTheWait + trading.Walkouts) + " covers were lost to the wait."),
                     subjectId: "cook"));
+            }
+
+            // The other direction, which did not exist at all.
+            if (trading != null && trading.CoversServed > 20
+                && trading.PartiesPutOffByTheWait == 0 && trading.Walkouts == 0
+                && manned > units && _restaurant.Payroll.CountOf(StaffRole.Cook) > 1)
+            {
+                found.Add(new Suggestion(
+                    "overstaffed:kitchen", AdvisorTier.Chore,
+                    "We're paying for hands we didn't need.",
+                    "Nobody waited for food all service and " + _restaurant.Payroll.CountOf(StaffRole.Cook) +
+                    " cooks can work " + manned + " plates against " + units + " units of equipment. " +
+                    "That is wage you are paying for capacity the room cannot use.",
+                    subjectId: "cook"));
+            }
+
+            if (trading != null && trading.CoversServed > 20 && trading.PartiesTurnedAway == 0
+                && _restaurant.ServableSeats > _restaurant.SeatingCapacity * 2
+                && _restaurant.Payroll.CountOf(StaffRole.Server) > 1)
+            {
+                found.Add(new Suggestion(
+                    "overstaffed:floor", AdvisorTier.Chore,
+                    "There are more staff than tables to look after.",
+                    "Your servers can cover " + _restaurant.ServableSeats + " covers and you own " +
+                    _restaurant.SeatingCapacity + ". Nobody was turned away for want of a table.",
+                    subjectId: "server"));
             }
 
             if (_restaurant.Payroll.Headcount > 0 && _restaurant.ServableSeats < _restaurant.SeatingCapacity)
@@ -319,7 +372,42 @@ namespace RestaurantEmpire.Core.Model
             // `PartiesTurnedAway` was counted by the simulation from the start and read by
             // nothing, which is the same judged-but-never-consulted shape as PriceSensitivity
             // and IngredientQuality before it. Third time.
-            if (trading != null && trading.PartiesTurnedAway > trading.CoversServed / 3
+            // A ROOM CAN BE TOO SMALL WITHOUT LOOKING IT.
+            //
+            // Turn-aways alone missed the worst case entirely. A slow kitchen holds every
+            // table for longer, so a restaurant with twelve covers against eleven stations
+            // reported four times as many people put off by the WAIT as turned away at the
+            // door — and the room, which was the actual problem, never got mentioned once in
+            // twelve months. Symptoms pointed at the kitchen; the shape of the place pointed
+            // at the dining room.
+            //
+            // So also raise it on the structural imbalance.
+            //
+            // TWO COVERS PER UNIT IS AN EMPIRICAL NUMBER, not a derived one — it is the shape
+            // that actually traded best in this simulation, given its prep times and how long
+            // a table sits. Four was tried first because it sounds like a restaurant, and it
+            // was worse: the advised runs grew to thirty-two covers against seven units and
+            // earned less than twenty-two against eleven. Worth re-deriving if prep times or
+            // seating times change, because it is a property of those and nothing deeper.
+            var kitchenUnits = _restaurant.Kitchen.Stations.Sum(s => s.ConcurrentCapacity);
+            var roomIsOutOfProportion = kitchenUnits > 0
+                && _restaurant.SeatingCapacity < kitchenUnits * 2;
+
+            if (trading != null && roomIsOutOfProportion && trading.CoversServed > 20)
+            {
+                var room = _restaurant.FreeFloorArea;
+                var couldSeat = (int)(room / 15m);
+
+                found.Add(new Suggestion(
+                    "opportunity:room", AdvisorTier.Strategic,
+                    "The kitchen is built for more people than the room can hold.",
+                    kitchenUnits + " units of equipment against " + _restaurant.SeatingCapacity +
+                    " covers. " + (couldSeat >= 4
+                        ? "There is floor for about " + couldSeat + " more without building anything."
+                        : "There is no floor left to put a table on."),
+                    subjectId: couldSeat >= 4 ? "seats" : null));
+            }
+            else if (trading != null && trading.PartiesTurnedAway > trading.CoversServed / 3
                 && trading.PartiesTurnedAway > 5)
             {
                 var room = _restaurant.FreeFloorArea;
