@@ -30,14 +30,14 @@ namespace RestaurantEmpire.Core.Tests
             }
         }
 
-        private static Neighbourhood SiteFor(string k)
+        private static Neighborhood SiteFor(string k)
         {
             switch (k)
             {
-                case "city": return Neighbourhood.CityCentre();
-                case "business": return Neighbourhood.BusinessDistrict();
-                case "nightlife": return Neighbourhood.NightlifeQuarter();
-                default: return Neighbourhood.SuburbanHighStreet();
+                case "city": return Neighborhood.CityCenter();
+                case "business": return Neighborhood.BusinessDistrict();
+                case "nightlife": return Neighborhood.NightlifeQuarter();
+                default: return Neighborhood.SuburbanHighStreet();
             }
         }
 
@@ -99,7 +99,7 @@ namespace RestaurantEmpire.Core.Tests
                     var tick = runner.Clock.Tick;
                     company.Economy.Record(tick, LedgerCategory.Revenue, now.Revenue - lastBooked.Revenue, "Takings", r.Id);
                     company.Economy.Record(tick, LedgerCategory.FoodCost, now.FoodCost - lastBooked.FoodCost, "Ingredients", r.Id);
-                    company.Economy.Record(tick, LedgerCategory.LaborCost, now.LabourCost - lastBooked.LabourCost, "Wages", r.Id);
+                    company.Economy.Record(tick, LedgerCategory.LaborCost, now.LaborCost - lastBooked.LaborCost, "Wages", r.Id);
                     company.Economy.Record(tick, LedgerCategory.Overhead, site.MonthlyRent, "Rent", r.Id);
                     lastBooked = now;
 
@@ -136,9 +136,9 @@ namespace RestaurantEmpire.Core.Tests
                                 r.BuyTables("t" + month + Guid.NewGuid().ToString("N").Substring(0, 4), "More tables", 1200m, 10, 0.55m, tick);
                                 spendable -= 1200m; boughtSomething = true;
                             }
-                            else if (r.ExpansionHeadroom >= 20m && spendable > 20m * site.ExtensionCostPerSquareMetre)
+                            else if (r.ExpansionHeadroom >= 20m && spendable > 20m * site.ExtensionCostPerSquareMeter)
                             {
-                                r.ExtendBuilding(20m, tick); spendable -= 20m * site.ExtensionCostPerSquareMetre; boughtSomething = true;
+                                r.ExtendBuilding(20m, tick); spendable -= 20m * site.ExtensionCostPerSquareMeter; boughtSomething = true;
                             }
                         }
 

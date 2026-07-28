@@ -15,7 +15,7 @@ namespace RestaurantEmpire.Core.Model
 
         internal ServiceResult(
             Dictionary<string, int> unitsSold, IList<Ticket> tickets, IList<string> diagnostics,
-            decimal revenue, decimal foodCost, decimal wastedFoodCost, decimal labourCost,
+            decimal revenue, decimal foodCost, decimal wastedFoodCost, decimal laborCost,
             int partiesArrived, int partiesTurnedAway, int partiesLostToMenu, int partiesPutOffByTheWait,
             int partiesPutOffByThePrices, int coversServed,
             int walkouts, int eightySixed, decimal averageSatisfaction,
@@ -30,7 +30,7 @@ namespace RestaurantEmpire.Core.Model
             Revenue = revenue;
             FoodCost = foodCost;
             WastedFoodCost = wastedFoodCost;
-            LabourCost = labourCost;
+            LaborCost = laborCost;
             PartiesArrived = partiesArrived;
             PartiesTurnedAway = partiesTurnedAway;
             CoversServed = coversServed;
@@ -71,7 +71,7 @@ namespace RestaurantEmpire.Core.Model
         /// the simulation rather than estimated by a caller, which is what makes prime cost
         /// mean something.
         /// </summary>
-        public decimal LabourCost { get; }
+        public decimal LaborCost { get; }
 
         public int PartiesArrived { get; }
 

@@ -7,7 +7,7 @@ namespace RestaurantEmpire.Core.Tests
 {
     /// <summary>
     /// The loop that makes bad food cost something: meals are remembered, and what the
-    /// neighbourhood remembers decides how many people turn up and what they will pay.
+    /// neighborhood remembers decides how many people turn up and what they will pay.
     ///
     /// Aaron's framing, which is the design: a dish and a restaurant are rated separately.
     /// A cheap decent plate satisfies the person eating it — they got what they paid for —
@@ -24,7 +24,7 @@ namespace RestaurantEmpire.Core.Tests
             company = new Company("acme", "Acme", definitions, 300000m);
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
-            restaurant.Location = Neighbourhood.SuburbanHighStreet();
+            restaurant.Location = Neighborhood.SuburbanHighStreet();
             restaurant.FloorArea = 200m;
             restaurant.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
             company.SupplierPolicy.AssignAll(supplierId);

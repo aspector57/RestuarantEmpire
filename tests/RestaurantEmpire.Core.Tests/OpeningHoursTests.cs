@@ -12,7 +12,7 @@ namespace RestaurantEmpire.Core.Tests
     /// The clock runs continuously regardless; windows only decide when guests turn up.
     /// So staying open longer is not gated by the simulation, it is simply a decision with
     /// consequences — and the consequences get sharper as the systems that cost money for
-    /// being open arrive (labour at M1, then time-of-day demand at M2).
+    /// being open arrive (labor at M1, then time-of-day demand at M2).
     /// </summary>
     public class OpeningHoursTests
     {
@@ -107,8 +107,8 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void StayingOpenLongerSellsMoreFood_AndTiesUpTheKitchenForLonger()
         {
-            // The upside of long hours is real and currently uncosted: labour is what makes
-            // this a tradeoff, and nothing generates labour until Employees arrive at M1.
+            // The upside of long hours is real and currently uncosted: labor is what makes
+            // this a tradeoff, and nothing generates labor until Employees arrive at M1.
             // Recorded as a test so the day that changes, this fails and gets revisited.
             var shortDay = Build();
             shortDay.ServiceWindows.Clear();

@@ -18,7 +18,7 @@ namespace RestaurantEmpire.Core.Tests
     {
         private sealed class Plan
         {
-            public Neighbourhood Site = null!;
+            public Neighborhood Site = null!;
             public ServiceWindow[] Hours = null!;
             public int StationUnits, Seats, Cooks, Servers;
         }
@@ -30,7 +30,7 @@ namespace RestaurantEmpire.Core.Tests
                 // Best trade in the game, all day — and the tightest, dearest site.
                 new Plan
                 {
-                    Site = Neighbourhood.CityCentre(),
+                    Site = Neighborhood.CityCenter(),
                     Hours = new[] { new ServiceWindow("Lunch", 12, 15), new ServiceWindow("Dinner", 18, 23) },
                     StationUnits = 3, Seats = 42, Cooks = 3, Servers = 3
                 },
@@ -38,7 +38,7 @@ namespace RestaurantEmpire.Core.Tests
                 // Enormous breakfast and lunch, then nobody. Its whole game is the morning.
                 new Plan
                 {
-                    Site = Neighbourhood.BusinessDistrict(),
+                    Site = Neighborhood.BusinessDistrict(),
                     Hours = new[] { new ServiceWindow("Breakfast", 7, 10), new ServiceWindow("Lunch", 12, 15) },
                     StationUnits = 4, Seats = 58, Cooks = 4, Servers = 5
                 },
@@ -47,7 +47,7 @@ namespace RestaurantEmpire.Core.Tests
                 // kitchen and a smaller room, which is the opposite build to the suburbs.
                 new Plan
                 {
-                    Site = Neighbourhood.NightlifeQuarter(),
+                    Site = Neighborhood.NightlifeQuarter(),
                     Hours = new[] { new ServiceWindow("Dinner", 18, 23), new ServiceWindow("Late", 23, 2) },
                     StationUnits = 5, Seats = 40, Cooks = 5, Servers = 3
                 },
@@ -55,7 +55,7 @@ namespace RestaurantEmpire.Core.Tests
                 // Quietest street, cheapest rent, and by far the most room to grow into.
                 new Plan
                 {
-                    Site = Neighbourhood.SuburbanHighStreet(),
+                    Site = Neighborhood.SuburbanHighStreet(),
                     Hours = new[] { new ServiceWindow("Dinner", 18, 23) },
                     StationUnits = 5, Seats = 80, Cooks = 5, Servers = 6
                 }
@@ -111,7 +111,7 @@ namespace RestaurantEmpire.Core.Tests
             month = runner.Snapshot();
 
             // Revenue, less food and wages the simulation generated, less a month's rent.
-            return month.Revenue - month.FoodCost - month.LabourCost - plan.Site.MonthlyRent;
+            return month.Revenue - month.FoodCost - month.LaborCost - plan.Site.MonthlyRent;
         }
 
         [Fact]
@@ -156,10 +156,10 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void EachSiteWinsInItsOwnWay_NotByBeingTheSameRestaurant()
         {
-            var city = Neighbourhood.CityCentre();
-            var business = Neighbourhood.BusinessDistrict();
-            var nightlife = Neighbourhood.NightlifeQuarter();
-            var suburb = Neighbourhood.SuburbanHighStreet();
+            var city = Neighborhood.CityCenter();
+            var business = Neighborhood.BusinessDistrict();
+            var nightlife = Neighborhood.NightlifeQuarter();
+            var suburb = Neighborhood.SuburbanHighStreet();
 
             // The city charges most and gives least room.
             Assert.True(city.MonthlyRent > suburb.MonthlyRent * 2m);
@@ -175,7 +175,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // And the suburbs are quiet but cheap and roomy — the slow, safe start.
             Assert.True(suburb.LeasePremium < city.LeasePremium / 3m);
-            Assert.True(suburb.ExtensionCostPerSquareMetre < city.ExtensionCostPerSquareMetre / 2m);
+            Assert.True(suburb.ExtensionCostPerSquareMeter < city.ExtensionCostPerSquareMeter / 2m);
         }
     }
 }

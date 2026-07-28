@@ -3,7 +3,7 @@ using System;
 namespace RestaurantEmpire.Core.Model
 {
     /// <summary>
-    /// What the neighbourhood has come to think of this place, and therefore how many people
+    /// What the neighborhood has come to think of this place, and therefore how many people
     /// turn up. The missing feedback loop: until this existed, a meal was judged and then
     /// forgotten, so serving bad food cost nothing at all.
     ///
@@ -53,7 +53,7 @@ namespace RestaurantEmpire.Core.Model
         public const decimal WorstTrafficMultiplier = 0.60m;
 
         /// <summary>Trade at the top. Bounded, because a reputation cannot conjure a queue
-        /// out of an empty street — the neighbourhood still decides who walks past.</summary>
+        /// out of an empty street — the neighborhood still decides who walks past.</summary>
         public const decimal BestTrafficMultiplier = 1.40m;
 
         /// <summary>

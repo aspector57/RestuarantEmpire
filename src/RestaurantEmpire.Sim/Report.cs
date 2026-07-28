@@ -43,7 +43,7 @@ namespace RestaurantEmpire.Sim
                               "   ·   " + r.Menu.Count + " dishes   ·   " +
                               string.Join(", ", r.ServiceWindows.Select(w => w.ToString())));
 
-            // What the neighbourhood thinks, and — when it is being held back by what you
+            // What the neighborhood thinks, and — when it is being held back by what you
             // source rather than by how you run the place — why.
             var rep = r.Reputation;
             Console.WriteLine("  standing " + System.Math.Round(rep.Standing * 100m) + "/100" +
@@ -86,7 +86,7 @@ namespace RestaurantEmpire.Sim
             Console.WriteLine("    revenue    " + books.Revenue.ToString("N2").PadLeft(12));
             Console.WriteLine("    food       " + books.FoodCost.ToString("N2").PadLeft(12) +
                               "   " + books.FoodCostRatio.ToString("P0").PadLeft(6));
-            Console.WriteLine("    labour     " + books.LaborCost.ToString("N2").PadLeft(12) +
+            Console.WriteLine("    labor     " + books.LaborCost.ToString("N2").PadLeft(12) +
                               "   " + books.LaborCostRatio.ToString("P0").PadLeft(6));
             Console.WriteLine("    overhead   " + books.Overhead.ToString("N2").PadLeft(12));
             Console.WriteLine("    prime cost " + books.PrimeCost.ToString("N2").PadLeft(12) +

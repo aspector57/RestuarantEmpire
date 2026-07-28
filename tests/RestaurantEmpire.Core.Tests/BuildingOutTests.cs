@@ -9,14 +9,14 @@ namespace RestaurantEmpire.Core.Tests
     /// Growing the building — the crude first form of build mode.
     ///
     /// Expansion is capital-gated and, more interestingly, LOCATION-gated. You cannot knock
-    /// through into the building next door in a city centre, so a wonderful pitch can be one
+    /// through into the building next door in a city center, so a wonderful pitch can be one
     /// you outgrow and cannot fix. That makes choosing a location a bet on your ceiling as
     /// much as on your footfall, and the two are deliberately in tension: the best traffic
     /// comes with the least room to grow.
     /// </summary>
     public class BuildingOutTests
     {
-        private static Restaurant Build(out Company company, Neighbourhood where, decimal floorArea = 90m)
+        private static Restaurant Build(out Company company, Neighborhood where, decimal floorArea = 90m)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
@@ -35,18 +35,18 @@ namespace RestaurantEmpire.Core.Tests
         public void TheBestTrafficComesWithTheLeastRoomToGrow()
         {
             // The tension that makes location a real choice rather than "pick the busiest".
-            var city = Neighbourhood.CityCentre();
-            var suburb = Neighbourhood.SuburbanHighStreet();
+            var city = Neighborhood.CityCenter();
+            var suburb = Neighborhood.SuburbanHighStreet();
 
             Assert.True(city.TrafficAtHour(13) > suburb.TrafficAtHour(13));   // better trade
             Assert.True(city.MaxFloorArea < suburb.MaxFloorArea);             // less room
-            Assert.True(city.ExtensionCostPerSquareMetre > suburb.ExtensionCostPerSquareMetre * 2m); // dearer land
+            Assert.True(city.ExtensionCostPerSquareMeter > suburb.ExtensionCostPerSquareMeter * 2m); // dearer land
         }
 
         [Fact]
         public void ASuburbanSiteHasRoomBehindIt_AndLandIsCheap()
         {
-            var restaurant = Build(out var company, Neighbourhood.SuburbanHighStreet(), floorArea: 90m);
+            var restaurant = Build(out var company, Neighborhood.SuburbanHighStreet(), floorArea: 90m);
             var cashBefore = company.Economy.CashOnHand;
 
             Assert.Equal(190m, restaurant.ExpansionHeadroom);   // 280 cap, at 90
@@ -62,7 +62,7 @@ namespace RestaurantEmpire.Core.Tests
         public void ACitySiteRunsOutOfBuilding_AndSaysWhyPlainly()
         {
             // Aaron's case exactly: you cannot just knock down the wall.
-            var restaurant = Build(out _, Neighbourhood.CityCentre(), floorArea: 90m);
+            var restaurant = Build(out _, Neighborhood.CityCenter(), floorArea: 90m);
 
             Assert.Equal(40m, restaurant.ExpansionHeadroom);   // 130 cap, at 90
 
@@ -72,7 +72,7 @@ namespace RestaurantEmpire.Core.Tests
 
             var blocked = Assert.Throws<InvalidOperationException>(() => restaurant.ExtendBuilding(10m));
 
-            Assert.Contains("City Centre", blocked.Message);
+            Assert.Contains("City Center", blocked.Message);
             Assert.Contains("building next door", blocked.Message);
         }
 
@@ -81,7 +81,7 @@ namespace RestaurantEmpire.Core.Tests
         {
             // The moment the two systems meet: no room to build, so the only way to add
             // throughput is better equipment in the same space.
-            var restaurant = Build(out var company, Neighbourhood.CityCentre(), floorArea: 130m);
+            var restaurant = Build(out var company, Neighborhood.CityCenter(), floorArea: 130m);
             var definitions = company.Definitions;
 
             restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 10); // 50.0m2
@@ -107,7 +107,7 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void AnUnconstrainedSiteCanGrowForever()
         {
-            var restaurant = Build(out _, Neighbourhood.Flat(10), floorArea: 50m);
+            var restaurant = Build(out _, Neighborhood.Flat(10), floorArea: 50m);
 
             Assert.Equal(decimal.MaxValue, restaurant.ExpansionHeadroom);
             restaurant.ExtendBuilding(500m);
@@ -117,7 +117,7 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void ExtendingByNothingIsRejected()
         {
-            var restaurant = Build(out _, Neighbourhood.SuburbanHighStreet());
+            var restaurant = Build(out _, Neighborhood.SuburbanHighStreet());
             Assert.Throws<ArgumentOutOfRangeException>(() => restaurant.ExtendBuilding(0m));
         }
     }

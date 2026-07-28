@@ -23,7 +23,7 @@ namespace RestaurantEmpire.Core.Tests
             company = new Company("acme", "Acme", definitions, cash);
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
-            restaurant.Location = Neighbourhood.SuburbanHighStreet();
+            restaurant.Location = Neighborhood.SuburbanHighStreet();
             restaurant.FloorArea = 90m;
             restaurant.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
             company.SupplierPolicy.AssignAll("valley-produce");
@@ -199,7 +199,7 @@ namespace RestaurantEmpire.Core.Tests
         public void OnASiteWithNoHeadroom_ItPointsAtUpgradingInstead()
         {
             var restaurant = Build(out _);
-            restaurant.Location = Neighbourhood.CityCentre();
+            restaurant.Location = Neighborhood.CityCenter();
             restaurant.FloorArea = restaurant.Location.MaxFloorArea;
             restaurant.BuyTables("t", "Tables", 9000m, 63);   // fill it
 

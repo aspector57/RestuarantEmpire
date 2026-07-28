@@ -110,11 +110,11 @@ namespace RestaurantEmpire.Core.Model
         /// at one o'clock is not a nightlife quarter at midnight, and neither is a suburban
         /// high street at seven.
         /// </summary>
-        public static CustomerArchetype[] LikelyAt(Daypart daypart, string neighbourhoodId)
+        public static CustomerArchetype[] LikelyAt(Daypart daypart, string neighborhoodId)
         {
-            var business = neighbourhoodId == "business-district";
-            var nightlife = neighbourhoodId == "nightlife-quarter";
-            var city = neighbourhoodId == "city-centre";
+            var business = neighborhoodId == "business-district";
+            var nightlife = neighborhoodId == "nightlife-quarter";
+            var city = neighborhoodId == "city-center";
 
             switch (daypart)
             {

@@ -11,7 +11,7 @@
     <!--
       Nullable reference types off, matching Unity's own default. This code guards
       against null explicitly at every public entry point instead. Turning this on
-      would add ?/! annotation noise throughout for no behavioural change.
+      would add ?/! annotation noise throughout for no behavioral change.
     -->
     <Nullable>disable</Nullable>
     <LangVersion>8.0</LangVersion>

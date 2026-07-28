@@ -16,7 +16,7 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class AppetiteTests
     {
-        private static Restaurant Build(out Company company, Neighbourhood where)
+        private static Restaurant Build(out Company company, Neighborhood where)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
@@ -86,7 +86,7 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void PopularityIsNoLongerUniform_SoThePuzzleQuadrantCanExist()
         {
-            var restaurant = Build(out _, Neighbourhood.BusinessDistrict());
+            var restaurant = Build(out _, Neighborhood.BusinessDistrict());
             var lunch = TradeFor(restaurant, new ServiceWindow("Lunch", 12, 15), 12);
 
             var sold = lunch.Items.Where(i => i.UnitsSold > 0).ToList();
@@ -105,12 +105,12 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         [Fact]
-        public void TheSameMenuGetsADifferentMatrixInADifferentNeighbourhood()
+        public void TheSameMenuGetsADifferentMatrixInADifferentNeighborhood()
         {
             // This is the payoff: a menu is not good or bad in the abstract, it is good or
             // bad for the people who actually walk past.
-            var business = Build(out _, Neighbourhood.BusinessDistrict());
-            var nightlife = Build(out _, Neighbourhood.NightlifeQuarter());
+            var business = Build(out _, Neighborhood.BusinessDistrict());
+            var nightlife = Build(out _, Neighborhood.NightlifeQuarter());
 
             var lunchCrowd = TradeFor(business, new ServiceWindow("Lunch", 12, 15), 12);
             var lateCrowd = TradeFor(nightlife, new ServiceWindow("Dinner", 18, 23), 18);
@@ -250,10 +250,10 @@ namespace RestaurantEmpire.Core.Tests
             // separating them is taste — and taste alone does not create enough spread to
             // push anything under the popularity bar. Price is what makes a high-margin,
             // low-volume dish possible, which is the definition of a Puzzle.
-            var realPrices = Build(out _, Neighbourhood.SuburbanHighStreet());
+            var realPrices = Build(out _, Neighborhood.SuburbanHighStreet());
             var realPrices2 = TradeFor(realPrices, new ServiceWindow("Dinner", 18, 23), 18);
 
-            var flat = Build(out var flatCompany, Neighbourhood.SuburbanHighStreet());
+            var flat = Build(out var flatCompany, Neighborhood.SuburbanHighStreet());
             foreach (var id in flat.Menu.RecipeIds) flatCompany.Pricing.SetPrice(id, 16m);
             var withoutPrices = TradeFor(flat, new ServiceWindow("Dinner", 18, 23), 18);
 

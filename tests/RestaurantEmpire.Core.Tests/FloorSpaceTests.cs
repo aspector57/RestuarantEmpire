@@ -58,7 +58,7 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.True(best.SpeedMultiplier > cheap.SpeedMultiplier);
             Assert.True(best.Footprint < cheap.Footprint);
-            Assert.True(best.SpeedPerSquareMetre > cheap.SpeedPerSquareMetre * 2m);
+            Assert.True(best.SpeedPerSquareMeter > cheap.SpeedPerSquareMeter * 2m);
         }
 
         [Fact]

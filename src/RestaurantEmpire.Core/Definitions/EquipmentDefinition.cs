@@ -45,14 +45,14 @@ namespace RestaurantEmpire.Core.Definitions
         /// <summary>Above 1.0 cooks faster than baseline.</summary>
         public decimal SpeedMultiplier { get; }
 
-        /// <summary>Square metres one unit occupies, including room to work around it.</summary>
+        /// <summary>Square meters one unit occupies, including room to work around it.</summary>
         public decimal Footprint { get; }
 
         /// <summary>0 to 1. Reserved for the dish-quality contribution equipment will make later.</summary>
         public decimal Quality { get; }
 
-        /// <summary>Throughput per square metre — the number that decides whether upgrading beats expanding.</summary>
-        public decimal SpeedPerSquareMetre { get { return SpeedMultiplier / Footprint; } }
+        /// <summary>Throughput per square meter — the number that decides whether upgrading beats expanding.</summary>
+        public decimal SpeedPerSquareMeter { get { return SpeedMultiplier / Footprint; } }
 
         public override string ToString()
         {

@@ -32,8 +32,8 @@ namespace RestaurantEmpire.Core.Model
             Seats = seats;
             Comfort = comfort;
 
-            // A cover needs about 1.4 square metres once you allow room to walk between
-            // tables; pure decor takes a token half-metre.
+            // A cover needs about 1.4 square meters once you allow room to walk between
+            // tables; pure decor takes a token half-meter.
             Footprint = footprint >= 0m ? footprint : (seats > 0 ? seats * 1.4m : 0.5m);
         }
 
@@ -49,7 +49,7 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>0 (a plastic stool under a bare bulb) to 1 (genuinely lovely). Weighted lightly.</summary>
         public decimal Comfort { get; }
 
-        /// <summary>Square metres of the building this occupies.</summary>
+        /// <summary>Square meters of the building this occupies.</summary>
         public decimal Footprint { get; }
 
         public override string ToString()
@@ -63,7 +63,7 @@ namespace RestaurantEmpire.Core.Model
     ///
     /// Capacity is DERIVED from what has actually been bought rather than declared, so a
     /// bigger room is something you pay for. An empty room reports zero, which the
-    /// simulation reads as "capacity not modelled" and lets everyone in — that keeps a
+    /// simulation reads as "capacity not modeled" and lets everyone in — that keeps a
     /// bare-bones test or a food truck from having to furnish itself first.
     /// </summary>
     public sealed class DiningRoom

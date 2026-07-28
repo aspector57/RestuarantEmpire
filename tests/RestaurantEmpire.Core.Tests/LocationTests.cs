@@ -8,13 +8,13 @@ namespace RestaurantEmpire.Core.Tests
     /// <summary>
     /// Demand comes from WHERE the restaurant is, not from a number the player sets.
     ///
-    /// The player picks the hours; the neighbourhood decides whether anybody is out there.
+    /// The player picks the hours; the neighborhood decides whether anybody is out there.
     /// That asymmetry is the point — before this, every trade-off built on top of demand
     /// could be justified by simply declaring the traffic was there.
     /// </summary>
     public class LocationTests
     {
-        private static Restaurant Build(Neighbourhood where)
+        private static Restaurant Build(Neighborhood where)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
             var company = new Company("acme", "Acme Restaurant Group", definitions, 200000m);
@@ -51,7 +51,7 @@ namespace RestaurantEmpire.Core.Tests
             Assert.DoesNotContain(typeof(ServiceWindow).GetProperties(), p => p.Name.Contains("Parties"));
             Assert.DoesNotContain(typeof(ServiceWindow).GetProperties(), p => p.Name.Contains("Demand"));
 
-            // The only lever is which neighbourhood you are in.
+            // The only lever is which neighborhood you are in.
             Assert.NotNull(typeof(Restaurant).GetProperty("Location"));
         }
 
@@ -59,8 +59,8 @@ namespace RestaurantEmpire.Core.Tests
         public void StayingOpenLateInTheSuburbsIsPointless()
         {
             // Aaron's case exactly: some areas have nobody about after 10pm, so a late
-            // service is labour and lighting spent on an empty room.
-            var suburb = Neighbourhood.SuburbanHighStreet();
+            // service is labor and lighting spent on an empty room.
+            var suburb = Neighborhood.SuburbanHighStreet();
 
             Assert.True(suburb.TrafficAtHour(20) > 15);   // a real dinner trade
             Assert.True(suburb.IsDeadAtHour(23));         // and then it stops
@@ -85,7 +85,7 @@ namespace RestaurantEmpire.Core.Tests
         public void TheSameLateServiceIsWorthwhileInANightlifeQuarter()
         {
             // The identical decision, somewhere else, is a good one.
-            var nightlife = Neighbourhood.NightlifeQuarter();
+            var nightlife = Neighborhood.NightlifeQuarter();
 
             Assert.True(nightlife.TrafficAtHour(23) > 20);
             Assert.True(nightlife.IsDeadAtHour(7));
@@ -101,8 +101,8 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void BreakfastPaysInABusinessDistrictAndNotInTheSuburbs()
         {
-            var business = Neighbourhood.BusinessDistrict();
-            var suburb = Neighbourhood.SuburbanHighStreet();
+            var business = Neighborhood.BusinessDistrict();
+            var suburb = Neighborhood.SuburbanHighStreet();
 
             Assert.True(business.TrafficAtHour(8) > 4 * suburb.TrafficAtHour(8));
 
@@ -115,10 +115,10 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         [Fact]
-        public void ABusinessDistrictDiesInTheEvening_WhereACityCentreDoesNot()
+        public void ABusinessDistrictDiesInTheEvening_WhereACityCenterDoesNot()
         {
-            var business = Neighbourhood.BusinessDistrict();
-            var city = Neighbourhood.CityCentre();
+            var business = Neighborhood.BusinessDistrict();
+            var city = Neighborhood.CityCenter();
 
             Assert.True(business.TrafficAtHour(13) > city.TrafficAtHour(13));   // lunch is bigger
             Assert.True(city.TrafficAtHour(20) > business.TrafficAtHour(20) * 3); // dinner is not
@@ -129,7 +129,7 @@ namespace RestaurantEmpire.Core.Tests
         {
             // The player should be able to see a bad idea coming rather than discover it
             // after a month of paying staff to stand around.
-            var suburb = Neighbourhood.SuburbanHighStreet();
+            var suburb = Neighborhood.SuburbanHighStreet();
 
             var dinner = new ServiceWindow("Dinner", 18, 22);
             var late = new ServiceWindow("Late", 22, 2);
@@ -141,7 +141,7 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void TrafficRisesAndFallsSmoothly_RatherThanSwitchingAtTheTopOfTheHour()
         {
-            var city = Neighbourhood.CityCentre();
+            var city = Neighborhood.CityCenter();
             var atNoon = city.TrafficAt(new DateTime(2026, 3, 2, 12, 0, 0));
             var halfPast = city.TrafficAt(new DateTime(2026, 3, 2, 12, 30, 0));
             var atOne = city.TrafficAt(new DateTime(2026, 3, 2, 13, 0, 0));
@@ -152,12 +152,12 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void ATrafficProfileNeedsAFullDay()
         {
-            Assert.Throws<ArgumentException>(() => new Neighbourhood("x", "X", new double[12]));
-            Assert.Throws<ArgumentException>(() => new Neighbourhood("x", "X", null));
+            Assert.Throws<ArgumentException>(() => new Neighborhood("x", "X", new double[12]));
+            Assert.Throws<ArgumentException>(() => new Neighborhood("x", "X", null));
 
             var negative = new double[24];
             negative[3] = -1;
-            Assert.Throws<ArgumentException>(() => new Neighbourhood("x", "X", negative));
+            Assert.Throws<ArgumentException>(() => new Neighborhood("x", "X", negative));
         }
     }
 }

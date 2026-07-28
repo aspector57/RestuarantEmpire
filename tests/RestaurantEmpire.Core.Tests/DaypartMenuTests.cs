@@ -10,7 +10,7 @@ namespace RestaurantEmpire.Core.Tests
     /// Guests order what they want at the hour they turn up.
     ///
     /// This is the answer to "why isn't every restaurant open 24/7". You may absolutely
-    /// serve the dinner menu at 8am; nobody will order it, so you pay a morning's labour to
+    /// serve the dinner menu at 8am; nobody will order it, so you pay a morning's labor to
     /// watch people read the menu and leave. Wanting the breakfast trade means having
     /// breakfast dishes — which means the equipment they need.
     ///
@@ -27,7 +27,7 @@ namespace RestaurantEmpire.Core.Tests
 
             restaurant.Menu.Add(menu);
             company.SupplierPolicy.AssignAll("valley-produce");
-            restaurant.Location = Neighbourhood.CityCentre();
+            restaurant.Location = Neighborhood.CityCenter();
 
             foreach (var stationId in restaurant.Menu.Recipes.Select(r => r.StationId).Distinct())
                 restaurant.Kitchen.Install(stationId, stationId, 6);
@@ -129,7 +129,7 @@ namespace RestaurantEmpire.Core.Tests
 
             cafe.Menu.Add("flat-white");
             company.SupplierPolicy.AssignAll("valley-produce");
-            cafe.Location = Neighbourhood.CityCentre();
+            cafe.Location = Neighborhood.CityCenter();
             foreach (var id in definitions.IngredientIds) cafe.Inventory.Receive(id, 100000m);
 
             var withoutMachine = RunBreakfast(cafe);

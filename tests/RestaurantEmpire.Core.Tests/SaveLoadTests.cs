@@ -10,7 +10,7 @@ using Xunit;
 namespace RestaurantEmpire.Core.Tests
 {
     /// <summary>
-    /// Save/load, and specifically its behaviour when the content underneath a save has
+    /// Save/load, and specifically its behavior when the content underneath a save has
     /// changed — the failure the design doc calls out by name, because RimWorld (the model
     /// for the data-driven approach) is notorious for it.
     ///

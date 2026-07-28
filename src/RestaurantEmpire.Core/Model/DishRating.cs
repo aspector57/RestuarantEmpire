@@ -12,7 +12,7 @@ namespace RestaurantEmpire.Core.Model
     /// and those are three completely different fixes costing three different amounts.
     ///
     /// So the star total is a DISPLAY of the four components. It is never what drives
-    /// behaviour; the components drive behaviour on their own, exactly as they always did.
+    /// behavior; the components drive behavior on their own, exactly as they always did.
     /// Nothing here is stored — this is a lens over current state, computed live like
     /// everything else (Architecture Rule 1), so changing supplier or price moves it at once.
     /// </summary>
@@ -95,7 +95,7 @@ namespace RestaurantEmpire.Core.Model
             {
                 // Value below the walk-away threshold outranks a healthy-looking total,
                 // because it is the one component that makes people leave WITHOUT ordering.
-                // A £60 margherita on premium stock still scores four stars — food quality
+                // A $60 margherita on premium stock still scores four stars — food quality
                 // carries 0.42 and value only 0.17 — so the aggregate would cheerfully
                 // report "people are happy with this" about a dish nobody will buy.
                 if (Value < SatisfactionModel.WalkAwayValueThreshold)

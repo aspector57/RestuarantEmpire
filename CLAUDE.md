@@ -35,9 +35,9 @@ Rendering, UI, layout/build mode, the Advisor, Events, Competitors, Marketing, h
 
 **Status: M0 SCOPE COMPLETE — both exit tests pass.** Company→Restaurant hierarchy · Suppliers and Pricing, both resolving up a Company→Restaurant inheritance chain · Ingredients with par levels · Recipes with live contribution margin · Kasavana-Smith classification · JSON content loading · Time (`GameClock`) · Kitchen throughput (brigade stations, queueing, 86'ing) · Customers (arrival curve, satisfaction formula), joined by a headless `ServiceSimulation` · Economy (append-only ledger, live prime cost) · save/load with version stamps and graceful degradation.
 
-**Two things deferred out of M0, deliberately, both because they need the game loop rather than the core:** the autosave *policy* (rolling slots, prompt-on-exit, autosave after a long jump-ahead) — the format and degradation are built, the scheduling is not; and labour cost *generation* — Economy tracks it, but nothing produces it until Employees arrive at M1, so prime cost is only as complete as the labour figure booked against it.
+**Two things deferred out of M0, deliberately, both because they need the game loop rather than the core:** the autosave *policy* (rolling slots, prompt-on-exit, autosave after a long jump-ahead) — the format and degradation are built, the scheduling is not; and labor cost *generation* — Economy tracks it, but nothing produces it until Employees arrive at M1, so prime cost is only as complete as the labor figure booked against it.
 
-**Caveat on prime cost:** Economy *tracks* labour cost, but nothing *generates* it yet — Employees arrive at M1. Until then a labour figure has to be booked by the caller, so prime cost is only as honest as what gets recorded against it.
+**Caveat on prime cost:** Economy *tracks* labor cost, but nothing *generates* it yet — Employees arrive at M1. Until then a labor figure has to be booked by the caller, so prime cost is only as honest as what gets recorded against it.
 
 **Simulation determinism is a hard requirement.** Use `DeterministicRandom`, never `System.Random` — the runtime does not guarantee `System.Random`'s sequence across versions or platforms, and tests, save/load, and post-hoc explanation of a night all depend on the same seed always producing the same service.
 
@@ -140,7 +140,7 @@ Now: recipes carry **tags** (`seafood`, `luxury`, `quick`, `sharing`, `vegetaria
 every party has an **archetype** plus a personal taste. Business Lunchers pull toward quick
 and light, Romantic Couples toward refined and rich, Families toward sharing and classic and
 away from luxury, Influencers hard toward luxury and seafood. Who is out depends on the hour
-AND the neighbourhood — a business district at 1pm is not a nightlife quarter at midnight.
+AND the neighborhood — a business district at 1pm is not a nightlife quarter at midnight.
 
 Aaron's addition of personal preferences ("loves seafood") sits on top of the archetype, so
 two Business Lunchers still order differently.
@@ -185,7 +185,7 @@ them and **cancels out exactly**. Covers moved 120 -> 123. It could never make a
 somewhere else, because it only ever redistributed within the menu.
 
 **So quality belongs in `SatisfactionModel.ScoreValue`**, which is read at the DOOR. Value is
-what you get over what you give, and only the second half was modelled; what arrives is part
+what you get over what you give, and only the second half was modeled; what arrives is part
 of what was paid for. Same function now serves the pre-order balk and the post-meal score, so
 judging and choosing cannot drift apart. Quality stays in `AppetiteFor` too, where it does a
 different and still-real job: discriminating between dishes when suppliers are mixed per
@@ -209,7 +209,7 @@ tuning until the number pleases you, which this project has already been caught 
 
 **The star readout (`DishRating`), and why the breakdown is the whole point.** Five stars per
 dish, split into food / speed / value / room under the guest's own weights. The total is a
-DISPLAY of the four components and never drives behaviour — the components drive behaviour on
+DISPLAY of the four components and never drives behavior — the components drive behavior on
 their own. A bare "2.4 stars" would violate Binding Principle 2 directly: the player could not
 tell whether the risotto is dear for what it is, slow out of the kitchen, or made with budget
 cheese, and those are three different fixes at three different prices. `[r]atings` in the
@@ -244,7 +244,7 @@ but you probably don't love the restaurant... you can be moderately successful b
 the best in the world."*
 
 So the two ratings are connected without being the same number. `DishRating` says whether a
-plate pleased the person eating it. `Reputation` says what the neighbourhood thinks of the
+plate pleased the person eating it. `Reputation` says what the neighborhood thinks of the
 place — and it has a **CEILING set by what you are actually attempting**:
 
     ceiling = 0.45 competence + (ingredient quality x 0.40) + (room x 0.08)
@@ -344,7 +344,7 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 ### Floor space is the constraint on equipment (Aaron)
 
-"You shouldn't ever get to like 15 ovens" — correct, and the honest limit is not a cap but **floor space**. `Restaurant.FloorArea` is square metres of building; stations and fittings both consume it, so the kitchen and dining room compete for one floor. Fifteen ovens is legal and leaves you 21 covers.
+"You shouldn't ever get to like 15 ovens" — correct, and the honest limit is not a cap but **floor space**. `Restaurant.FloorArea` is square meters of building; stations and fittings both consume it, so the kitchen and dining room compete for one floor. Fifteen ovens is legal and leaves you 21 covers.
 
 `data/equipment.json` is the catalogue: every station has a cheap, standard and premium model, and **premium is deliberately faster AND smaller per unit**. That makes upgrading a real alternative to expanding — when the building is full, better equipment is the only way left to add throughput. It is also the seed of the Sims-style shop Aaron wants.
 
@@ -354,13 +354,13 @@ A 90m2 unit comfortably holds a working kitchen (3 ovens, 2 saute, 2 cold) and 4
 
 Aaron's framing: *"builder mode where if you have the space you can add another floor or extend the building — which won't always be possible, for example in the city you can't just knock down the wall and build into the building next to you."*
 
-Built so far, as the crude first form: `Neighbourhood.MaxFloorArea` caps how big a site can ever get, `ExtensionCostPerSquareMetre` prices the land, and `Restaurant.ExtendBuilding` buys more of it. Refused past the cap with a message that says why.
+Built so far, as the crude first form: `Neighborhood.MaxFloorArea` caps how big a site can ever get, `ExtensionCostPerSquareMeter` prices the land, and `Restaurant.ExtendBuilding` buys more of it. Refused past the cap with a message that says why.
 
 The tension is deliberate and is what makes location a real choice rather than "pick the busiest": **the best traffic comes with the least room to grow.**
 
 | | Lunch traffic | Site cap | Land |
 |---|---|---|---|
-| City Centre | highest | 110m2 | 950/m2 |
+| City Center | highest | 110m2 | 950/m2 |
 | Business District | high | 150m2 | 720/m2 |
 | Nightlife Quarter | (evenings) | 140m2 | 660/m2 |
 | Suburban High Street | modest | 280m2 | 340/m2 |
@@ -371,7 +371,7 @@ Outgrowing a city site is therefore a real, unfixable predicament — and the on
 
 ### A site costs money to take on, and to keep (Aaron)
 
-Each `Neighbourhood` carries a `LeasePremium` (key money, paid once before you have sold
+Each `Neighborhood` carries a `LeasePremium` (key money, paid once before you have sold
 anything) and a `MonthlyRent`. Starting capital is a fixed bankroll, so **the site you pick
 determines how much you have left to trade with**: a city pitch leaves roughly 10,500 after
 key money and fit-out, a suburban one roughly 19,500.
@@ -386,7 +386,7 @@ to be able to win. It shouldn't be easy but it should definitely be doable."*
 
 A 100-run sweep (4 sites x 5 sizes x 5 seeds) drove three changes:
 
-1. **A cook works a line, not a pan.** `KitchenPass.PlatesPerCook = 2`. Modelling one cook
+1. **A cook works a line, not a pan.** `KitchenPass.PlatesPerCook = 2`. Modeling one cook
    as one plate forced a headcount that bankrupted every restaurant in the sweep — 0/100
    configurations profitable at some settings. This was the single biggest error.
 2. **Wages 16/12** rather than 18/14.40, and menu prices up roughly 15%.
@@ -409,7 +409,7 @@ hundred points because **they measure two different players**:
 
 Neither is the win rate. The sweep hands the player a good build; the campaign makes the
 player earn it. **The gap between them is the game**, and the thing that carries a player
-across it is the Advisor. That gives M1(b) a number instead of a taste judgement: *does an
+across it is the Advisor. That gives M1(b) a number instead of a taste judgment: *does an
 Advisor-guided opening survive twelve months?*
 
 **Attribution, measured commit by commit rather than assumed:**
@@ -443,7 +443,7 @@ deletes the arc; one that cannot be dug out of deletes the game.
 A starting restaurant SHOULD lose money — the question is whether investing digs you out.
 Suburban, dinner only, thirty days:
 
-| Kitchen / seats | Revenue | Labour as % | Net |
+| Kitchen / seats | Revenue | Labor as % | Net |
 |---|---|---|---|
 | 1 unit / 12 | 5,711 | 95% | −3,831 |
 | 3 units / 30 | 18,806 | 72% | −3,098 |
@@ -498,10 +498,10 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 |---|---|
 | **More stock to buy, and more capital tied up in it** | **Gap.** Ingredients are charged when *used*, never when *bought*, so a deep pantry costs nothing to hold. Fixing this means purchase-vs-consumption accounting. |
 | **Spoilage on that bigger pantry** | **Gap.** Listed in M0 scope, deliberately cut from the built slice. Nothing rots, so over-ordering is free. |
-| **More labour to cover more hours** | **Scheduled — M1.** Economy tracks labour; nothing generates it until Employees. |
+| **More labor to cover more hours** | **Scheduled — M1.** Economy tracks labor; nothing generates it until Employees. |
 | **Equipment each service needs** (an espresso machine for breakfast) | **Built.** `Restaurant.BuyStation` charges `CapitalExpenditure`; stations already gate dishes, so a breakfast recipe naming a `coffee` station cannot be cooked until the machine is bought. |
 | **Decor and furniture** | **Built.** `Restaurant.Buy`/`BuyTables` charge the books, and `SeatingCapacity` is now *derived* from furniture rather than declared — a bigger room is something you pay for. Comfort feeds satisfaction at the smallest of the four weights, per the design's insistence that decor nudges rather than decides. |
-| **Local traffic may not support every daypart** | **Built.** `Neighbourhood` gives an hourly traffic profile; `ServiceWindow` has no demand knob at all. The player picks hours, the location decides whether anyone is there. |
+| **Local traffic may not support every daypart** | **Built.** `Neighborhood` gives an hourly traffic profile; `ServiceWindow` has no demand knob at all. The player picks hours, the location decides whether anyone is there. |
 | **A menu nobody wants at that hour** | **Built.** Recipes carry optional `dayparts`; guests only order what suits the hour, and a party that finds nothing leaves without ordering (`ServiceResult.PartiesLostToMenu`). |
 
 ### Deferred deliberately — "we don't need to over-engineer this, the point is to have fun" (Aaron)

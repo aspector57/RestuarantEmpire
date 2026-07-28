@@ -252,7 +252,7 @@ namespace RestaurantEmpire.Core.Content
             }
             else if (!string.IsNullOrWhiteSpace(state.Speed))
             {
-                warnings.Add("Unrecognised game speed '" + state.Speed + "'; defaulted to Normal.");
+                warnings.Add("Unrecognized game speed '" + state.Speed + "'; defaulted to Normal.");
             }
 
             return clock;
@@ -267,7 +267,7 @@ namespace RestaurantEmpire.Core.Content
                 LedgerCategory category;
                 if (!Enum.TryParse(entry.Category, out category))
                 {
-                    warnings.Add("Dropped a ledger entry with unrecognised category '" + entry.Category + "'.");
+                    warnings.Add("Dropped a ledger entry with unrecognized category '" + entry.Category + "'.");
                     continue;
                 }
 
@@ -296,7 +296,7 @@ namespace RestaurantEmpire.Core.Content
             if (!Enum.TryParse(state.LocationType, out locationType))
             {
                 locationType = LocationType.BrickAndMortar;
-                warnings.Add("'" + state.Name + "' had an unrecognised location type '" +
+                warnings.Add("'" + state.Name + "' had an unrecognized location type '" +
                              state.LocationType + "'; treated as brick-and-mortar.");
             }
 

@@ -8,7 +8,7 @@ namespace RestaurantEmpire.Core.Tests
     /// have to set up a clock, a window and a runner.
     ///
     /// Interrupts are off here on purpose — a test measuring revenue wants the whole night,
-    /// not a night that stopped halfway to ask a question. Interrupt behaviour has its own
+    /// not a night that stopped halfway to ask a question. Interrupt behavior has its own
     /// tests.
     /// </summary>
     internal static class Dinner
@@ -32,7 +32,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // Demand comes from the street now, so a test that wants "a dinner rush of this
             // size" says so by putting the restaurant somewhere with that traffic.
-            restaurant.Location = Neighbourhood.PeakedBetween("Test Dinner Strip", 18, 23, peakPartiesPerHour);
+            restaurant.Location = Neighborhood.PeakedBetween("Test Dinner Strip", 18, 23, peakPartiesPerHour);
 
             var clock = new GameClock();
             clock.AdvanceHours(18);

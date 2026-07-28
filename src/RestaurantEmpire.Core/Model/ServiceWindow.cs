@@ -7,8 +7,8 @@ namespace RestaurantEmpire.Core.Model
     /// A period of the day when the restaurant is open — lunch, dinner, a late service.
     ///
     /// A window says WHEN you unlock the door. It does NOT say how busy you are: that comes
-    /// from the <see cref="Neighbourhood"/> you're in. Opening a window over hours when the
-    /// street is empty is entirely allowed and entirely your problem — you pay the labour
+    /// from the <see cref="Neighborhood"/> you're in. Opening a window over hours when the
+    /// street is empty is entirely allowed and entirely your problem — you pay the labor
     /// and the lights either way.
     ///
     /// The clock runs continuously around these; outside them nobody arrives, which is what
@@ -54,20 +54,20 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>
-        /// Total potential parties this window could see in the neighbourhood it sits in.
-        /// This is how a player can tell, before committing to the labour, whether a service
+        /// Total potential parties this window could see in the neighborhood it sits in.
+        /// This is how a player can tell, before committing to the labor, whether a service
         /// is worth opening at all.
         /// </summary>
-        public double PotentialPartiesIn(Neighbourhood neighbourhood)
+        public double PotentialPartiesIn(Neighborhood neighborhood)
         {
-            if (neighbourhood == null) throw new ArgumentNullException(nameof(neighbourhood));
+            if (neighborhood == null) throw new ArgumentNullException(nameof(neighborhood));
 
             var total = 0.0;
             var hour = StartHour;
 
             for (var i = 0; i < LengthMinutes / 60; i++)
             {
-                total += neighbourhood.TrafficAtHour(hour);
+                total += neighborhood.TrafficAtHour(hour);
                 hour = (hour + 1) % 24;
             }
 

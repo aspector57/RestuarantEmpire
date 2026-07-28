@@ -23,7 +23,7 @@ namespace RestaurantEmpire.Core.Tests
             company = new Company("acme", "Acme", definitions, 60000m);
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
-            restaurant.Location = Neighbourhood.SuburbanHighStreet();
+            restaurant.Location = Neighborhood.SuburbanHighStreet();
             restaurant.FloorArea = 200m;
             restaurant.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
             company.SupplierPolicy.AssignAll(supplierId);
@@ -48,7 +48,7 @@ namespace RestaurantEmpire.Core.Tests
             return restaurant;
         }
 
-        // ---- Quality has to change behaviour, not just the score afterwards ----
+        // ---- Quality has to change behavior, not just the score afterwards ----
 
         [Fact]
         public void CheapIngredientsAtPremiumPricesCostYouTrade()

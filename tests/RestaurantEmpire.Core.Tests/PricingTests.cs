@@ -68,7 +68,7 @@ namespace RestaurantEmpire.Core.Tests
             truck.Menu.Add("margherita");
 
             company.Pricing.SetPrice("margherita", 15.00m);
-            flagship.Pricing.SetPrice("margherita", 19.00m);   // smarter neighbourhood
+            flagship.Pricing.SetPrice("margherita", 19.00m);   // smarter neighborhood
 
             Assert.Equal(19.00m, flagship.Costing.MenuPrice("margherita"));
             Assert.Equal(15.00m, truck.Costing.MenuPrice("margherita"));
@@ -157,13 +157,13 @@ namespace RestaurantEmpire.Core.Tests
             //
             // Judged against the industry bands rather than hand-picked thresholds, so this
             // keeps testing the claim rather than a particular balance pass: book each
-            // night's takings with the same labour and read what the books say.
-            // Labour is a realistic share of the mid-market night's takings, and the SAME
+            // night's takings with the same labor and read what the books say.
+            // Labor is a realistic share of the mid-market night's takings, and the SAME
             // absolute figure is booked against both — so this stays a comparison of pricing
             // rather than of a hardcoded number that goes stale whenever demand is retuned.
-            var labour = decimal.Round(asIs.Revenue * 0.20m, 2);
-            cheapCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", cheapPrices.Id);
-            repricedCo.Economy.Record(0, LedgerCategory.LaborCost, labour, "Brigade", repriced.Id);
+            var labor = decimal.Round(asIs.Revenue * 0.20m, 2);
+            cheapCo.Economy.Record(0, LedgerCategory.LaborCost, labor, "Brigade", cheapPrices.Id);
+            repricedCo.Economy.Record(0, LedgerCategory.LaborCost, labor, "Brigade", repriced.Id);
 
             var asIsBooks = cheapCo.Economy.Summarize(0, 0, cheapPrices.Id);
             var chargedBooks = repricedCo.Economy.Summarize(0, 0, repriced.Id);

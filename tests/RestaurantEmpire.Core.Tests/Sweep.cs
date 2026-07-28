@@ -35,14 +35,14 @@ namespace RestaurantEmpire.Core.Tests
             }
         }
 
-        private static Neighbourhood SiteFor(string key)
+        private static Neighborhood SiteFor(string key)
         {
             switch (key)
             {
-                case "city": return Neighbourhood.CityCentre();
-                case "business": return Neighbourhood.BusinessDistrict();
-                case "nightlife": return Neighbourhood.NightlifeQuarter();
-                default: return Neighbourhood.SuburbanHighStreet();
+                case "city": return Neighborhood.CityCenter();
+                case "business": return Neighborhood.BusinessDistrict();
+                case "nightlife": return Neighborhood.NightlifeQuarter();
+                default: return Neighborhood.SuburbanHighStreet();
             }
         }
 
@@ -101,13 +101,13 @@ namespace RestaurantEmpire.Core.Tests
             }
 
             var m = runner.Snapshot();
-            var prime = m.Revenue == 0m ? 0m : (m.FoodCost + m.LabourCost) / m.Revenue;
+            var prime = m.Revenue == 0m ? 0m : (m.FoodCost + m.LaborCost) / m.Revenue;
 
             return new Run
             {
                 Site = siteKey, Size = size, Seed = seed,
                 Revenue = m.Revenue,
-                Net = m.Revenue - m.FoodCost - m.LabourCost - site.MonthlyRent,
+                Net = m.Revenue - m.FoodCost - m.LaborCost - site.MonthlyRent,
                 PrimeRatio = prime, Covers = m.CoversServed, Walkouts = m.Walkouts,
                 Interrupts = interrupts, TurnedAway = m.PartiesTurnedAway,
                 LostToMenu = m.PartiesLostToMenu, PutOffByWait = m.PartiesPutOffByTheWait,

@@ -58,7 +58,7 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         [Fact]
-        public void PrimeCostIsFoodPlusLabourOverRevenue_AndBandsAgainstTheRealIndustryRanges()
+        public void PrimeCostIsFoodPlusLaborOverRevenue_AndBandsAgainstTheRealIndustryRanges()
         {
             var restaurant = BuildTradingRestaurant(out var company, openingCash: 0m);
 
@@ -95,7 +95,7 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         [Fact]
-        public void NoRevenueMeansNoJudgement_RatherThanADivideByZero()
+        public void NoRevenueMeansNoJudgment_RatherThanADivideByZero()
         {
             var restaurant = BuildTradingRestaurant(out var company, openingCash: 5000m);
             company.Economy.Record(0, LedgerCategory.FoodCost, 400m, "Opening stock order", restaurant.Id);
@@ -123,7 +123,7 @@ namespace RestaurantEmpire.Core.Tests
             Assert.Equal(cashBefore + night.Revenue - night.FoodCost, company.Economy.CashOnHand);
 
             // A real trading night should be comfortably profitable on food alone,
-            // before any labour is booked against it.
+            // before any labor is booked against it.
             Assert.True(books.Revenue > books.FoodCost);
         }
 

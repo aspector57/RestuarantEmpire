@@ -84,7 +84,7 @@ namespace RestaurantEmpire.Core.Model
         /// "small, bounded modifier... capped low enough that it's forgiving, not a trap",
         /// because cutting corners on decor while broke is the intended early-game
         /// experience. Food and service decide whether a night was good; the room only
-        /// colours it.
+        /// colors it.
         /// </summary>
         public const decimal AmbianceWeight = 0.08m;
 
@@ -99,7 +99,7 @@ namespace RestaurantEmpire.Core.Model
         /// what the dish is worth — rather than on food cost ratio.
         ///
         /// That distinction matters more than it looks. A flat white with 27p of coffee in
-        /// it runs a 7% food cost, and nobody thinks a £3.60 coffee is a swindle; coffee is
+        /// it runs a 7% food cost, and nobody thinks a $3.60 coffee is a swindle; coffee is
         /// simply a high-margin product. Judging value by food cost ratio cannot tell an
         /// ordinary coffee apart from a pizza sold at three times its worth, because both
         /// land at the same ratio. Markup can, and it is also what a guest actually reacts
@@ -118,7 +118,7 @@ namespace RestaurantEmpire.Core.Model
             var worth = 1m / markup;
 
             // WHAT ARRIVES IS PART OF WHAT YOU PAID FOR. Value is what you get over what you
-            // give, and until now only the second half was modelled — so switching every
+            // give, and until now only the second half was modeled — so switching every
             // ingredient to the cheapest supplier raised margin, lowered the satisfaction
             // score, and changed absolutely nothing else. Measured before this: budget stock
             // served 4,089 covers with 151 walkouts, premium served 4,089 covers with 151
@@ -137,8 +137,8 @@ namespace RestaurantEmpire.Core.Model
             // footfall does not pay for truffles, and budget stock out-earned premium at every
             // horizon — so no player would ever have sourced well.
             //
-            // It is also simply how the trade works. Nobody pays £200 a head because the
-            // ingredients cost £60; they pay it because of what the place is. Neutral standing
+            // It is also simply how the trade works. Nobody pays $200 a head because the
+            // ingredients cost $60; they pay it because of what the place is. Neutral standing
             // is exactly 1.0, so this changes nothing for a restaurant nobody has heard of.
             worth *= 0.75m + (Clamp(reputation) * 0.5m);   // unknown 1.0x, beloved ~1.20x
 

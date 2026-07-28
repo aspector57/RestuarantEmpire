@@ -7,7 +7,7 @@ namespace RestaurantEmpire.Core.Model
     /// <summary>
     /// One brigade station — the oven, the sauté, the garde-manger.
     ///
-    /// Modelled on the Escoffier brigade system the design doc researched in Phase 2: each
+    /// Modeled on the Escoffier brigade system the design doc researched in Phase 2: each
     /// station is a queue with a throughput rate. <see cref="ConcurrentCapacity"/> is how
     /// many plates it can work at once (two ovens = 2), and the speed multiplier is
     /// equipment quality. From M1 an assigned employee's skill multiplies this too.
@@ -47,7 +47,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public decimal Cost { get; }
 
-        /// <summary>Square metres one unit takes up. The kitchen and the dining room share one building.</summary>
+        /// <summary>Square meters one unit takes up. The kitchen and the dining room share one building.</summary>
         public decimal FootprintPerUnit { get; }
 
         /// <summary>Total floor space this station occupies.</summary>
@@ -228,7 +228,7 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>
         /// Opens a fresh pass for one service. Queue state is per-service, never carried over.
         /// Pass the number of cooks on shift to have the brigade limit throughput; zero means
-        /// staffing is not being modelled and only the equipment constrains the kitchen.
+        /// staffing is not being modeled and only the equipment constrains the kitchen.
         /// </summary>
         public KitchenPass OpenPass(long serviceStartTick, int cooks = 0)
         {
@@ -266,7 +266,7 @@ namespace RestaurantEmpire.Core.Model
             // being a complete answer and makes hiring a real decision.
             //
             // But a cook works a LINE, not a single pan — they run several things at once,
-            // which is the whole point of a brigade. Modelling one cook as one plate forced
+            // which is the whole point of a brigade. Modeling one cook as one plate forced
             // a headcount that bankrupted every restaurant in a hundred-run sweep.
             _cookFreeAt = new long[(cooks < 0 ? 0 : cooks) * PlatesPerCook];
             for (var i = 0; i < _cookFreeAt.Length; i++) _cookFreeAt[i] = serviceStartTick;
@@ -369,7 +369,7 @@ namespace RestaurantEmpire.Core.Model
 
             var startedTick = slots[chosen] > placedTick ? slots[chosen] : placedTick;
 
-            // ...and the earliest free pair of hands, when the brigade is being modelled.
+            // ...and the earliest free pair of hands, when the brigade is being modeled.
             var cook = -1;
             if (_cookFreeAt.Length > 0)
             {

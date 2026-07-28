@@ -27,7 +27,7 @@ namespace RestaurantEmpire.Core.Model
             Kitchen = new Kitchen();
             DiningRoom = new DiningRoom();
             Payroll = new Payroll();
-            Location = Neighbourhood.SuburbanHighStreet();
+            Location = Neighborhood.SuburbanHighStreet();
             ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
             SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
             Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
@@ -54,10 +54,10 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>
         /// Where this restaurant sits, and therefore how much passing trade exists at each
-        /// hour. The player chooses the hours; the neighbourhood decides whether anyone is
+        /// hour. The player chooses the hours; the neighborhood decides whether anyone is
         /// out there. Demand is an output of location, never a number the player sets.
         /// </summary>
-        public Neighbourhood Location { get; set; }
+        public Neighborhood Location { get; set; }
 
         /// <summary>
         /// When the doors are open. The clock runs continuously around these; outside them
@@ -79,7 +79,7 @@ namespace RestaurantEmpire.Core.Model
         public DiningRoom DiningRoom { get; }
 
         /// <summary>
-        /// What the neighbourhood thinks, and therefore how many people turn up. Genuine
+        /// What the neighborhood thinks, and therefore how many people turn up. Genuine
         /// accumulated state rather than a live computation — it remembers what you served
         /// last month, which is the entire point — so it is saved with the game.
         /// </summary>
@@ -124,7 +124,7 @@ namespace RestaurantEmpire.Core.Model
         public int ServableSeats { get { return Payroll.CountOf(StaffRole.Server) * 14; } }
 
         /// <summary>
-        /// Square metres of building. Zero means unmeasured, and nothing is constrained —
+        /// Square meters of building. Zero means unmeasured, and nothing is constrained —
         /// which keeps a bare test fixture or a ghost kitchen from having to lease a unit.
         ///
         /// This is what stops "buy another oven" being the answer to everything. The kitchen
@@ -148,23 +148,23 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>
         /// Builds out into more of the site — the crude first form of build mode.
         ///
-        /// It is capital-gated and, more interestingly, LOCATION-gated. In a city centre you
+        /// It is capital-gated and, more interestingly, LOCATION-gated. In a city center you
         /// cannot simply knock through into the building next door, so a wonderful pitch can
         /// be one you outgrow and cannot fix. On a suburban high street there is a car park
         /// behind you and land is a third of the price.
         ///
         /// That is the trade the location choice is really making: footfall against ceiling.
         /// </summary>
-        public void ExtendBuilding(decimal extraSquareMetres, long tick = 0)
+        public void ExtendBuilding(decimal extraSquareMeters, long tick = 0)
         {
-            if (extraSquareMetres <= 0m)
-                throw new ArgumentOutOfRangeException(nameof(extraSquareMetres), "Extend by something.");
+            if (extraSquareMeters <= 0m)
+                throw new ArgumentOutOfRangeException(nameof(extraSquareMeters), "Extend by something.");
 
             if (Location == null)
                 throw new InvalidOperationException("This restaurant has no location, so there is nothing to build into.");
 
             var headroom = ExpansionHeadroom;
-            if (extraSquareMetres > headroom)
+            if (extraSquareMeters > headroom)
             {
                 throw new InvalidOperationException(
                     "Cannot extend: " + Location.Name + " allows this site up to " +
@@ -173,19 +173,19 @@ namespace RestaurantEmpire.Core.Model
                     "m2 to build into. You cannot knock through into the building next door.");
             }
 
-            var cost = extraSquareMetres * Location.ExtensionCostPerSquareMetre;
+            var cost = extraSquareMeters * Location.ExtensionCostPerSquareMeter;
 
-            FloorArea += extraSquareMetres;
+            FloorArea += extraSquareMeters;
             Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, cost,
-                "Extended into " + extraSquareMetres.ToString("0.0") + "m2 more of the site", Id);
+                "Extended into " + extraSquareMeters.ToString("0.0") + "m2 more of the site", Id);
         }
 
         public decimal FreeFloorArea { get { return FloorArea - UsedFloorArea; } }
 
         /// <summary>True when there is room for something of this size (always, if unmeasured).</summary>
-        public bool HasRoomFor(decimal squareMetres)
+        public bool HasRoomFor(decimal squareMeters)
         {
-            return FloorArea <= 0m || squareMetres <= FreeFloorArea;
+            return FloorArea <= 0m || squareMeters <= FreeFloorArea;
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace RestaurantEmpire.Core.Model
         /// bought, not declared. A bigger room is something you pay for.
         ///
         /// Zero means nothing has been installed, which the simulation reads as "capacity
-        /// not modelled" and lets everyone in. That keeps a ghost kitchen or a bare test
+        /// not modeled" and lets everyone in. That keeps a ghost kitchen or a bare test
         /// fixture from having to furnish itself first (Architecture Rule 5: location type
         /// is a parameter, not a subclass).
         /// </summary>
@@ -309,7 +309,7 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>
         /// What this location charges, inheriting from the company's brand pricing. Empty
         /// normally; setting a price here is the deliberate local exception — a pricier
-        /// neighbourhood, a flagship that can command more.
+        /// neighborhood, a flagship that can command more.
         /// </summary>
         public PricingPolicy Pricing { get; }
 

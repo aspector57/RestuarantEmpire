@@ -76,7 +76,7 @@ namespace RestaurantEmpire.Core.Definitions
         ///
         /// This is what makes opening a service a real decision rather than free money. You
         /// may absolutely offer truffle risotto at 8am; nobody will order it, so you will
-        /// have paid a morning's labour to serve an empty room. Wanting the breakfast trade
+        /// have paid a morning's labor to serve an empty room. Wanting the breakfast trade
         /// means having breakfast dishes — which in turn means the equipment they need.
         /// </summary>
         public IReadOnlyList<Model.Daypart> Dayparts { get; }

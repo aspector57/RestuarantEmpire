@@ -172,7 +172,7 @@ namespace RestaurantEmpire.Core.Model
     /// than migrated in later.
     ///
     /// SCOPE, per the design doc's explicit narrowing: this is the player's own P&amp;L, not
-    /// a macroeconomy. There is no modelled inflation, no interest-rate cycle, no
+    /// a macroeconomy. There is no modeled inflation, no interest-rate cycle, no
     /// market-wide boom or bust. Every swing here must trace back to a decision the player
     /// made — a supplier switch, a staffing call, a price change — never to invisible
     /// background noise. Loans arrive at M3.
@@ -246,9 +246,9 @@ namespace RestaurantEmpire.Core.Model
                 Record(tick, LedgerCategory.FoodCost, result.FoodCost, note, restaurant.Id);
             }
 
-            if (result.LabourCost > 0m)
+            if (result.LaborCost > 0m)
             {
-                Record(tick, LedgerCategory.LaborCost, result.LabourCost,
+                Record(tick, LedgerCategory.LaborCost, result.LaborCost,
                     restaurant.Payroll.Headcount + " on the payroll", restaurant.Id);
             }
         }

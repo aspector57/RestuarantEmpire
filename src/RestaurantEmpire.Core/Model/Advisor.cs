@@ -52,7 +52,7 @@ namespace RestaurantEmpire.Core.Model
             Price = price;
         }
 
-        /// <summary>Stable, so the same observation can be recognised across days.</summary>
+        /// <summary>Stable, so the same observation can be recognized across days.</summary>
         public string Id { get; }
 
         public AdvisorTier Tier { get; }
@@ -264,12 +264,12 @@ namespace RestaurantEmpire.Core.Model
 
             if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 3m && _restaurant.ExpansionHeadroom > 10m)
             {
-                var perM2 = _restaurant.Location.ExtensionCostPerSquareMetre;
+                var perM2 = _restaurant.Location.ExtensionCostPerSquareMeter;
                 found.Add(new Suggestion(
                     "opportunity:space", AdvisorTier.Strategic,
                     "The building is full.",
                     "Nothing more fits, but " + _restaurant.Location.Name + " would allow another " +
-                    _restaurant.ExpansionHeadroom.ToString("0") + "m2 at " + perM2.ToString("N0") + " a metre.",
+                    _restaurant.ExpansionHeadroom.ToString("0") + "m2 at " + perM2.ToString("N0") + " a meter.",
                     price: perM2));
             }
 
