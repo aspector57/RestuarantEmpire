@@ -77,8 +77,11 @@ namespace RestaurantEmpire.Core.Tests
             var cheap = Build(out _, "budget-wholesale");
             var fine = Build(out _, "premium-harvest");
 
-            Trade(cheap, 60);
-            Trade(fine, 60);
+            // A YEAR each. Reputation moves over months by design — a name you could build
+            // or lose in a fortnight would be a status effect, not a reputation — so a
+            // fixture that only trades for a couple of months has not finished settling.
+            Trade(cheap, 360);
+            Trade(fine, 360);
 
             // Both are run competently. Only what they are made of differs.
             Assert.True(cheap.ReputationCeiling < 0.65m);
@@ -106,7 +109,7 @@ namespace RestaurantEmpire.Core.Tests
             // own cap — the food is simply mediocre — so a plateau message there would be
             // blaming the ceiling for something the plates are doing.
             var midTier = Build(out _, "valley-produce");
-            Trade(midTier, 90);
+            Trade(midTier, 360);
 
             Assert.True(midTier.Reputation.AtCeiling);
             Assert.Contains("ingredients", midTier.Reputation.Verdict);
@@ -240,6 +243,72 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.Equal(standing, restored.Standing);
             Assert.Equal(meals, restored.MealsRemembered);
+        }
+
+        // ---- Losing a name takes as long as losing a name takes (Aaron) ----
+
+        [Fact]
+        public void CuttingCornersDoesNotCraterYouOvernight()
+        {
+            // Aaron: "it shouldn't be instant unless there is a critic or blogger who catches
+            // it quickly... it should deteriorate over weeks or months."
+            //
+            // The bug this pins: the ceiling used to CLAMP rather than pull, so the first
+            // service after switching supplier snapped standing straight down to it —
+            // measured at 0.890 to 0.568 in a single day. Six months of work, gone over one
+            // dinner, with no window in which to notice or undo it.
+            var restaurant = Build(out var company, "premium-harvest");
+            Trade(restaurant, 360);
+
+            var earned = restaurant.Reputation.Standing;
+            Assert.True(earned > 0.85m, "the fixture should have earned a real name first");
+
+            company.SupplierPolicy.AssignAll("budget-wholesale");
+            Assert.True(restaurant.ReputationCeiling < 0.60m, "the ceiling drops at once — that part is correct");
+
+            // One day of trading on the cheap stuff barely registers.
+            Trade(restaurant, 1);
+            Assert.True(restaurant.Reputation.Standing > earned - 0.02m,
+                "one day cost " + (earned - restaurant.Reputation.Standing) + " of standing");
+
+            // A month in, it is visibly going.
+            Trade(restaurant, 30);
+            Assert.True(restaurant.Reputation.Standing < earned - 0.15m, "a month should show real damage");
+
+            // And it takes months to actually arrive.
+            Trade(restaurant, 150);
+            Assert.True(restaurant.Reputation.Standing < 0.60m);
+        }
+
+        [Fact]
+        public void WhileTheNameIsStillFallingTheGameSaysSo()
+        {
+            // The one window where the damage is visible and not yet done. Getting this
+            // message wrong would waste it: before the fix the game reported "as well liked
+            // as these ingredients allow" while standing was 0.884 and its ceiling 0.570,
+            // which is not a plateau — it is a slide, and it can still be undone.
+            var restaurant = Build(out var company, "premium-harvest");
+            Trade(restaurant, 360);
+
+            company.SupplierPolicy.AssignAll("budget-wholesale");
+            Trade(restaurant, 3);
+
+            Assert.True(restaurant.Reputation.LivingOnPastGlory);
+            Assert.False(restaurant.Reputation.AtCeiling, "sliding is not the same as settled");
+            Assert.Contains("no longer justify", restaurant.Reputation.Verdict);
+        }
+
+        [Fact]
+        public void ARealNameTakesMonthsToBuild()
+        {
+            var restaurant = Build(out _, "premium-harvest");
+
+            Trade(restaurant, 30);
+            var afterAMonth = restaurant.Reputation.Standing;
+            Assert.True(afterAMonth < 0.70m, "a month of good food should not make you famous");
+
+            Trade(restaurant, 150);
+            Assert.True(restaurant.Reputation.Standing > 0.85m, "half a year of it should");
         }
     }
 }

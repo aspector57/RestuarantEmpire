@@ -289,6 +289,21 @@ values DERIVED from policy — a plate cost, a contribution margin. Reputation i
 history and cannot be recomputed from current state; remembering last month is the entire
 point. It is saved, and an older save without it loads at neutral (unknown, not hated).
 
+**A ceiling must PULL, not clamp (Aaron).** The first version did `if (Standing > Ceiling) Standing = Ceiling`, which meant a supplier switch destroyed a reputation instantly — measured at **0.890 to 0.568 in a single day of service.** Six months of work gone over one dinner, with no window to notice it. Aaron: *"it shouldn't be instant unless there is a critic or blogger or influencer who catches it quickly. Other than that it should deteriorate over weeks or months."*
+
+Now the ceiling drags standing down at `BadNewsRate` instead, and the rates are five times slower again. The curve:
+
+| | Building (premium stock) | Losing it (switched to bulk) |
+|---|---|---|
+| 1 day | — | 0.884 — barely moves |
+| 1 month | 0.622 | 0.627 |
+| 3 months | 0.780 | 0.568 |
+| 6 months | 0.879 *people go out of their way* | 0.556 |
+
+Six months to build, two to three to lose. **And the slide is now named while it is happening:** `Reputation.LivingOnPastGlory` reports *"still trading on a name these ingredients no longer justify"*, shown in the harness header as `and FALLING toward 57`. That is the only moment when the damage is visible and not yet done, so it must not be mistaken for a plateau — the earlier code called it "as well liked as these ingredients allow" at a standing of 0.884, which was flatly wrong.
+
+The sudden version belongs to Events at M3+: a critic or influencer who catches the change collapses that window. Recorded in the M5 addendum in `docs/design.md`. **The slow curve is the correct default precisely so the fast path can be a dramatic exception.**
+
 **Calibration error worth remembering:** the first rates were ten times too fast. A busy
 restaurant moved a third of the way to a new standing in a SINGLE DAY, which is a status
 effect wearing a reputation's clothes — and it broke two location tests, which is how it was

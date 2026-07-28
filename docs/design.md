@@ -866,7 +866,7 @@ Method: sequence everything designed in Phases 4–7 into milestones, each one s
 
 **Goal:** bring the "living world" pressure systems online against a single restaurant, before expansion adds more surface area to test them against.
 
-**Scope:** full Economy (loans, anchored interest/royalty rates); the Events director with Health/Fire Inspection, VIP/Critic Visit, and basic Opportunity Pitch (bid/pass only — no bidding wars yet, that needs Competitors' relationship depth); full Competitors/Rivals (relationship score, friendly/neutral/aggressive posture, the friendliness-cost tradeoff from Phase 7); Marketing (campaigns, review-response); the **Prestige** track of Power Rankings specifically — it only needs Reputation and Competitors, both landing here, so a single restaurant can start climbing City and State rankings before any expansion exists. Country and World tiers stay gated behind the eligibility checklist refined this session (sustained excellence over a long stretch, Marquee wins, or expansion) — reachable single-location, but correctly rare and hard-won rather than trivially fast, so M4/M5 keep their pull.
+**Scope:** full Economy (loans, anchored interest/royalty rates); the Events director with Health/Fire Inspection, VIP/Critic Visit, and basic Opportunity Pitch (bid/pass only — no bidding wars yet, that needs Competitors' relationship depth); full Competitors/Rivals (relationship score, friendly/neutral/aggressive posture, the friendliness-cost tradeoff from Phase 7); Marketing (campaigns, review-response, and the public-moments mechanic — award nominations, interviews, accept/decline plus tone, see Reputation); the **Prestige** track of Power Rankings specifically — it only needs Reputation and Competitors, both landing here, so a single restaurant can start climbing City and State rankings before any expansion exists. Country and World tiers stay gated behind the eligibility checklist refined this session (sustained excellence over a long stretch, Marquee wins, or expansion) — reachable single-location, but correctly rare and hard-won rather than trivially fast, so M4/M5 keep their pull.
 
 **Exit test:** a player who never expands past one restaurant should have a full, satisfying game already — competitions, rivalries, awards, a real shot at topping the local and regional Prestige rankings — before multi-location is even unlocked. Reaching the very top (Country/World) without ever expanding should still be *possible* but should feel like a genuine, rare achievement, not the expected default outcome.
 
@@ -922,7 +922,20 @@ The loss compounds, because standing also sets what guests will pay (`Satisfacti
 
 **Bulk sourcing is even cheaper than claimed: it is a data file, not code.** One entry in `data/suppliers.json` with a low `qualityTier` and low prices, and the entire dilemma exists — the propagation chain, the quality→satisfaction path, and the reputation ceiling all consume it already. Zero engine changes, exactly as Architecture Rule 2 intends.
 
-**The pacing is WRONG for this story, and this is the real work item.** Look at the table: 0.890 to 0.525 in a single month. That is a cliff, not an erosion. `BadNewsRate` is calibrated for "we had a bad service", not "we changed the entire supply chain", and half the drama of the real-world pattern is that nobody notices until it is gone. Before this carries a franchise storyline, the decay needs a much longer time constant — and probably a distinction between a bad night (fast, recoverable) and a structural change to what you are (slow, and slow to undo). **Do not tune this now**; it is recorded so that whoever picks up M5 does not mistake a shipped cliff for a finished mechanic.
+**The pacing WAS wrong, and it is now fixed — but the fast path is a real M5 hook.** The original note here recorded a cliff: 0.890 to 0.525 in a month. On inspection it was far worse than that, because the ceiling CLAMPED rather than pulled — the first service after a supplier switch snapped standing straight down, 0.890 to 0.568 in a single DAY.
+
+Aaron's correction, and it is now implemented: *"it shouldn't be instant unless there is a critic or blogger or influencer who catches it quickly. Other than that it should deteriorate over time, not instant but over weeks or months."* The ceiling now exerts a downward pull at `BadNewsRate` instead of clamping, and the rates were slowed five-fold. Measured after the fix:
+
+| | Building a name | Losing it (switched to bulk) |
+|---|---|---|
+| 1 day | — | 0.884 (barely moves) |
+| 1 month | 0.622 | 0.627 |
+| 3 months | 0.780 | 0.568 |
+| 6 months | 0.879 *people go out of their way* | 0.556 |
+
+So a name takes about six months to build and two to three to lose, and there is a visible window during the slide — `Reputation.LivingOnPastGlory` — where the game says *"still trading on a name these ingredients no longer justify"* and the player can still reverse it.
+
+**The M5 hook is the exception, not the rule.** A critic, blogger or influencer who catches the change should be able to collapse that window and make the hit sudden — which is exactly a Marquee/Event trigger rather than a reputation mechanic, and it makes the existing `CustomerArchetype.Influencer` mechanically meaningful for the first time. Build it as an Event at M3+, not as a change to the decay curve. The slow curve is the correct default precisely so that the fast path can be a dramatic exception.
 
 **Revised ratio:** of the three ideas, two are configuration of existing systems, one is a new input to an existing formula, and none is a subsystem. That is a better ratio than the one claimed above, and it strengthens rather than weakens the case for the addendum — but it does not change the timing. **Still M5. The game still fails M1(b).**
 

@@ -29,20 +29,25 @@ namespace RestaurantEmpire.Core.Model
         /// can rebuild in one evening is not a reputation, it is a status effect.
         ///
         /// Calibrated against how many meals a night actually is, which is the thing that
-        /// caught me out: at ten times this rate a busy restaurant moved a third of the way
-        /// to its new standing in a SINGLE DAY, which is a status effect wearing a
-        /// reputation's clothes. At this rate a hundred-cover night shifts standing about 4%
-        /// of the way, and a month of trading roughly 70% — slow enough that you feel it
-        /// arrive, fast enough that a season of cutting corners genuinely costs you.
+        /// caught me out twice. A busy restaurant serves several thousand meals a month, so
+        /// rates that look glacial per meal are fast per season — the first attempt moved a
+        /// third of the way in a single DAY.
+        ///
+        /// At these rates, roughly: one night moves standing about 1%, a month about 27%,
+        /// and building a real name takes half a year of consistently good food. Bad news
+        /// runs 2.5x faster, so the same slide downward takes a couple of months. That is
+        /// the pace Aaron asked for — deteriorating over weeks and months rather than
+        /// overnight — and it is slow enough that a reputation feels like something you own
+        /// rather than a meter that tracks last night.
         /// </summary>
-        public const decimal GoodNewsRate = 0.0004m;
+        public const decimal GoodNewsRate = 0.00008m;
 
         /// <summary>
         /// How fast complaints accumulate. Bad news travels roughly two and a half times
         /// faster than good, which is both true to life and what gives cutting corners a cost
         /// that outlasts the saving.
         /// </summary>
-        public const decimal BadNewsRate = 0.0010m;
+        public const decimal BadNewsRate = 0.0002m;
 
         /// <summary>Trade at rock bottom, as a share of the street's normal traffic.</summary>
         public const decimal WorstTrafficMultiplier = 0.60m;
@@ -86,8 +91,23 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public decimal Ceiling { get; private set; } = 1m;
 
-        /// <summary>Whether standing has run into that ceiling rather than merely being low.</summary>
-        public bool AtCeiling { get { return Standing >= Ceiling - 0.01m; } }
+        /// <summary>
+        /// Settled at the ceiling — held back by what the place sources rather than by how
+        /// it is run. Deliberately NOT true while standing is above the ceiling and falling,
+        /// which is a different situation entirely (see <see cref="LivingOnPastGlory"/>).
+        /// </summary>
+        public bool AtCeiling
+        {
+            get { return Standing >= Ceiling - 0.01m && Standing <= Ceiling + 0.02m; }
+        }
+
+        /// <summary>
+        /// Trading on a name the current ingredients no longer justify — the window after
+        /// cutting corners, while the reputation is still sliding toward what the place has
+        /// become. This is the most useful thing the system can tell a player, because it is
+        /// the only moment when the damage is visible and not yet done.
+        /// </summary>
+        public bool LivingOnPastGlory { get { return Standing > Ceiling + 0.02m; } }
 
         /// <summary>How many meals have contributed. Mostly so the UI can say "still finding its feet".</summary>
         public int MealsRemembered { get; private set; }
@@ -108,14 +128,21 @@ namespace RestaurantEmpire.Core.Model
 
             Standing = Clamp(Standing + ((heard - Standing) * rate));
 
-            // A CEILING, not a cliff. Aaron's point: a cheap decent dish satisfies the person
-            // eating it — they got what they paid for — but nobody loves a restaurant for it,
-            // so the two ratings are connected without being the same number. Serving budget
-            // food competently will carry you to "well thought of locally" and stop there,
-            // and that is a real strategy rather than a punishment: you can run a profitable
-            // neighbourhood place forever. You simply cannot become the best in the world
-            // doing it, because being the best is a thing you have to actually attempt.
-            if (Standing > Ceiling) Standing = Ceiling;
+            // THE CEILING PULLS, IT DOES NOT CLAMP.
+            //
+            // This was `if (Standing > Ceiling) Standing = Ceiling;` and that was wrong in a
+            // way worth remembering. A ceiling derived from current state, applied as a hard
+            // limit, means the instant you change supplier your reputation is already gone —
+            // measured at 0.890 to 0.568 in ONE DAY of service. A name built over six months
+            // cannot evaporate over one dinner. Aaron's correction: it should deteriorate
+            // over weeks or months, and only a critic or an influencer who catches it should
+            // be able to make it sudden (see the M5 addendum in docs/design.md — that is an
+            // Event, and deliberately not built here).
+            //
+            // So a restaurant trading above what it now sources drifts downward at the
+            // bad-news rate rather than falling off a wall. The reputation is still lost;
+            // it just takes the time that losing a reputation actually takes.
+            if (Standing > Ceiling) Standing -= (Standing - Ceiling) * BadNewsRate;
 
             MealsRemembered++;
         }
@@ -169,6 +196,14 @@ namespace RestaurantEmpire.Core.Model
             get
             {
                 if (MealsRemembered < 50) return "still finding its feet — too new to have a reputation";
+
+                // The warning, and it has to come before the plateau message. A restaurant
+                // that has just switched to cheaper stock still LOOKS beloved for a while —
+                // measured at 0.884 the day after a switch that dropped its ceiling to 0.570.
+                // Saying "as well liked as these ingredients allow" there would be flatly
+                // wrong and would waste the one window where the player can still undo it.
+                if (LivingOnPastGlory)
+                    return "still trading on a name these ingredients no longer justify";
 
                 // Naming the ceiling matters more than naming the score. "Stuck at 61" is a
                 // number; "as well regarded as budget ingredients allow" is a decision.

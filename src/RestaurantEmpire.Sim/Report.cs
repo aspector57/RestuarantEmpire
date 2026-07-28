@@ -47,9 +47,11 @@ namespace RestaurantEmpire.Sim
             // source rather than by how you run the place — why.
             var rep = r.Reputation;
             Console.WriteLine("  standing " + System.Math.Round(rep.Standing * 100m) + "/100" +
-                              (rep.AtCeiling && rep.Ceiling < 0.95m
-                                  ? " (capped at " + System.Math.Round(rep.Ceiling * 100m) + " by what you source)"
-                                  : "") +
+                              (rep.LivingOnPastGlory
+                                  ? " and FALLING toward " + System.Math.Round(rep.Ceiling * 100m)
+                                  : rep.AtCeiling && rep.Ceiling < 0.95m
+                                      ? " (capped at " + System.Math.Round(rep.Ceiling * 100m) + " by what you source)"
+                                      : "") +
                               "   ·   " + rep.Verdict);
         }
 
