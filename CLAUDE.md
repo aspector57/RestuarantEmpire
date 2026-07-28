@@ -504,6 +504,48 @@ reading is the harshest possible test of advice. The gap between "a good static 
 100/100 in the sweep" and "no incremental path reaches one" is the live question, and it is
 about the opening economy rather than about the Advisor.
 
+### Employees have profiles, and hiring has risk in it (Aaron)
+
+> *"in this model, it was hire a cook. In the real game, there will be profiles of cooks with
+> their own rates, you can hire good cooks or bad cooks, they can do a good job or bad job,
+> things can go wrong."*
+
+**`Employee.Skill` existed, validated, documented as "reserved for M2" — and was read by
+NOTHING for the whole of M1.** Fourth instance of the shape, after `PriceSensitivity`,
+`IngredientQuality` and `PartiesTurnedAway`. Assume there is a fifth.
+
+**`Candidate` is the mechanic, and the gap is the point.** An applicant ADVERTISES an ability
+and is priced off the claim; what they turn out to be is revealed by them working
+(`ScoutingError` 0.22 either way). So a dear hire can disappoint and a cheap one can be a
+find, and hiring stops being a button that adds a unit. Deterministic from a seed, so the same
+day always shows the same people.
+
+**What skill now decides, all calibrated so that 0.5 is exactly neutral** — a payroll nobody
+chose behaves precisely as it did before any of this:
+
+- **The pass.** `Payroll.PlateCapacity` replaces a headcount, so a strong brigade works more
+  of the kitchen. Bodies still matter: a great cook is worth more than a poor one, never two.
+- **The plate.** `SatisfactionModel.PlateQuality(ingredients, craft)` — ingredients set the
+  ceiling, the kitchen decides how much of it arrives. **A strong brigade on mid-market stock
+  beats a weak one on the best money can buy**, so buying premium and staffing badly is an
+  expensive mediocre dinner.
+- **The floor.** A better server holds more covers than fourteen.
+
+Measured, one cook against thirty-two covers so the pass is genuinely the constraint:
+**44 covers at skill 0.15 against 73 at 0.95**, with wait-balks falling from 46 to 28. Same
+wage line, one person, two-thirds more trade.
+
+`KitchenPass.OpenPass` now takes PLATES rather than bodies. Rounding a skilled brigade back to
+a headcount and re-multiplying threw the skill away — three excellent cooks came out at 3.9,
+floored to 3, which is exactly three average ones.
+
+**On the M1(b) bet: not settled.** Advised runs improved a great deal (nightlife −69,708 to
+−8,467, suburban −54,264 to −15,039, business to −969) but **still bust on all four sites**.
+And the improvement cannot be attributed to this work: those runs span both this change and
+the awareness change, and **the advised campaign still hires generic 0.5-skill staff — it never
+opens the hiring pool.** The bet that richer hiring sharpens the advice is untested until the
+instrument actually chooses between candidates. That is the next step, not a conclusion.
+
 ### Being unknown is not the same as being disliked (Aaron)
 
 Aaron: *"perhaps I had too much traffic right away?"* He was right, and it was a real hole.

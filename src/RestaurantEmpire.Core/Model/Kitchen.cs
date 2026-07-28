@@ -227,12 +227,13 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>
         /// Opens a fresh pass for one service. Queue state is per-service, never carried over.
-        /// Pass the number of cooks on shift to have the brigade limit throughput; zero means
+        /// Pass the brigade's PLATE CAPACITY (see <see cref="Payroll.PlateCapacity"/>) to have
+        /// the staff limit throughput; zero means
         /// staffing is not being modeled and only the equipment constrains the kitchen.
         /// </summary>
-        public KitchenPass OpenPass(long serviceStartTick, int cooks = 0)
+        public KitchenPass OpenPass(long serviceStartTick, int plates = 0)
         {
-            return new KitchenPass(this, serviceStartTick, cooks);
+            return new KitchenPass(this, serviceStartTick, plates);
         }
     }
 
@@ -256,7 +257,7 @@ namespace RestaurantEmpire.Core.Model
         private readonly Dictionary<string, long[]> _slotFreeAt;
         private readonly long[] _cookFreeAt;
 
-        internal KitchenPass(Kitchen kitchen, long serviceStartTick, int cooks = 0)
+        internal KitchenPass(Kitchen kitchen, long serviceStartTick, int plates = 0)
         {
             _kitchen = kitchen;
             _slotFreeAt = new Dictionary<string, long[]>(StringComparer.Ordinal);
@@ -268,7 +269,10 @@ namespace RestaurantEmpire.Core.Model
             // But a cook works a LINE, not a single pan — they run several things at once,
             // which is the whole point of a brigade. Modeling one cook as one plate forced
             // a headcount that bankrupted every restaurant in a hundred-run sweep.
-            _cookFreeAt = new long[(cooks < 0 ? 0 : cooks) * PlatesPerCook];
+            // PLATES, not bodies. Rounding a skilled brigade back to a headcount and then
+            // multiplying threw the skill away entirely — three excellent cooks came out at
+            // 3.9, floored to 3, which is precisely three average ones.
+            _cookFreeAt = new long[plates < 0 ? 0 : plates];
             for (var i = 0; i < _cookFreeAt.Length; i++) _cookFreeAt[i] = serviceStartTick;
 
             foreach (var station in kitchen.Stations)

@@ -95,6 +95,21 @@ namespace RestaurantEmpire.Core.Model
         public const decimal ComfortableWaitShare = 0.40m;
 
         /// <summary>
+        /// What actually arrives on the plate: what you bought, worked by whoever is cooking.
+        ///
+        /// Ingredients set the ceiling on a dish and the kitchen decides how much of it you
+        /// get. A strong brigade lifts mid-market stock close to what it could be; a weak one
+        /// wastes whatever it is handed, which is why buying premium and staffing badly is a
+        /// way to spend a great deal of money on a mediocre dinner. An average cook (0.5) is
+        /// exactly neutral, so this changes nothing for a payroll that has not been chosen.
+        /// </summary>
+        public static decimal PlateQuality(decimal ingredientQuality, decimal kitchenSkill)
+        {
+            var craft = 0.6m + (Clamp(kitchenSkill) * 0.8m);   // 0.6x at worst, 1.4x at best
+            return Clamp(ingredientQuality * craft);
+        }
+
+        /// <summary>
         /// How good a deal a dish looks, 0 to 1, judged on MARKUP — what you charge against
         /// what the dish is worth — rather than on food cost ratio.
         ///
@@ -174,7 +189,7 @@ namespace RestaurantEmpire.Core.Model
             }
 
             var speed = ScoreSpeed(ticket.WaitMinutes, party.PatienceMinutes);
-            var quality = Clamp(ingredientQuality);
+            var quality = Clamp(ingredientQuality);   // craft is applied by the caller
             var value = ScoreValue(markup, party.PriceSensitivity, ingredientQuality, reputation);
             var ambiance = Clamp(comfort);
 

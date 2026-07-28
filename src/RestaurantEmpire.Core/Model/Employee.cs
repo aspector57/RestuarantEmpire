@@ -41,7 +41,17 @@ namespace RestaurantEmpire.Core.Model
         public StaffRole Role { get; }
         public decimal HourlyWage { get; }
 
-        /// <summary>0 to 1. Reserved for the throughput and quality effects that land at M2.</summary>
+        /// <summary>
+        /// 0 to 1. What they can actually do, as opposed to what their CV claimed — see
+        /// <see cref="Candidate"/>. Read by the kitchen (how many plates they keep moving),
+        /// by the satisfaction score (a good cook elevates what they are given, a poor one
+        /// wastes it) and by the floor (how many covers a server can really hold).
+        ///
+        /// This property existed, validated and documented as "reserved for M2", from the
+        /// first commit and was read by NOTHING for the whole of M1 — the fourth time that
+        /// exact shape has turned up here, after PriceSensitivity, IngredientQuality and
+        /// PartiesTurnedAway. It is worth assuming there is a fifth.
+        /// </summary>
         public decimal Skill { get; }
 
         public override string ToString()
@@ -74,6 +84,45 @@ namespace RestaurantEmpire.Core.Model
             foreach (var person in _staff) { if (person.Role == role) total++; }
 
             return total;
+        }
+
+        /// <summary>
+        /// How good this half of the brigade is on average, 0 to 1. Half is the neutral
+        /// point everything is calibrated against, so a payroll of average people behaves
+        /// exactly as it did before skill was consulted at all.
+        /// </summary>
+        public decimal AverageSkill(StaffRole role)
+        {
+            var total = 0m;
+            var counted = 0;
+
+            foreach (var person in _staff)
+            {
+                if (person.Role != role) continue;
+                total += person.Skill;
+                counted++;
+            }
+
+            return counted == 0 ? 0.5m : total / counted;
+        }
+
+        /// <summary>
+        /// Plates the kitchen can keep moving, counting who is on rather than how many.
+        /// A strong cook is worth appreciably more than a weak one, but never two of them —
+        /// bodies still matter, which is what keeps hiring a real cost rather than a puzzle
+        /// solved once by finding the best person available.
+        /// </summary>
+        public int PlateCapacity(int platesPerCook)
+        {
+            var capacity = 0m;
+
+            foreach (var person in _staff)
+            {
+                if (person.Role != StaffRole.Cook) continue;
+                capacity += platesPerCook * (0.7m + (person.Skill * 0.6m));
+            }
+
+            return (int)Math.Floor(capacity);
         }
 
         /// <summary>Total wage bill per hour with everyone on shift.</summary>

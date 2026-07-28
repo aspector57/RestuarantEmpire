@@ -153,7 +153,7 @@ namespace RestaurantEmpire.Core.Model
             // send this dish" rather than "how backed up is it this minute". That makes the
             // rating a property of what you have BUILT — buying an oven or hiring a cook
             // moves it — instead of a reading that swings around mid-service.
-            var pass = restaurant.Kitchen.OpenPass(atTick, restaurant.Payroll.CountOf(StaffRole.Cook));
+            var pass = restaurant.Kitchen.OpenPass(atTick, restaurant.Payroll.PlateCapacity(KitchenPass.PlatesPerCook));
 
             foreach (var recipe in restaurant.Menu.Recipes)
             {
@@ -162,7 +162,9 @@ namespace RestaurantEmpire.Core.Model
                 ratings.Add(new DishRating(
                     recipe.Id,
                     recipe.Name,
-                    costing.IngredientQuality(recipe.Id),
+                    SatisfactionModel.PlateQuality(
+                        costing.IngredientQuality(recipe.Id),
+                        restaurant.Payroll.AverageSkill(StaffRole.Cook)),
                     SatisfactionModel.ScoreSpeed(wait, NominalPatienceMinutes),
                     SatisfactionModel.ScoreValue(costing.Markup(recipe.Id), NominalPriceSensitivity,
                         costing.IngredientQuality(recipe.Id)),

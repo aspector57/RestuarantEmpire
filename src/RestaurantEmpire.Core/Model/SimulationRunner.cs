@@ -83,7 +83,10 @@ namespace RestaurantEmpire.Core.Model
             _restaurant = restaurant;
             _definitions = restaurant.Company.Definitions;
             _rng = new DeterministicRandom(seed);
-            _pass = restaurant.Kitchen.OpenPass(clock.Tick, restaurant.Payroll.CountOf(StaffRole.Cook));
+            // Plate capacity rather than headcount, so who you hired decides how much of the
+            // kitchen actually runs.
+            _pass = restaurant.Kitchen.OpenPass(clock.Tick,
+                restaurant.Payroll.PlateCapacity(KitchenPass.PlatesPerCook));
 
             Clock = clock;
             Interrupts = interrupts ?? new InterruptPolicy();
@@ -553,7 +556,9 @@ namespace RestaurantEmpire.Core.Model
 
             var satisfaction = SatisfactionModel.Evaluate(
                 table.Party, order.Ticket, recipe.Name,
-                _restaurant.Costing.IngredientQuality(order.RecipeId),
+                SatisfactionModel.PlateQuality(
+                    _restaurant.Costing.IngredientQuality(order.RecipeId),
+                    _restaurant.Payroll.AverageSkill(StaffRole.Cook)),
                 _restaurant.Costing.Markup(order.RecipeId),
                 _restaurant.DiningRoom.Comfort,
                 _restaurant.Reputation.Standing);

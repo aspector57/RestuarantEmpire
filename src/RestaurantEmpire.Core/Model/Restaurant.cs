@@ -121,7 +121,19 @@ namespace RestaurantEmpire.Core.Model
         /// How many covers the floor staff can actually look after at once. One server
         /// handles roughly fourteen. Zero servers means nobody gets seated at all.
         /// </summary>
-        public int ServableSeats { get { return Payroll.CountOf(StaffRole.Server) * 14; } }
+        public int ServableSeats
+        {
+            get
+            {
+                // Fourteen covers is what an average server holds. A good one holds more and
+                // a poor one fewer, so the floor is who you hired rather than how many.
+                var servers = Payroll.CountOf(StaffRole.Server);
+                if (servers == 0) return 0;
+
+                var each = 14m * (0.7m + (Payroll.AverageSkill(StaffRole.Server) * 0.6m));
+                return (int)(servers * each);
+            }
+        }
 
         /// <summary>
         /// Square meters of building. Zero means unmeasured, and nothing is constrained —
