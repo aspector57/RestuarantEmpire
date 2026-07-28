@@ -613,6 +613,10 @@ namespace RestaurantEmpire.Core.Model
             _coversServed++;
             _satisfactionTotal += satisfaction.Overall;
             _restaurant.Reputation.RecordMeal(satisfaction.Overall, _restaurant.ReputationCeiling);
+
+            // Hours on the pass. A busy restaurant trains people faster than a quiet one,
+            // which is true and means the same hire is worth more to a place that trades.
+            _restaurant.Payroll.Worked();
             _lostTradeStreak = 0;              // a served cover breaks the streak
             _recentWalkoutStations.Clear();  // and the blame tally that describes it
 

@@ -109,6 +109,29 @@ namespace RestaurantEmpire.Core.Content
         public decimal ReputationStanding { get; set; } = Model.Reputation.Neutral;
 
         public int ReputationMeals { get; set; }
+
+        /// <summary>
+        /// Who works here. This was missing entirely, so loading a save quietly emptied the
+        /// payroll and left a restaurant with equipment nobody could work and tables nobody
+        /// could serve. It went unnoticed because staff carried no state worth keeping — a
+        /// cook was a wage and nothing else. Skill that GROWS makes them irreplaceable, so
+        /// they have to survive the trip.
+        /// </summary>
+        public List<StaffState> Staff { get; set; }
+    }
+
+    public sealed class StaffState
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Role { get; set; }
+        public decimal HourlyWage { get; set; }
+
+        /// <summary>What they can do now — mutable, because they learn.</summary>
+        public decimal Skill { get; set; }
+
+        /// <summary>What they could become. Saved because it is never re-derivable.</summary>
+        public decimal Potential { get; set; }
     }
 
     public sealed class StationState

@@ -89,6 +89,19 @@ But the scope is bounded explicitly, or the precedent erodes the rule:
 > archetypes qualify. R&D, promotion ladders, and Power Rankings do not** — those are the
 > "while we're in here" additions the rule exists to stop.
 
+**THE GATE IS LIFTED (Aaron, 2026-07-28), and the reason is recorded so it is not mistaken
+for the rule quietly eroding.** The three constraints had closed into a deadlock: M1(b) needed
+balance, balance needed the systems that create pressure, and those systems were gated behind
+M1(b). Aaron cut the third strand.
+
+M1(b) is now recorded as **blocked on balance, not failing on advice** — the Advisor work is
+done and measured, and what remains is an economy missing its drags. The gate reopens as a
+different question: build the systems that make the economy real (staff who learn, events,
+spoilage, purchase-vs-consumption, competitors), then re-run `AdvisedCampaign` against an
+economy worth measuring. **The rule's purpose survives** — it exists to stop late content
+being built before early bars are validated, and M1(b) HAS been validated to the point where
+more Advisor work would be fitting noise.
+
 **Customer archetypes, appetite, and price** — which fixed the degenerate popularity axis.
 
 Guests used to pick dishes uniformly at random, so with four dishes every dish landed near
@@ -581,7 +594,21 @@ every seeded test in the project for no meaningful reason.
 the mistake saving. But that measurement is taken inside a system that loses money either way,
 so it is not worth tuning against until the ratchet below is fixed.
 
-**Not built, and it is the rest of Aaron's idea:** *"high potential to learn, start off not
+**Built: staff learn.** `Employee.Skill` is now mutable and grows toward a hidden
+`Potential`, once per plate the kitchen sends — so a busy restaurant trains people faster than
+a quiet one, and the same hire is worth more to a place that actually trades. Candidates carry
+headroom weighted toward the green, so somebody on the floor wage may be worth considerably
+more in six months and is indistinguishable at interview from somebody who is simply not much
+use. That makes a cheap hire a BET rather than only a risk, which is the half that was missing.
+
+**And it exposed a real bug it would otherwise have made much worse: THE PAYROLL WAS NEVER
+SAVED.** Loading a game silently emptied it, leaving a restaurant with equipment nobody could
+work and tables nobody could serve. It went unnoticed because staff carried no state worth
+keeping — a cook was a wage and nothing else. Skill that grows makes people irreplaceable, so
+`StaffState` now persists id, name, role, wage, skill AND potential. Potential especially,
+because it can never be re-derived from anything.
+
+**Superseded, and left here because the reasoning still holds:** *"high potential to learn, start off not
 great."* Cheap staff who improve with plates cooked, capped by a hidden potential, would make
 a cheap hire a genuine bet rather than only a risk. It needs skill to become mutable state and
 therefore saved, so it is its own increment.

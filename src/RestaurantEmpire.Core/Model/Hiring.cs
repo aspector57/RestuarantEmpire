@@ -18,7 +18,7 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class Candidate
     {
-        internal Candidate(string id, string name, StaffRole role, decimal advertises, decimal actual, decimal wage)
+        internal Candidate(string id, string name, StaffRole role, decimal advertises, decimal actual, decimal wage, decimal potential)
         {
             Id = id;
             Name = name;
@@ -26,6 +26,7 @@ namespace RestaurantEmpire.Core.Model
             Advertises = advertises;
             Actual = actual;
             HourlyWage = wage;
+            Potential = potential;
         }
 
         public string Id { get; }
@@ -37,6 +38,9 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>What they can really do. Not shown — it comes out on the pass.</summary>
         internal decimal Actual { get; }
+
+        /// <summary>What they could become. Not shown either, and only found out by keeping them.</summary>
+        internal decimal Potential { get; }
 
         /// <summary>Priced off what they CLAIM, so a confident chancer is expensive and bad.</summary>
         public decimal HourlyWage { get; }
@@ -57,7 +61,7 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Take them on. What you get is what they ARE, not what they claimed.</summary>
         public Employee Accept()
         {
-            return new Employee(Id, Name, Role, HourlyWage, Actual);
+            return new Employee(Id, Name, Role, HourlyWage, Actual, Potential);
         }
 
         public override string ToString()
@@ -127,10 +131,19 @@ namespace RestaurantEmpire.Core.Model
                 var name = FirstNames[(int)(rng.NextDouble() * FirstNames.Length) % FirstNames.Length]
                     + " " + LastNames[(int)(rng.NextDouble() * LastNames.Length) % LastNames.Length];
 
+                // Room to grow, and the green have the most of it. That is what makes a cheap
+                // hire a bet rather than only a risk: somebody on the floor wage who is not
+                // much use yet may be worth considerably more in six months, and there is no
+                // way to tell them apart from somebody who is simply not much use.
+                var headroom = (decimal)rng.NextDouble() * 0.45m * (1m - actual);
+                var potential = actual + headroom;
+                if (potential > 1m) potential = 1m;
+
                 pool.Add(new Candidate(
                     "hire-" + seed + "-" + i, name, role,
                     advertises, Round(actual),
-                    Math.Round(floor + (advertises * premium), 2)));
+                    Math.Round(floor + (advertises * premium), 2),
+                    Round(potential)));
             }
 
             return pool;

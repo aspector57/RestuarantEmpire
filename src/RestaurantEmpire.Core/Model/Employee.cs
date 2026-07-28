@@ -23,7 +23,15 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class Employee
     {
-        public Employee(string id, string name, StaffRole role, decimal hourlyWage, decimal skill = 0.5m)
+        /// <summary>
+        /// How fast someone closes the gap to what they could become, per plate served.
+        /// Slow: about half the gap over six months of steady trade, so a green hire is a
+        /// season-long bet rather than a switch that flips.
+        /// </summary>
+        public const decimal LearningRate = 0.00005m;
+
+        public Employee(string id, string name, StaffRole role, decimal hourlyWage, decimal skill = 0.5m,
+            decimal potential = -1m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Employee id is required.", nameof(id));
             if (hourlyWage < 0m) throw new ArgumentOutOfRangeException(nameof(hourlyWage));
@@ -34,6 +42,7 @@ namespace RestaurantEmpire.Core.Model
             Role = role;
             HourlyWage = hourlyWage;
             Skill = skill;
+            Potential = potential < 0m ? skill : (potential < skill ? skill : (potential > 1m ? 1m : potential));
         }
 
         public string Id { get; }
@@ -52,7 +61,41 @@ namespace RestaurantEmpire.Core.Model
         /// exact shape has turned up here, after PriceSensitivity, IngredientQuality and
         /// PartiesTurnedAway. It is worth assuming there is a fifth.
         /// </summary>
-        public decimal Skill { get; }
+        public decimal Skill { get; private set; }
+
+        /// <summary>
+        /// What they could become with the hours in. Never shown, never below current skill.
+        ///
+        /// Aaron: *"cheap labor can also be good, like have high potential to learn but start
+        /// off not great."* This is that — a green hire on the floor wage who is genuinely
+        /// worth training, and indistinguishable at interview from one who is simply green.
+        /// </summary>
+        public decimal Potential { get; }
+
+        /// <summary>Whether there is anything left to learn. Purely for the read surface.</summary>
+        public bool StillLearning { get { return Potential - Skill > 0.02m; } }
+
+        /// <summary>
+        /// Time on the pass. Called once per plate the kitchen sends, so a busy restaurant
+        /// trains people faster than a quiet one — which is true, and means the same hire is
+        /// worth more to a place that is actually trading.
+        /// </summary>
+        public void Worked(int plates = 1)
+        {
+            if (plates < 1 || Skill >= Potential) return;
+
+            for (var i = 0; i < plates; i++)
+                Skill += (Potential - Skill) * LearningRate;
+
+            if (Skill > Potential) Skill = Potential;
+        }
+
+        /// <summary>Restores a saved skill. Loading is the only reason to set this directly.</summary>
+        public void RestoreSkill(decimal skill)
+        {
+            if (skill < 0m) skill = 0m;
+            Skill = skill > 1m ? 1m : skill;
+        }
 
         public override string ToString()
         {
@@ -135,6 +178,12 @@ namespace RestaurantEmpire.Core.Model
 
                 return total;
             }
+        }
+
+        /// <summary>Everybody on shift gets the hours in.</summary>
+        public void Worked(int plates = 1)
+        {
+            foreach (var person in _staff) person.Worked(plates);
         }
 
         public Employee Hire(Employee person)

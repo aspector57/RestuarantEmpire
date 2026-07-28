@@ -192,5 +192,112 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(strongNight.CoversServed > poorNight.CoversServed * 1.3m);
             Assert.True(strongNight.PartiesPutOffByTheWait < poorNight.PartiesPutOffByTheWait);
         }
+
+        // ---- People learn (Aaron) ----
+
+        [Fact]
+        public void AGreenHireGetsBetterWithHoursOnThePass()
+        {
+            // Aaron: "cheap labor can also be good, like have high potential to learn but
+            // start off not great."
+            var green = new Employee("g", "Green", StaffRole.Cook, 13m, skill: 0.25m, potential: 0.85m);
+
+            Assert.True(green.StillLearning);
+            var started = green.Skill;
+
+            green.Worked(20000);   // a season or so of steady trade
+
+            Assert.True(green.Skill > started + 0.2m, "grew only to " + green.Skill);
+            Assert.True(green.Skill <= green.Potential);
+        }
+
+        [Fact]
+        public void NobodyLearnsPastWhatTheyCouldBecome()
+        {
+            var capped = new Employee("c", "Capped", StaffRole.Cook, 14m, skill: 0.4m, potential: 0.5m);
+
+            capped.Worked(1000000);
+
+            Assert.Equal(0.5m, decimal.Round(capped.Skill, 2));
+            Assert.False(capped.StillLearning);
+        }
+
+        [Fact]
+        public void SomeoneAlreadyAtTheirCeilingDoesNotImprove()
+        {
+            // Which is what makes a dear, finished hire a different bet from a cheap, green
+            // one: you are buying output now against output later.
+            var finished = new Employee("f", "Finished", StaffRole.Cook, 27m, skill: 0.9m);
+
+            finished.Worked(50000);
+
+            Assert.Equal(0.9m, finished.Skill);
+            Assert.False(finished.StillLearning);
+        }
+
+        [Fact]
+        public void PotentialIsNeverBelowWhatSomeoneCanAlreadyDo()
+        {
+            var person = new Employee("p", "P", StaffRole.Cook, 15m, skill: 0.7m, potential: 0.3m);
+            Assert.Equal(0.7m, person.Potential);
+        }
+
+        [Fact]
+        public void ABusyRestaurantTrainsPeopleFasterThanAQuietOne()
+        {
+            var busy = new Employee("b", "Busy", StaffRole.Cook, 13m, skill: 0.3m, potential: 0.9m);
+            var quiet = new Employee("q", "Quiet", StaffRole.Cook, 13m, skill: 0.3m, potential: 0.9m);
+
+            busy.Worked(10000);
+            quiet.Worked(1000);
+
+            Assert.True(busy.Skill > quiet.Skill);
+        }
+
+        // ---- And they have to survive a save ----
+
+        [Fact]
+        public void ThePayrollSurvivesSavingAndLoading()
+        {
+            // This was missing entirely: loading a save emptied the payroll, leaving a
+            // restaurant with equipment nobody could work. It went unnoticed while a cook was
+            // a wage and nothing else. Skill that grows makes people irreplaceable.
+            var restaurant = Build(out var company, cookSkill: 0.4m, cooks: 2, servers: 1);
+            restaurant.Payroll.Worked(5000);
+
+            var before = restaurant.Payroll.Staff
+                .Select(p => new { p.Id, p.Name, p.Skill, p.Potential, p.HourlyWage, p.Role }).ToList();
+
+            var loaded = SaveGameSerializer.FromJson(
+                SaveGameSerializer.ToJson(company, new GameClock()),
+                JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory));
+
+            var after = loaded.Company.GetRestaurant("flagship").Payroll.Staff;
+
+            Assert.Equal(before.Count, after.Count);
+            for (var i = 0; i < before.Count; i++)
+            {
+                Assert.Equal(before[i].Id, after[i].Id);
+                Assert.Equal(before[i].Name, after[i].Name);
+                Assert.Equal(before[i].Role, after[i].Role);
+                Assert.Equal(before[i].HourlyWage, after[i].HourlyWage);
+                Assert.Equal(before[i].Skill, after[i].Skill);       // what they have become
+                Assert.Equal(before[i].Potential, after[i].Potential); // and what they still could
+            }
+        }
+
+        [Fact]
+        public void AGreenCandidateCanBeWorthTraining()
+        {
+            // Across a pool, somebody cheap has real headroom — otherwise "hire green and
+            // teach them" is not a strategy, it is just a worse hire.
+            var pool = HiringPool.Applicants(11, 40);
+
+            Assert.Contains(pool, c =>
+            {
+                var person = c.Accept();
+                return person.Skill < 0.45m && person.Potential > person.Skill + 0.15m;
+            });
+        }
     }
 }

@@ -119,7 +119,8 @@ namespace RestaurantEmpire.Core.Content
                     Fittings = new List<FittingState>(),
                     Inventory = new List<StockState>(),
                     ReputationStanding = restaurant.Reputation.Standing,
-                    ReputationMeals = restaurant.Reputation.MealsRemembered
+                    ReputationMeals = restaurant.Reputation.MealsRemembered,
+                    Staff = new List<StaffState>()
                 };
 
                 foreach (var station in restaurant.Kitchen.Stations)
@@ -143,6 +144,19 @@ namespace RestaurantEmpire.Core.Content
                         Cost = fitting.Cost,
                         Seats = fitting.Seats,
                         Comfort = fitting.Comfort
+                    });
+                }
+
+                foreach (var person in restaurant.Payroll.Staff)
+                {
+                    state.Staff.Add(new StaffState
+                    {
+                        Id = person.Id,
+                        Name = person.Name,
+                        Role = person.Role.ToString(),
+                        HourlyWage = person.HourlyWage,
+                        Skill = person.Skill,
+                        Potential = person.Potential
                     });
                 }
 
@@ -353,6 +367,21 @@ namespace RestaurantEmpire.Core.Content
             // Accumulated history, restored as-is. A save written before reputation existed
             // has no value here and lands at neutral — an unknown restaurant, not a hated one.
             restaurant.Reputation.Restore(state.ReputationStanding, state.ReputationMeals);
+
+            if (state.Staff != null)
+            {
+                foreach (var person in state.Staff)
+                {
+                    StaffRole role;
+                    if (!Enum.TryParse(person.Role, out role)) role = StaffRole.Cook;
+
+                    restaurant.Payroll.Hire(new Employee(
+                        person.Id, person.Name, role,
+                        person.HourlyWage < 0m ? 0m : person.HourlyWage,
+                        person.Skill <= 0m ? 0.5m : person.Skill,
+                        person.Potential));
+                }
+            }
 
             if (state.Fittings != null)
             {
