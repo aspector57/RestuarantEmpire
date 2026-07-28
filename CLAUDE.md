@@ -504,6 +504,37 @@ reading is the harshest possible test of advice. The gap between "a good static 
 100/100 in the sweep" and "no incremental path reaches one" is the live question, and it is
 about the opening economy rather than about the Advisor.
 
+### THE GAME IS CURRENTLY UNWINNABLE FROM ITS OWN STARTING POSITION
+
+Every incremental policy busts — naive, Advisor-guided, and Aaron's own winning order from
+the browser build. The deciding experiment was to stop testing policies and ask whether a
+build that is KNOWN to make money can be bought at all:
+
+| Site | A working build costs | You start with | Can build | After 12 months |
+|---|---:|---:|---|---:|
+| City Center | 29,200 | 18,000 | 4 of 5 stations | −93,600 |
+| Business District | 29,200 | 22,000 | 4 of 5 | −73,600 |
+| Nightlife Quarter | 29,200 | 23,000 | 4 of 5 | −82,200 |
+| Suburban High Street | 29,200 | **27,000** | 5 of 5 | −40,600 |
+
+**A minimum viable restaurant costs about 29,200 and the opening bankroll is 18,000 to
+27,000.** Not one site can afford it, and suburban — which comes closest — spends everything
+on the build and then cannot make payroll. No advice fixes that, which is why the Advisor
+work above could not move the number. It was never an advice problem.
+
+**This also reconciles the two instruments, and the reconciliation is uncomfortable: the
+sweep hands every restaurant 400,000.** It has been reporting 100/100 profitable about
+configurations a player can never reach. It is a good instrument for "is this shape viable"
+and worthless for "can this be built", and it was quietly being read as both.
+
+**And Aaron's ten-minute win in `pass.html` is not evidence against any of this** — the
+browser build must be materially easier than the engine it mirrors, since the same nominal
+bankroll wins there and busts here. That is a third drift finding, and the largest.
+
+**The fix is a balance decision, not an engineering one**, and it belongs to Aaron: raise the
+bankroll, cut what a working kitchen costs, or make a genuinely smaller build viable so the
+first rung is reachable. Do not pick one silently.
+
 ### Playtest verdict so far: (a) passes, (b) does NOT
 
 Two sessions, Aaron at the keyboard. Both found real defects the tests could not — a walkout death spiral, then an economy where tripling prices tripled revenue. Both are fixed.

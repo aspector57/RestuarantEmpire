@@ -91,6 +91,199 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(survived >= 0);
         }
 
+        /// <summary>
+        /// AARON'S OWN WINNING SEQUENCE, run against the C# engine.
+        ///
+        /// He beat the browser build in about ten minutes: *"basically just used the best
+        /// ingredients and then simmed, then added a few seats, then team, then best
+        /// equipment."* Neither automated policy can find a survivable path in C#, so either
+        /// the browser port is materially easier than the engine it mirrors, or the path is
+        /// narrow enough that only a person spots it. Scripting his exact order settles which,
+        /// and it is a measurement rather than a question worth asking him.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void ThePlayersOwnSequence()
+        {
+            _out.WriteLine("Aaron's order: premium sourcing from day one, then seats, then crew,");
+            _out.WriteLine("then the best equipment — buying each only when it is affordable.");
+            _out.WriteLine("");
+            _out.WriteLine("site        m3cash    m6cash   m12cash   seats units crew  verdict");
+            _out.WriteLine("-------------------------------------------------------------------");
+
+            var survived = 0;
+            foreach (var site in Sites())
+            {
+                var cash = PlayLikeAaron(site, out var seats, out var units, out var crew, out var m3, out var m6);
+                if (cash > 0m) survived++;
+
+                _out.WriteLine(string.Format("{0,-10} {1,9:N0} {2,9:N0} {3,9:N0} {4,7} {5,5} {6,4}  {7}",
+                    site.Key, m3, m6, cash, seats, units, crew, cash > 0m ? "surviving" : "BUST"));
+            }
+
+            _out.WriteLine("");
+            _out.WriteLine("player-sequence runs surviving twelve months: " + survived + " of 4");
+            Assert.True(survived >= 0);
+        }
+
+        /// <summary>
+        /// THE DECIDING EXPERIMENT. Can the opening bankroll even BUY a build that is known
+        /// to make money?
+        ///
+        /// The sweep says a good static configuration earns on all four sites. Every
+        /// incremental policy — naive, Advisor-guided, and the player's own order — busts.
+        /// So either no path reaches a good build, or a good build is simply unaffordable
+        /// from 30,000 less key money. This buys the sweep's own profitable build on day one
+        /// and trades twelve months. If it survives, the configuration is reachable and the
+        /// policies were at fault. If it cannot even be bought, the opening capital is the
+        /// problem and no advice can fix it.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void CanTheOpeningBankrollEvenBuyAWorkingRestaurant()
+        {
+            _out.WriteLine("Buying the sweep's profitable build on day one, out of 30,000 less key money.");
+            _out.WriteLine("");
+            _out.WriteLine("site        wanted    afford   built      m12cash  verdict");
+            _out.WriteLine("------------------------------------------------------------");
+
+            foreach (var site in Sites())
+            {
+                var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+                var bankroll = 30000m - site.Where.LeasePremium;
+                var company = new Company("co", "Co", definitions, bankroll);
+                var r = company.OpenRestaurant("r", site.Key, LocationType.BrickAndMortar);
+
+                r.Location = site.Where;
+                r.FloorArea = site.Where.MaxFloorArea;
+                foreach (var recipe in definitions.Recipes) r.Menu.Add(recipe.Id);
+                company.SupplierPolicy.AssignAll("valley-produce");
+                r.ServiceWindows.Clear();
+                foreach (var w in site.Hours) r.ServiceWindows.Add(w);
+
+                // The sweep's shape: four units of each station, forty covers, staffed to match.
+                const int Units = 4, Seats = 40, Cooks = 8, Servers = 3;
+                var wanted = 0m;
+                foreach (var stationId in r.Menu.Recipes.Select(x => x.StationId).Distinct())
+                {
+                    var model = definitions.EquipmentFor(stationId).FirstOrDefault();
+                    if (model != null) wanted += model.Cost * Units;
+                }
+                wanted += Seats * 120m;
+
+                var built = 0;
+                foreach (var stationId in r.Menu.Recipes.Select(x => x.StationId).Distinct())
+                {
+                    var model = definitions.EquipmentFor(stationId).FirstOrDefault();
+                    if (model == null) continue;
+                    if (company.Economy.CashOnHand < model.Cost * Units) continue;
+                    if (!r.HasRoomFor(model.Footprint * Units)) continue;
+                    r.BuyEquipment(model, Units); built++;
+                }
+
+                if (company.Economy.CashOnHand > Seats * 120m && r.HasRoomFor(Seats * 15m))
+                    r.BuyTables("t", "Tables", Seats * 120m, Seats);
+
+                for (var i = 0; i < Cooks; i++) r.Payroll.Hire(new Employee("c" + i, "Cook", StaffRole.Cook, 16m));
+                for (var i = 0; i < Servers; i++) r.Payroll.Hire(new Employee("s" + i, "Server", StaffRole.Server, 12m));
+                foreach (var id in definitions.IngredientIds) { r.Inventory.SetPar(id, 300m, 2000m); r.Inventory.Receive(id, 2000m); }
+
+                var clock = new GameClock();
+                var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
+                for (var month = 1; month <= 12; month++)
+                {
+                    runner.AdvanceDays(30);
+                    company.Economy.Record(clock.Tick, LedgerCategory.Overhead, site.Where.MonthlyRent, "Rent", r.Id);
+                    foreach (var stock in r.Inventory.Items.ToList())
+                        if (stock.IsBelowPar) r.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
+                }
+
+                var end = company.Economy.CashOnHand;
+                _out.WriteLine(string.Format("{0,-10} {1,8:N0} {2,9:N0} {3,4}/{4}  {5,11:N0}  {6}",
+                    site.Key, wanted, bankroll, built,
+                    r.Menu.Recipes.Select(x => x.StationId).Distinct().Count(),
+                    end, end > 0m ? "surviving" : "BUST"));
+            }
+        }
+
+        private static decimal PlayLikeAaron(Site site, out int seats, out int units, out int crew,
+            out decimal m3, out decimal m6)
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var company = new Company("co", "Co", definitions, 30000m - site.Where.LeasePremium);
+            var r = company.OpenRestaurant("r", "The " + site.Key, LocationType.BrickAndMortar);
+
+            r.Location = site.Where;
+            r.FloorArea = 970m;
+
+            foreach (var recipe in definitions.Recipes) r.Menu.Add(recipe.Id);
+            company.SupplierPolicy.AssignAll("premium-harvest");   // best ingredients, day one
+
+            r.ServiceWindows.Clear();
+            foreach (var w in site.Hours) r.ServiceWindows.Add(w);
+
+            foreach (var stationId in r.Menu.Recipes.Select(x => x.StationId).Distinct())
+            {
+                var cheapest = definitions.EquipmentFor(stationId).FirstOrDefault();
+                if (cheapest != null && r.HasRoomFor(cheapest.Footprint)) r.BuyEquipment(cheapest, 1);
+            }
+            r.BuyTables("t0", "Tables", 12 * 120m, 12);
+            r.Payroll.Hire(new Employee("c0", "Cook", StaffRole.Cook, 16m));
+            r.Payroll.Hire(new Employee("s0", "Server", StaffRole.Server, 12m));
+            foreach (var id in definitions.IngredientIds) { r.Inventory.SetPar(id, 120m, 900m); r.Inventory.Receive(id, 900m); }
+
+            var clock = new GameClock();
+            var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
+            m3 = 0m; m6 = 0m;
+
+            for (var month = 1; month <= 12; month++)
+            {
+                runner.AdvanceDays(30);
+                company.Economy.Record(clock.Tick, LedgerCategory.Overhead, site.Where.MonthlyRent, "Rent", r.Id);
+
+                foreach (var stock in r.Inventory.Items.ToList())
+                    if (stock.IsBelowPar) r.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
+
+                var cash = company.Economy.CashOnHand;
+                var keep = site.Where.MonthlyRent * 2m;   // he was not spending to the last dollar
+
+                // 1. SEATS, while there is floor and money.
+                while (cash - keep > 1200m && r.HasRoomFor(150m))
+                {
+                    r.BuyTables("t" + month + "-" + r.SeatingCapacity, "Tables", 1200m, 10);
+                    cash = company.Economy.CashOnHand;
+                }
+
+                // 2. TEAM to match the room and the pass.
+                while (r.SeatingCapacity > r.Payroll.CountOf(StaffRole.Server) * 14 && cash - keep > 3000m)
+                { r.Payroll.Hire(new Employee("s" + Guid.NewGuid().ToString("N").Substring(0,4), "Server", StaffRole.Server, 12m)); cash = company.Economy.CashOnHand; }
+
+                var kitchenUnits = r.Kitchen.Stations.Sum(x => x.ConcurrentCapacity);
+                while (r.Payroll.CountOf(StaffRole.Cook) * KitchenPass.PlatesPerCook < kitchenUnits && cash - keep > 4000m)
+                { r.Payroll.Hire(new Employee("c" + Guid.NewGuid().ToString("N").Substring(0,4), "Cook", StaffRole.Cook, 16m)); cash = company.Economy.CashOnHand; }
+
+                // 3. BEST EQUIPMENT, once the room is paying for it.
+                foreach (var station in r.Kitchen.Stations.ToList())
+                {
+                    var best = definitions.EquipmentFor(station.Id)
+                        .Where(e => e.SpeedMultiplier > station.SpeedMultiplier)
+                        .OrderByDescending(e => e.SpeedMultiplier).FirstOrDefault();
+
+                    if (best != null && cash - keep > best.Cost * station.ConcurrentCapacity)
+                    {
+                        try { r.BuyEquipment(best, station.ConcurrentCapacity); cash = company.Economy.CashOnHand; }
+                        catch (InvalidOperationException) { }
+                    }
+                }
+
+                if (month == 3) m3 = company.Economy.CashOnHand;
+                if (month == 6) m6 = company.Economy.CashOnHand;
+            }
+
+            seats = r.SeatingCapacity;
+            units = r.Kitchen.Stations.Sum(x => x.ConcurrentCapacity);
+            crew = r.Payroll.Headcount;
+            return company.Economy.CashOnHand;
+        }
+
         private static decimal Play(Site site, IDictionary<string, int> taken,
             out int seats, out int units, out int crew, out decimal m3, out decimal m6)
         {
