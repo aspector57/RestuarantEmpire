@@ -80,6 +80,8 @@ namespace RestaurantEmpire.Core.Model
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal, _laborCost;
         private int _remakes, _comped;
+        private int _lastSpoilageDay = -1;
+        private decimal _spoiledCost;
         private decimal _compedValue;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
         private int _partiesLostToMenu, _partiesPutOffByTheWait, _partiesPutOffByThePrices;
@@ -96,6 +98,9 @@ namespace RestaurantEmpire.Core.Model
             _definitions = restaurant.Company.Definitions;
             _rng = new DeterministicRandom(seed);
             _mishaps = new DeterministicRandom(seed ^ 0x5EED1E);
+
+            _lastSpoilageDay = (int)(clock.Tick / GameClock.TicksPerDay);
+            restaurant.Inventory.StartOfRun(_lastSpoilageDay);
             // Plate capacity rather than headcount, so who you hired decides how much of the
             // kitchen actually runs.
             _pass = restaurant.Kitchen.OpenPass(clock.Tick,
@@ -200,6 +205,16 @@ namespace RestaurantEmpire.Core.Model
         {
             var now = Clock.Now;
             var tick = Clock.Tick;
+
+            // A new day: bin whatever went off overnight. Once a day at a fixed boundary, so a
+            // month advanced in one call spoils exactly as thirty separate days do.
+            var today = (int)(tick / GameClock.TicksPerDay);
+            if (today != _lastSpoilageDay)
+            {
+                _lastSpoilageDay = today;
+                _restaurant.Inventory.AdvanceTo(today);
+                BinWhatWentOff(today);
+            }
 
             Interrupt interrupt = null;
 
@@ -697,6 +712,36 @@ namespace RestaurantEmpire.Core.Model
 
             var chance = 0.01m + (shortfall * shortfall * 0.10m * demand);
             return chance < 0m ? 0m : chance > 0.30m ? 0.30m : chance;
+        }
+
+        /// <summary>
+        /// Throw out what has gone off, and charge it. Booked to food cost, because it is
+        /// food you bought and did not sell, and reported separately so the player can see
+        /// the number rather than only feel it.
+        /// </summary>
+        private void BinWhatWentOff(int today)
+        {
+            var lost = _restaurant.Inventory.DiscardSpoiled(today, _definitions);
+            if (lost.Count == 0) return;
+
+            var cost = 0m;
+            var worst = "";
+            var most = 0m;
+
+            foreach (var pair in lost)
+            {
+                cost += pair.Value * _restaurant.SupplierPolicy.UnitPriceFor(pair.Key);
+                if (pair.Value > most) { most = pair.Value; worst = pair.Key; }
+            }
+
+            if (cost <= 0m) return;
+
+            _spoiledCost += cost;
+            _wastedFoodCost += cost;
+            _foodCost += cost;
+
+            _diagnostics.Add("Threw out " + cost.ToString("N2") + " of stock that had gone off" +
+                (worst.Length > 0 ? " — mostly " + worst + "." : "."));
         }
 
         private int RollPartySize()

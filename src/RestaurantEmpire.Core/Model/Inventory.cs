@@ -29,10 +29,47 @@ namespace RestaurantEmpire.Core.Model
         public bool IsBelowPar { get { return Quantity < ParMin; } }
         public bool IsAbovePar { get { return ParMax > 0m && Quantity > ParMax; } }
 
-        /// <summary>How much to order to return to the top of the band. Zero when in band.</summary>
+        /// <summary>Days this keeps, learned on the daily sweep. Zero means it keeps.</summary>
+        public int ShelfLifeDays { get; private set; }
+
+        /// <summary>Roughly what gets used in a day, smoothed. Zero until a day has passed.</summary>
+        public decimal DailyUsage { get; private set; }
+
+        private decimal _usedSinceSweep;
+
+        /// <summary>
+        /// How much to order. Zero when in band, and for anything that PERISHES, capped at
+        /// what will realistically be used before it turns.
+        ///
+        /// Par levels are a policy for things that keep. Topping a four-day fish up to a full
+        /// shelf every time it dips means buying a shelf, using a fraction and binning the
+        /// rest — measured at 94% of all food cost before this cap existed. That is not a
+        /// difficulty setting, it is a broken order. With the cap, ordering to par is sane and
+        /// OVER-BUYING BECOMES A CHOICE, which is the whole point.
+        /// </summary>
         public decimal SuggestedReorderQuantity
         {
-            get { return IsBelowPar ? ParMax - Quantity : 0m; }
+            get
+            {
+                if (!IsBelowPar) return 0m;
+
+                var toPar = ParMax - Quantity;
+                if (ShelfLifeDays <= 0 || DailyUsage <= 0m) return toPar;
+
+                // Half again over the run rate, so a busy night does not 86 a dish.
+                var usableBeforeItTurns = (DailyUsage * ShelfLifeDays * 1.5m) - Quantity;
+
+                if (usableBeforeItTurns <= 0m) return 0m;
+                return usableBeforeItTurns < toPar ? usableBeforeItTurns : toPar;
+            }
+        }
+
+        /// <summary>Called once a day: learn the run rate and what this keeps for.</summary>
+        internal void EndOfDay(int shelfLifeDays)
+        {
+            ShelfLifeDays = shelfLifeDays;
+            DailyUsage = DailyUsage <= 0m ? _usedSinceSweep : (DailyUsage * 0.7m) + (_usedSinceSweep * 0.3m);
+            _usedSinceSweep = 0m;
         }
 
         internal void SetPar(decimal parMin, decimal parMax)
@@ -44,10 +81,23 @@ namespace RestaurantEmpire.Core.Model
             ParMax = parMax;
         }
 
-        internal void Receive(decimal quantity)
+        /// <summary>
+        /// Deliveries as DATED BATCHES rather than one total. Aaron: *"you are going to be
+        /// buying more before you get to 0 in stock, so you need a way to use the oldest stuff
+        /// first."* Exactly — and a single number with an average age would let each new
+        /// delivery quietly refresh the old stock underneath it.
+        /// </summary>
+        private readonly List<Batch> _batches = new List<Batch>();
+
+        private struct Batch { public decimal Quantity; public int ReceivedOnDay; }
+
+        internal void Receive(decimal quantity, int onDay)
         {
             if (quantity < 0m) throw new ArgumentOutOfRangeException(nameof(quantity), "Cannot receive a negative quantity.");
+            if (quantity == 0m) return;
+
             Quantity += quantity;
+            _batches.Add(new Batch { Quantity = quantity, ReceivedOnDay = onDay });
         }
 
         internal bool TryConsume(decimal quantity)
@@ -56,7 +106,57 @@ namespace RestaurantEmpire.Core.Model
             if (Quantity < quantity) return false;
 
             Quantity -= quantity;
+            _usedSinceSweep += quantity;
+
+            // OLDEST FIRST, the way a kitchen rotates. This is what makes topping up before
+            // you hit zero safe: the new delivery goes behind what is already there.
+            var left = quantity;
+            for (var i = 0; i < _batches.Count && left > 0m; i++)
+            {
+                var batch = _batches[i];
+                var taken = batch.Quantity <= left ? batch.Quantity : left;
+                batch.Quantity -= taken;
+                left -= taken;
+                _batches[i] = batch;
+            }
+
+            _batches.RemoveAll(b => b.Quantity <= 0m);
             return true;
+        }
+
+        /// <summary>Stock you already hold when a run starts is stock you have NOW.</summary>
+        internal void RedateTo(int day)
+        {
+            if (_batches.Count == 0 && Quantity > 0m)
+            {
+                _batches.Add(new Batch { Quantity = Quantity, ReceivedOnDay = day });
+                return;
+            }
+
+            for (var i = 0; i < _batches.Count; i++)
+            {
+                var batch = _batches[i];
+                batch.ReceivedOnDay = day;
+                _batches[i] = batch;
+            }
+        }
+
+        internal decimal DiscardSpoiled(int today, int shelfLifeDays)
+        {
+            if (shelfLifeDays <= 0) return 0m;   // it keeps
+
+            var binned = 0m;
+            for (var i = _batches.Count - 1; i >= 0; i--)
+            {
+                if (today - _batches[i].ReceivedOnDay < shelfLifeDays) continue;
+                binned += _batches[i].Quantity;
+                _batches.RemoveAt(i);
+            }
+
+            Quantity -= binned;
+            if (Quantity < 0m) Quantity = 0m;
+
+            return binned;
         }
     }
 
@@ -91,6 +191,47 @@ namespace RestaurantEmpire.Core.Model
             return stock;
         }
 
+        /// <summary>
+        /// What day the pantry thinks it is; deliveries are dated with it.
+        ///
+        /// TRAP: the clock's tick is ABSOLUTE, so its day index runs to the tens of thousands
+        /// while stock loaded before a run is dated zero. Without <see cref="StartOfRun"/> the
+        /// first tick bins the entire pantry as decades old.
+        /// </summary>
+        public int Today { get; private set; }
+
+        /// <summary>Join the calendar, treating what is on the shelf as being here now.</summary>
+        public void StartOfRun(int day)
+        {
+            Today = day;
+            foreach (var stock in _stock.Values) stock.RedateTo(day);
+        }
+
+        /// <summary>Move the calendar on without re-dating anything already in the pantry.</summary>
+        public void AdvanceTo(int day) { Today = day; }
+
+        /// <summary>Bin everything past its shelf life, reporting what was lost per ingredient.</summary>
+        public IDictionary<string, decimal> DiscardSpoiled(int today, Definitions.DefinitionRegistry definitions)
+        {
+            var binned = new Dictionary<string, decimal>();
+            if (definitions == null) return binned;
+
+            foreach (var stock in _stock.Values)
+            {
+                // A missing definition must never take the game down (Architecture Rule 3).
+                int shelfLife;
+                try { shelfLife = definitions.GetIngredient(stock.IngredientId).ShelfLifeDays; }
+                catch (Definitions.DefinitionNotFoundException) { continue; }
+
+                var lost = stock.DiscardSpoiled(today, shelfLife);
+                stock.EndOfDay(shelfLife);
+
+                if (lost > 0m) binned[stock.IngredientId] = lost;
+            }
+
+            return binned;
+        }
+
         public void SetPar(string ingredientId, decimal parMin, decimal parMax)
         {
             GetOrCreate(ingredientId).SetPar(parMin, parMax);
@@ -98,7 +239,7 @@ namespace RestaurantEmpire.Core.Model
 
         public void Receive(string ingredientId, decimal quantity)
         {
-            GetOrCreate(ingredientId).Receive(quantity);
+            GetOrCreate(ingredientId).Receive(quantity, Today);
         }
 
         /// <summary>Returns false rather than throwing when stock is short — an 86'd dish, not a crash.</summary>

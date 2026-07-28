@@ -70,7 +70,7 @@ namespace RestaurantEmpire.Core.Content
                     continue;
                 }
 
-                result[dto.Id] = new IngredientDefinition(dto.Id, dto.Name, dto.Unit);
+                result[dto.Id] = new IngredientDefinition(dto.Id, dto.Name, dto.Unit, dto.ShelfLifeDays);
             }
 
             return result;
@@ -259,6 +259,7 @@ namespace RestaurantEmpire.Core.Content
             public string Id { get; set; }
             public string Name { get; set; }
             public string Unit { get; set; }
+            public int ShelfLifeDays { get; set; }
         }
 
         private sealed class SupplierFileDto

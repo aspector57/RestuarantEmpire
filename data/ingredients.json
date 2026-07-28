@@ -3,67 +3,80 @@
     {
       "id": "flour",
       "name": "00 Flour",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 0
     },
     {
       "id": "tomato",
       "name": "Tomatoes",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 10
     },
     {
       "id": "mozzarella",
       "name": "Mozzarella",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 14
     },
     {
       "id": "basil",
       "name": "Fresh Basil",
-      "unit": "bunch"
+      "unit": "bunch",
+      "shelfLifeDays": 7
     },
     {
       "id": "olive-oil",
       "name": "Olive Oil",
-      "unit": "L"
+      "unit": "L",
+      "shelfLifeDays": 0
     },
     {
       "id": "arborio-rice",
       "name": "Arborio Rice",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 0
     },
     {
       "id": "parmesan",
       "name": "Parmesan",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 0
     },
     {
       "id": "truffle",
       "name": "Black Truffle",
-      "unit": "g"
+      "unit": "g",
+      "shelfLifeDays": 7
     },
     {
       "id": "coffee-beans",
       "name": "Coffee Beans",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 0
     },
     {
       "id": "eggs",
       "name": "Eggs",
-      "unit": "dozen"
+      "unit": "dozen",
+      "shelfLifeDays": 21
     },
     {
       "id": "butter",
       "name": "Butter",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 30
     },
     {
       "id": "sea-bass",
       "name": "Sea Bass",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 4
     },
     {
       "id": "lemon",
       "name": "Lemons",
-      "unit": "kg"
+      "unit": "kg",
+      "shelfLifeDays": 21
     }
   ]
 }

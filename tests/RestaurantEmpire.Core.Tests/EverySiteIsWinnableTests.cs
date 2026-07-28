@@ -1,5 +1,6 @@
 using System.Linq;
 using RestaurantEmpire.Core.Content;
+using System.Collections.Generic;
 using RestaurantEmpire.Core.Model;
 using Xunit;
 
@@ -94,10 +95,19 @@ namespace RestaurantEmpire.Core.Tests
             for (var i = 0; i < plan.Servers; i++)
                 restaurant.Payroll.Hire(new Employee("s" + i, "Server " + i, StaffRole.Server, 12m));
 
-            foreach (var id in definitions.IngredientIds)
+            // Stock only what the menu cooks, and open with a small delivery rather than a
+            // warehouse. Buying two thousand units of everything was harmless while nothing
+            // could spoil; now it is the over-ordering the mechanic exists to punish, and it
+            // was costing this fixture more than it earned. The reorder cap decides the
+            // quantity from here — order to need, not to a shelf level.
+            var onTheMenu = new HashSet<string>();
+            foreach (var recipe in restaurant.Menu.Recipes)
+                foreach (var line in recipe.Ingredients) onTheMenu.Add(line.IngredientId);
+
+            foreach (var id in onTheMenu)
             {
-                restaurant.Inventory.SetPar(id, 400m, 2000m);
-                restaurant.Inventory.Receive(id, 2000m);
+                restaurant.Inventory.SetPar(id, 20m, 600m);
+                restaurant.Inventory.Receive(id, 40m);
             }
 
             var runner = new SimulationRunner(restaurant, new GameClock(), 4242, InterruptPolicy.None());

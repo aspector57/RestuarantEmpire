@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using RestaurantEmpire.Core.Content;
 using RestaurantEmpire.Core.Model;
@@ -35,7 +36,19 @@ namespace RestaurantEmpire.Core.Tests
             restaurant.Kitchen.Install("garde-manger", "Garde Manger", slots);
             restaurant.Kitchen.Install("saute", "Saute", slots);
 
-            foreach (var id in definitions.IngredientIds) restaurant.Inventory.Receive(id, 100000m);
+            // A hundred thousand units of everything was a way of saying "stock is not what
+            // this test is about". It stopped being free once food could spoil: perishables
+            // now turn on that scale and the pantry becomes the thing being measured. Stock
+            // what the menu cooks, with a par band so it restocks itself.
+            var onTheMenu = new HashSet<string>();
+            foreach (var recipe in restaurant.Menu.Recipes)
+                foreach (var line in recipe.Ingredients) onTheMenu.Add(line.IngredientId);
+
+            foreach (var id in onTheMenu)
+            {
+                restaurant.Inventory.SetPar(id, 40m, 800m);
+                restaurant.Inventory.Receive(id, 120m);
+            }
 
             return restaurant;
         }
@@ -293,17 +306,32 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void ThirtyNightsOfTradingAccumulate_RatherThanResettingEachDay()
         {
+            // Restocked as it goes, because a restaurant buys food. Before spoilage existed
+            // this could stock once and trade a month on it; perishables now turn, so thirty
+            // nights with no deliveries measures an empty pantry rather than accumulation.
             var oneNight = Dinner.Runner(Build(), 25, 4242, InterruptPolicy.None());
-            oneNight.Advance(GameClock.TicksPerDay);
+            TradeAndRestock(oneNight, 1);
 
             var aMonth = Dinner.Runner(Build(), 25, 4242, InterruptPolicy.None());
-            aMonth.Advance(30L * GameClock.TicksPerDay);
+            TradeAndRestock(aMonth, 30);
 
             var single = oneNight.Snapshot();
             var month = aMonth.Snapshot();
 
             Assert.True(month.CoversServed > single.CoversServed * 20);
             Assert.True(month.Revenue > single.Revenue * 20m);
+        }
+
+        private static void TradeAndRestock(SimulationRunner runner, int days)
+        {
+            for (var day = 0; day < days; day++)
+            {
+                runner.Advance(GameClock.TicksPerDay);
+
+                foreach (var stock in runner.Restaurant.Inventory.Items.ToList())
+                    if (stock.IsBelowPar)
+                        runner.Restaurant.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
+            }
         }
 
         [Fact]
