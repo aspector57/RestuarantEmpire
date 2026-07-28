@@ -898,9 +898,33 @@ The premise: **growth should threaten the thing that made you worth growing.** T
 
 **3. The franchise offer is NOT a new mechanic.** An investor approaching the player to franchise the concept is a **Marquee Opportunity** (Events) — the bidding-war and deal-structure system already designed, with Economy's revenue-share obligation as the tradeoff: a lump sum and rapid reach now, against a permanent cut and reduced control over quality (which feeds straight back into prestige erosion above). Building it as its own system would duplicate three things that already exist.
 
+**Worth stating explicitly, since it was left ambiguous above: the offer targets one Brand, not the Company.** A Company that owns a single Concept has no real choice here — accept or refuse the whole thing. It only becomes a genuine decision once a Company can hold more than one Brand (a flagship plus a side concept, say): the player can license out the concept they're indifferent about for the lump sum, and keep the one they actually care about fully in-house, protected from exactly the prestige erosion and bulk-sourcing drag described above. That's a second reason multi-concept companies are worth having at M5+ — not just more revenue, but differentiated risk across concepts, which is a new kind of decision rather than a bigger number (see the flat-scaling anti-pattern in the working agreements).
+
 **Ratio worth noting, and the reason this is a healthy addition rather than scope creep:** of the three ideas, two are reskins of existing systems and only prestige erosion is genuinely new — and that one is a single derived value, not a subsystem.
 
 **One architectural confirmation this produces early, which is the real reason to write it down now:** Phase 9 claimed franchising would generalize the Supplier propagation pattern — a Brand/Concept as a first-class object referenced by many Restaurant instances, with bounded per-instance overrides. This addendum stress-tests that claim and it holds: prestige erosion reads location count and per-location divergence from the Brand; bulk sourcing is a company-scope supplier assignment with local overrides; the franchise deal is a Brand licensed to an owner who is not the player. Nothing here needs a pattern that does not already exist. That is worth knowing before M4 builds on it.
+
+---
+
+**IMPLEMENTATION STATUS — written from the code on 2026-07-27, after Reputation landed. Three of the claims above are now out of date, and in the project's favour.**
+
+**Prestige erosion is not "genuinely new" — the mechanism already exists and is shipped.** `Reputation.CeilingFor(averageIngredientQuality, comfort)` caps how well regarded a restaurant can ever become, based on what it is actually attempting. Standing then decays toward that ceiling at `BadNewsRate`, which is 2.5x `GoodNewsRate`. So "cut corners and watch the name slide" is live today at single-restaurant scale. Measured — a restaurant taken to acclaim on artisan sourcing, then switched to a bulk supplier:
+
+| | Standing | Ceiling | Footfall | Verdict |
+|---|---:|---:|---:|---|
+| 6 months, artisan | 0.890 | 0.890 | x1.31 | *people go out of their way to eat here* |
+| switch to bulk | — | **0.570** | — | ceiling drops the instant the assignment changes |
+| 1 month later | **0.525** | 0.570 | x1.02 | *no strong opinion either way* |
+
+The loss compounds, because standing also sets what guests will pay (`SatisfactionModel.ScoreValue` takes reputation): losing the name loses the prices the name was carrying.
+
+**So the only genuinely new work is ONE INPUT, not one value.** The ceiling currently reads ingredient quality and room comfort. Franchising needs it to also read **scale itself** — a forty-site chain should have a lower ceiling than a single restaurant *regardless of what it sources*, because sameness is what costs prestige. That is the actual cookie-cutter effect, and it is the one thing in this addendum that does not already exist. Everything else is configuration.
+
+**Bulk sourcing is even cheaper than claimed: it is a data file, not code.** One entry in `data/suppliers.json` with a low `qualityTier` and low prices, and the entire dilemma exists — the propagation chain, the quality→satisfaction path, and the reputation ceiling all consume it already. Zero engine changes, exactly as Architecture Rule 2 intends.
+
+**The pacing is WRONG for this story, and this is the real work item.** Look at the table: 0.890 to 0.525 in a single month. That is a cliff, not an erosion. `BadNewsRate` is calibrated for "we had a bad service", not "we changed the entire supply chain", and half the drama of the real-world pattern is that nobody notices until it is gone. Before this carries a franchise storyline, the decay needs a much longer time constant — and probably a distinction between a bad night (fast, recoverable) and a structural change to what you are (slow, and slow to undo). **Do not tune this now**; it is recorded so that whoever picks up M5 does not mistake a shipped cliff for a finished mechanic.
+
+**Revised ratio:** of the three ideas, two are configuration of existing systems, one is a new input to an existing formula, and none is a subsystem. That is a better ratio than the one claimed above, and it strengthens rather than weakens the case for the addendum — but it does not change the timing. **Still M5. The game still fails M1(b).**
 
 ---
 
