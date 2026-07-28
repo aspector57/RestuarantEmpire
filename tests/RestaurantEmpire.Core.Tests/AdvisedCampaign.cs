@@ -35,6 +35,32 @@ namespace RestaurantEmpire.Core.Tests
         private readonly ITestOutputHelper _out;
         public AdvisedCampaign(ITestOutputHelper o) { _out = o; }
 
+        /// <summary>
+        /// Book a month's trading to the ledger and return the new cumulative snapshot.
+        ///
+        /// THE RUNNER DOES NOT DO THIS FOR YOU. `SimulationRunner` tracks takings, food and
+        /// wages internally and exposes `ProjectedCash` as a computed view, but nothing
+        /// reaches the Economy until a caller records it. Every probe in this file originally
+        /// booked rent and nothing else, so they measured a restaurant that paid its landlord
+        /// and its staff and was never once paid by a customer — and then reported that the
+        /// game was unwinnable. It is not. Snapshots are cumulative, so book the deltas.
+        /// </summary>
+        private static ServiceResult BookMonth(Company company, Restaurant r, SimulationRunner runner,
+            ServiceResult last, long tick, decimal rent)
+        {
+            var now = runner.Snapshot();
+            var revenue = now.Revenue - (last == null ? 0m : last.Revenue);
+            var food = now.FoodCost - (last == null ? 0m : last.FoodCost);
+            var labor = now.LaborCost - (last == null ? 0m : last.LaborCost);
+
+            if (revenue != 0m) company.Economy.Record(tick, LedgerCategory.Revenue, revenue, "Takings", r.Id);
+            if (food != 0m) company.Economy.Record(tick, LedgerCategory.FoodCost, food, "Ingredients", r.Id);
+            if (labor != 0m) company.Economy.Record(tick, LedgerCategory.LaborCost, labor, "Wages", r.Id);
+            if (rent > 0m) company.Economy.Record(tick, LedgerCategory.Overhead, rent, "Rent", r.Id);
+
+            return now;
+        }
+
         private sealed class Site
         {
             public string Key = "";
@@ -188,10 +214,11 @@ namespace RestaurantEmpire.Core.Tests
 
                 var clock = new GameClock();
                 var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
+                ServiceResult booked = null;
                 for (var month = 1; month <= 12; month++)
                 {
                     runner.AdvanceDays(30);
-                    company.Economy.Record(clock.Tick, LedgerCategory.Overhead, site.Where.MonthlyRent, "Rent", r.Id);
+                    booked = BookMonth(company, r, runner, booked, clock.Tick, site.Where.MonthlyRent);
                     foreach (var stock in r.Inventory.Items.ToList())
                         if (stock.IsBelowPar) r.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
                 }
@@ -201,6 +228,83 @@ namespace RestaurantEmpire.Core.Tests
                     site.Key, wanted, bankroll, built,
                     r.Menu.Recipes.Select(x => x.StationId).Distinct().Count(),
                     end, end > 0m ? "surviving" : "BUST"));
+            }
+        }
+
+        /// <summary>
+        /// A FOCUSED opening, which every probe until now has failed to try.
+        ///
+        /// They all loaded the whole card — seven dishes across five stations — so "a minimum
+        /// viable restaurant" came out at 29,200 and looked unaffordable. But a small
+        /// restaurant does not serve everything. Three dishes off two stations is what a new
+        /// place actually opens with, and it costs a third as much. If that survives, the
+        /// game already has the decision it appeared to be missing: WHAT DO YOU COMMIT TO,
+        /// rather than how much can you buy.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void AFocusedOpeningInsteadOfEverythingOnTheCard()
+        {
+            _out.WriteLine("Three dishes off two stations, twenty covers, against the whole card.");
+            _out.WriteLine("");
+            _out.WriteLine("site        menu        build   m3cash    m6cash   m12cash  verdict");
+            _out.WriteLine("--------------------------------------------------------------------");
+
+            foreach (var site in Sites())
+            {
+                foreach (var focused in new[] { true, false })
+                {
+                    var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+                    var company = new Company("co", "Co", definitions, 30000m - site.Where.LeasePremium);
+                    var r = company.OpenRestaurant("r", site.Key, LocationType.BrickAndMortar);
+
+                    r.Location = site.Where;
+                    r.FloorArea = 970m;
+                    r.ServiceWindows.Clear();
+                    foreach (var w in site.Hours) r.ServiceWindows.Add(w);
+                    company.SupplierPolicy.AssignAll("valley-produce");
+
+                    if (focused) r.Menu.Add("margherita", "house-focaccia", "caprese-salad");
+                    else foreach (var recipe in definitions.Recipes) r.Menu.Add(recipe.Id);
+
+                    var spentBefore = company.Economy.CashOnHand;
+                    var units = focused ? 3 : 2;
+                    foreach (var stationId in r.Menu.Recipes.Select(x => x.StationId).Distinct())
+                    {
+                        var model = definitions.EquipmentFor(stationId).FirstOrDefault();
+                        if (model != null && r.HasRoomFor(model.Footprint * units)
+                            && company.Economy.CashOnHand > model.Cost * units)
+                            r.BuyEquipment(model, units);
+                    }
+
+                    var seats = focused ? 20 : 20;
+                    r.BuyTables("t", "Tables", seats * 120m, seats);
+
+                    var cooks = focused ? 3 : 3;
+                    for (var i = 0; i < cooks; i++) r.Payroll.Hire(new Employee("c" + i, "Cook", StaffRole.Cook, 16m));
+                    for (var i = 0; i < 2; i++) r.Payroll.Hire(new Employee("s" + i, "Server", StaffRole.Server, 12m));
+                    foreach (var id in definitions.IngredientIds) { r.Inventory.SetPar(id, 200m, 1500m); r.Inventory.Receive(id, 1500m); }
+
+                    var build = spentBefore - company.Economy.CashOnHand;
+
+                    var clock = new GameClock();
+                    var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
+                    decimal m3 = 0m, m6 = 0m;
+                    ServiceResult booked = null;
+                    for (var month = 1; month <= 12; month++)
+                    {
+                        runner.AdvanceDays(30);
+                        booked = BookMonth(company, r, runner, booked, clock.Tick, site.Where.MonthlyRent);
+                        foreach (var stock in r.Inventory.Items.ToList())
+                            if (stock.IsBelowPar) r.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
+                        if (month == 3) m3 = company.Economy.CashOnHand;
+                        if (month == 6) m6 = company.Economy.CashOnHand;
+                    }
+
+                    var end = company.Economy.CashOnHand;
+                    _out.WriteLine(string.Format("{0,-10} {1,-10} {2,7:N0} {3,8:N0} {4,9:N0} {5,9:N0}  {6}",
+                        site.Key, focused ? "3 dishes" : "everything", build, m3, m6, end,
+                        end > 0m ? "surviving" : "BUST"));
+                }
             }
         }
 
@@ -233,11 +337,12 @@ namespace RestaurantEmpire.Core.Tests
             var clock = new GameClock();
             var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
             m3 = 0m; m6 = 0m;
+            ServiceResult booked = null;
 
             for (var month = 1; month <= 12; month++)
             {
                 runner.AdvanceDays(30);
-                company.Economy.Record(clock.Tick, LedgerCategory.Overhead, site.Where.MonthlyRent, "Rent", r.Id);
+                booked = BookMonth(company, r, runner, booked, clock.Tick, site.Where.MonthlyRent);
 
                 foreach (var stock in r.Inventory.Items.ToList())
                     if (stock.IsBelowPar) r.Inventory.Receive(stock.IngredientId, stock.SuggestedReorderQuantity);
@@ -317,14 +422,13 @@ namespace RestaurantEmpire.Core.Tests
             var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
 
             m3 = 0m; m6 = 0m;
+            ServiceResult booked = null;
 
             for (var month = 1; month <= 12; month++)
             {
                 runner.AdvanceDays(30);
-                var trading = runner.Snapshot();
-
-                company.Economy.Record(clock.Tick, LedgerCategory.Overhead,
-                    site.Where.MonthlyRent, "Rent", r.Id);
+                booked = BookMonth(company, r, runner, booked, clock.Tick, site.Where.MonthlyRent);
+                var trading = booked;
 
                 // ---- the entire policy: do what the Advisor says, and nothing else ----
                 foreach (var s in new Advisor(r).Review(trading))

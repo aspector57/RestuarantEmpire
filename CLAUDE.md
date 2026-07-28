@@ -504,36 +504,46 @@ reading is the harshest possible test of advice. The gap between "a good static 
 100/100 in the sweep" and "no incremental path reaches one" is the live question, and it is
 about the opening economy rather than about the Advisor.
 
-### THE GAME IS CURRENTLY UNWINNABLE FROM ITS OWN STARTING POSITION
+### RETRACTED: "the game is unwinnable" was an instrument bug
 
-Every incremental policy busts — naive, Advisor-guided, and Aaron's own winning order from
-the browser build. The deciding experiment was to stop testing policies and ask whether a
-build that is KNOWN to make money can be bought at all:
+A previous version of this section reported that no site could afford a working restaurant
+and that the game could not be won from its own starting position. **That was wrong**, and it
+is worth leaving the correction here rather than quietly deleting it.
 
-| Site | A working build costs | You start with | Can build | After 12 months |
-|---|---:|---:|---|---:|
-| City Center | 29,200 | 18,000 | 4 of 5 stations | −93,600 |
-| Business District | 29,200 | 22,000 | 4 of 5 | −73,600 |
-| Nightlife Quarter | 29,200 | 23,000 | 4 of 5 | −82,200 |
-| Suburban High Street | 29,200 | **27,000** | 5 of 5 | −40,600 |
+`SimulationRunner` tracks takings, food and wages internally and exposes `ProjectedCash` as a
+computed view. **Nothing reaches the Economy until a caller records it.** `Campaign.cs` books
+all four lines every month; every probe written afterwards booked *rent only*. They therefore
+measured a restaurant that paid its landlord and its staff and was never once paid by a
+customer — and then reported the resulting hole as a balance finding.
 
-**A minimum viable restaurant costs about 29,200 and the opening bankroll is 18,000 to
-27,000.** Not one site can afford it, and suburban — which comes closest — spends everything
-on the build and then cannot make payroll. No advice fixes that, which is why the Advisor
-work above could not move the number. It was never an advice problem.
+The lesson is the same one as the browser port, one layer in: **a new instrument must be
+validated against a known-good one before its output is believed.** `Campaign.cs` was sitting
+right there, doing it correctly, and the disagreement between them was visible from the first
+run — city at −12,940 by month three, against a sweep that said the same shape was profitable.
+Two instruments disagreeing by that much is a bug report, not a finding.
 
-**This also reconciles the two instruments, and the reconciliation is uncomfortable: the
-sweep hands every restaurant 400,000.** It has been reporting 100/100 profitable about
-configurations a player can never reach. It is a good instrument for "is this shape viable"
-and worthless for "can this be built", and it was quietly being read as both.
+### What the corrected instruments actually say
 
-**And Aaron's ten-minute win in `pass.html` is not evidence against any of this** — the
-browser build must be materially easier than the engine it mirrors, since the same nominal
-bankroll wins there and busts here. That is a third drift finding, and the largest.
+Static builds bought from the real opening bankroll, traded twelve months:
 
-**The fix is a balance decision, not an engineering one**, and it belongs to Aaron: raise the
-bankroll, cut what a working kitchen costs, or make a genuinely smaller build viable so the
-first rung is reachable. Do not pick one silently.
+| Site | Focused (3 dishes, $9,300) | Whole card ($14,600) |
+|---|---:|---:|
+| City Center | 128,021 | **212,309** |
+| Business District | 62,480 | 109,585 |
+| Nightlife Quarter | 111,517 | 205,952 |
+| Suburban High Street | 115,238 | 121,057 |
+
+So the game is winnable everywhere, comfortably, and **Aaron's "it might be too easy" is
+confirmed rather than contradicted**: 18,000–27,000 becomes 62,000–212,000 in a year with no
+decisions after opening day. A focused menu is cheaper to open but earns LESS — breadth wins
+on every site, which kills the hypothesis that menu focus is the missing decision.
+
+**The one finding that survived the correction, and it is still real: an Advisor-guided
+opening busts on all four sites (city −2,568, business −2,128, nightlife −69,708, suburban
+−54,264).** Following the advice exactly is worse than buying a sensible build on day one and
+never touching it again. The Advisor over-invests — seven kitchen units and five to seven
+staff — because each suggestion is locally correct and nothing weighs them against what the
+room can earn. **M1(b) still does not pass**, for a real reason this time.
 
 ### Playtest verdict so far: (a) passes, (b) does NOT
 
