@@ -57,6 +57,16 @@ namespace RestaurantEmpire.Core.Model
         private readonly Restaurant _restaurant;
         private readonly DefinitionRegistry _definitions;
         private readonly DeterministicRandom _rng;
+
+        /// <summary>
+        /// A SEPARATE stream for things going wrong, deliberately.
+        ///
+        /// Drawing mishaps from the main sequence would shift every arrival and every dish
+        /// choice after it, so adding the mechanic would silently rewrite the outcome of every
+        /// seeded test in the project and none of the differences would mean anything. A
+        /// second stream keeps who walks in and what they order exactly as they were.
+        /// </summary>
+        private readonly DeterministicRandom _mishaps;
         private readonly KitchenPass _pass;
 
         private readonly List<Table> _tables = new List<Table>();
@@ -69,6 +79,8 @@ namespace RestaurantEmpire.Core.Model
         private readonly Dictionary<string, int> _recentWalkoutStations = new Dictionary<string, int>(StringComparer.Ordinal);
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal, _laborCost;
+        private int _remakes, _comped;
+        private decimal _compedValue;
         private int _partiesArrived, _partiesTurnedAway, _coversServed, _walkouts, _eightySixed, _longestWait;
         private int _partiesLostToMenu, _partiesPutOffByTheWait, _partiesPutOffByThePrices;
         private int _lostTradeStreak, _partyCounter, _occupiedSeats;
@@ -83,6 +95,7 @@ namespace RestaurantEmpire.Core.Model
             _restaurant = restaurant;
             _definitions = restaurant.Company.Definitions;
             _rng = new DeterministicRandom(seed);
+            _mishaps = new DeterministicRandom(seed ^ 0x5EED1E);
             // Plate capacity rather than headcount, so who you hired decides how much of the
             // kitchen actually runs.
             _pass = restaurant.Kitchen.OpenPass(clock.Tick,
@@ -521,6 +534,35 @@ namespace RestaurantEmpire.Core.Model
                 // Ingredients are spent the moment the plate is fired, whatever happens next.
                 _foodCost += _restaurant.Costing.PlateCost(recipeId);
 
+                // THINGS GO WRONG, AND THEY GO WRONG MORE OFTEN IN A CHEAP KITCHEN.
+                //
+                // Aaron: "cheap is not accounting for like bad attitude or mistakes, for
+                // example someone's food is bad and requests a refund, or they burn the food
+                // and have to remake it." Exactly right, and it was why hiring badly was free:
+                // a weak brigade only meant a slightly smaller multiplier, never a bill.
+                //
+                // A burnt plate costs the ingredients twice, the pass the time to do it again,
+                // and — if it reached the table before anyone noticed — the cover itself.
+                if (_mishaps.Chance((double)MistakeChance(recipe)))
+                {
+                    _foodCost += _restaurant.Costing.PlateCost(recipeId);
+                    _wastedFoodCost += _restaurant.Costing.PlateCost(recipeId);
+                    _remakes++;
+
+                    // Doing it again takes the pass as long as doing it the first time, so a
+                    // sloppy kitchen backs itself up and the queue is its own punishment.
+                    _pass.Fire(recipe, tick, _restaurant.Inventory);
+
+                    if (_mishaps.NextDouble() < 0.35)
+                    {
+                        // It got as far as the guest. That one is not being charged for.
+                        _comped++;
+                        _compedValue += _restaurant.Costing.MenuPrice(recipeId);
+                        _revenue -= _restaurant.Costing.MenuPrice(recipeId);
+                        _diagnostics.Add("Sent back — " + recipe.Name + " went out wrong and was comped.");
+                    }
+                }
+
                 int running;
                 _stationMinutes.TryGetValue(ticket.StationId, out running);
                 _stationMinutes[ticket.StationId] = running + ticket.CookMinutes;
@@ -624,6 +666,33 @@ namespace RestaurantEmpire.Core.Model
             }
 
             return options[options.Count - 1];
+        }
+
+        /// <summary>
+        /// How often THIS plate goes wrong, from who is on the pass and what they were asked
+        /// to make.
+        ///
+        /// Aaron: *"cheap labor can also be good... maybe they excel with simpler dishes and
+        /// struggle with more complex ones."* That is the version worth having, and prep time
+        /// is already a complexity measure sitting in the recipe. A weak brigade plating a
+        /// four-minute caprese is very nearly fine; the same brigade on a sixteen-minute
+        /// truffle risotto is not, and the shortfall is squared so that being a bit cheap is
+        /// survivable and being very cheap is not.
+        ///
+        /// **This is what makes a small menu a real strategy rather than the strictly worse
+        /// one it measured as before.** A cheap kitchen can run pizza and salad honestly. It
+        /// cannot run a tasting menu, and finding that out costs ingredients.
+        /// </summary>
+        private decimal MistakeChance(Definitions.RecipeDefinition recipe)
+        {
+            var skill = _restaurant.Payroll.AverageSkill(StaffRole.Cook);
+            var shortfall = 1m - skill;
+
+            // 1.0 at twelve minutes, so most of the card sits either side of "demanding".
+            var demand = recipe.PrepMinutes / 12m;
+
+            var chance = 0.01m + (shortfall * shortfall * 0.10m * demand);
+            return chance < 0m ? 0m : chance > 0.30m ? 0.30m : chance;
         }
 
         private int RollPartySize()

@@ -539,6 +539,53 @@ wage line, one person, two-thirds more trade.
 a headcount and re-multiplying threw the skill away — three excellent cooks came out at 3.9,
 floored to 3, which is exactly three average ones.
 
+### Things go wrong, and they go wrong on the dishes you cannot cook (Aaron)
+
+> *"cheap is not accounting for like bad attitude or mistakes — someone's food is bad and
+> requests a refund, or they burn the food and have to remake it."*
+> *"cheap labor can also be good... maybe they excel with simpler dishes and struggle with
+> more complex ones."*
+
+Both right, and the second is the better mechanic. Hiring badly used to cost only a slightly
+smaller multiplier, never a bill — so cheap was free. Now a spoiled plate costs the
+ingredients twice, the pass the time to remake it, and (about a third of the time, when it
+reached the table) the cover itself.
+
+**Mistake chance is skill AND dish complexity**, with `PrepMinutes` already sitting there as a
+complexity measure. The shortfall is squared, so being a bit cheap is survivable and being
+very cheap is not, and it is scaled by how demanding the dish is.
+
+**Measured — the same kitchen and the same wages, only the menu differs:**
+
+| | Covers | Wasted food | Gross profit | Satisfaction |
+|---|---:|---:|---:|---:|
+| Cheap brigade, simple menu | 116 | 14 | 914 | 0.631 |
+| Cheap brigade, complex menu | 79 | **226** | 833 | 0.539 |
+| Strong brigade, simple menu | 120 | 10 | 965 | 0.824 |
+| Strong brigade, complex menu | 112 | 7 | **1,558** | 0.804 |
+
+A cheap brigade running pizza and salad lands within 5% of a strong one. Put the same people
+on truffle risotto and they waste **sixteen times** the food and lose a third of their covers.
+And skill is what UNLOCKS the expensive menu — 1,558 against 833.
+
+**This also repairs an earlier finding.** Menu breadth used to win unconditionally, which made
+"what do you commit to" a fake decision. It is now a genuine one, and it is coupled to
+staffing: a cheap kitchen can be honestly profitable on a short simple card, and cannot run a
+tasting menu however much it would like to.
+
+Mishaps draw from a **separate RNG stream** (`_mishaps`), deliberately. Drawing from the main
+sequence would shift every arrival and dish choice after it, silently rewriting the outcome of
+every seeded test in the project for no meaningful reason.
+
+**Still true: cheap beats skilled in the campaign**, because the wage premium slightly exceeds
+the mistake saving. But that measurement is taken inside a system that loses money either way,
+so it is not worth tuning against until the ratchet below is fixed.
+
+**Not built, and it is the rest of Aaron's idea:** *"high potential to learn, start off not
+great."* Cheap staff who improve with plates cooked, capped by a hidden potential, would make
+a cheap hire a genuine bet rather than only a risk. It needs skill to become mutable state and
+therefore saved, so it is its own increment.
+
 ### M1(b), diagnosed: the Advisor has a ratchet and no brake
 
 The bet was that richer hiring would sharpen the advice. **It did not, and the experiment
