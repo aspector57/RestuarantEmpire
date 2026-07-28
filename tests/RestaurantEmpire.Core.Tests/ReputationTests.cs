@@ -136,11 +136,9 @@ namespace RestaurantEmpire.Core.Tests
             for (var i = 0; i < 20000; i++) loved.RecordMeal(1m);
             for (var i = 0; i < 20000; i++) loathed.RecordMeal(0m);
 
+            // Both are long since KNOWN, so footfall is down to opinion alone.
             Assert.True(loved.TrafficMultiplier > 1.3m);
             Assert.True(loathed.TrafficMultiplier < 0.7m);
-
-            // And an unknown restaurant is neither helped nor punished.
-            Assert.Equal(1m, new Reputation().TrafficMultiplier);
         }
 
         [Fact]
@@ -207,8 +205,21 @@ namespace RestaurantEmpire.Core.Tests
             var fresh = new Reputation();
 
             Assert.Equal(Reputation.Neutral, fresh.Standing);
-            Assert.Equal(1m, fresh.TrafficMultiplier);
             Assert.Contains("finding its feet", fresh.Verdict);
+
+            // Nobody DISLIKES it — opinion is exactly neutral.
+            Assert.Equal(1m, fresh.OpinionMultiplier);
+
+            // But hardly anybody has heard of it, so hardly anybody comes. Those are two
+            // different problems: being undiscovered is fixed by trading (and later by
+            // marketing), being disliked is fixed by cooking better.
+            Assert.Equal(Reputation.UnknownTrafficShare, fresh.Awareness);
+            Assert.Equal(Reputation.UnknownTrafficShare, fresh.TrafficMultiplier);
+
+            // And being unknown is strictly better than being loathed.
+            var loathed = new Reputation();
+            for (var i = 0; i < 20000; i++) loathed.RecordMeal(0m);
+            Assert.True(fresh.OpinionMultiplier > loathed.OpinionMultiplier);
         }
 
         [Fact]
@@ -309,6 +320,22 @@ namespace RestaurantEmpire.Core.Tests
 
             Trade(restaurant, 150);
             Assert.True(restaurant.Reputation.Standing > 0.85m, "half a year of it should");
+        }
+
+        [Fact]
+        public void BeingFoundTakesAboutASeasonOfTrading()
+        {
+            // Aaron: "perhaps I had too much traffic right away?" A restaurant that opened
+            // this morning used to draw the full footfall of the street, because standing
+            // began at neutral and neutral meant 1.0. Its first job should be to be found.
+            var rep = new Reputation();
+            Assert.Equal(Reputation.UnknownTrafficShare, rep.Awareness);
+
+            for (var i = 0; i < Reputation.MealsToBecomeKnown / 2; i++) rep.RecordMeal(0.7m);
+            Assert.InRange(rep.Awareness, 0.6m, 0.75m);
+
+            for (var i = 0; i < Reputation.MealsToBecomeKnown; i++) rep.RecordMeal(0.7m);
+            Assert.Equal(1m, rep.Awareness);
         }
     }
 }

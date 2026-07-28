@@ -52,6 +52,30 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Trade at rock bottom, as a share of the street's normal traffic.</summary>
         public const decimal WorstTrafficMultiplier = 0.60m;
 
+        /// <summary>
+        /// What share of the street a restaurant NOBODY HAS HEARD OF gets on its first night.
+        ///
+        /// Aaron: *"perhaps I had too much traffic right away?"* He was right, and it was a
+        /// real hole. Standing started at neutral, neutral mapped to a x1.0 multiplier, and
+        /// so a restaurant that opened its doors this morning drew the full footfall of the
+        /// street on day one. Being unknown and being disliked were the same number.
+        ///
+        /// They are not the same thing at all. A place people actively avoid should do worse
+        /// than a place nobody has noticed, and a new restaurant's first job is to be found.
+        /// </summary>
+        public const decimal UnknownTrafficShare = 0.35m;
+
+        /// <summary>
+        /// Meals served before a restaurant is simply KNOWN. After this, footfall is decided
+        /// purely by what people think of it.
+        ///
+        /// Calibrated against volume, which caught me out the same way the reputation rates
+        /// did: at 3,000 this was meant to be a season and a busy dinner service cleared it in
+        /// five weeks. A working restaurant here serves roughly 2,600 covers a month, so a
+        /// genuine season of being the new place nobody has tried is about this many.
+        /// </summary>
+        public const int MealsToBecomeKnown = 12000;
+
         /// <summary>Trade at the top. Bounded, because a reputation cannot conjure a queue
         /// out of an empty street — the neighborhood still decides who walks past.</summary>
         public const decimal BestTrafficMultiplier = 1.40m;
@@ -177,7 +201,24 @@ namespace RestaurantEmpire.Core.Model
         /// What this does to footfall. Neutral standing is exactly 1.0, so a brand-new
         /// restaurant is neither rewarded nor punished for having no history.
         /// </summary>
-        public decimal TrafficMultiplier
+        /// <summary>
+        /// How many people have heard of this place, 0.35 to 1. Separate from whether they
+        /// like it: awareness is earned by serving anybody at all, opinion by serving them
+        /// well. Marketing, when it exists, belongs HERE rather than on standing — you can
+        /// buy people knowing about you, and you cannot buy them rating you highly.
+        /// </summary>
+        public decimal Awareness
+        {
+            get
+            {
+                if (MealsRemembered >= MealsToBecomeKnown) return 1m;
+                return UnknownTrafficShare
+                     + ((1m - UnknownTrafficShare) * ((decimal)MealsRemembered / MealsToBecomeKnown));
+            }
+        }
+
+        /// <summary>What people think, as a share of normal footfall. Neutral is exactly 1.0.</summary>
+        public decimal OpinionMultiplier
         {
             get
             {
@@ -189,6 +230,13 @@ namespace RestaurantEmpire.Core.Model
                 return 1m + (((Standing - Neutral) / (1m - Neutral)) * (BestTrafficMultiplier - 1m));
             }
         }
+
+        /// <summary>
+        /// What actually turns up: the people who know about you, times what they think.
+        /// A new restaurant is quiet because it is undiscovered, and it stays quiet if it
+        /// turns out to be bad — two different problems with two different fixes.
+        /// </summary>
+        public decimal TrafficMultiplier { get { return Awareness * OpinionMultiplier; } }
 
         /// <summary>Plain language, because a bare number is not a reason (Binding Principle 2).</summary>
         public string Verdict

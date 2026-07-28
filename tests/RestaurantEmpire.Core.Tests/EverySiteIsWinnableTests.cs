@@ -71,6 +71,10 @@ namespace RestaurantEmpire.Core.Tests
             restaurant.Location = plan.Site;
             restaurant.FloorArea = plan.Site.MaxFloorArea;   // built out to what the site allows
 
+            // This asks whether a SITE can pay, not whether a newly-opened restaurant can be
+            // found, so start it established rather than unknown.
+            restaurant.Reputation.Restore(Reputation.Neutral, Reputation.MealsToBecomeKnown);
+
             foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
             company.SupplierPolicy.AssignAll("valley-produce");
 

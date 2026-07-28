@@ -504,6 +504,50 @@ reading is the harshest possible test of advice. The gap between "a good static 
 100/100 in the sweep" and "no incremental path reaches one" is the live question, and it is
 about the opening economy rather than about the Advisor.
 
+### Being unknown is not the same as being disliked (Aaron)
+
+Aaron: *"perhaps I had too much traffic right away?"* He was right, and it was a real hole.
+Standing began at neutral, neutral mapped to a x1.0 traffic multiplier, and so a restaurant
+that opened its doors this morning drew the full footfall of the street on day one. Being
+undiscovered and being avoided were the same number.
+
+They are now two: **`Awareness`** (how many people have heard of you, 0.35 to 1, earned by
+serving anybody at all) times **`OpinionMultiplier`** (what they think, 0.6 to 1.4, earned by
+serving them well). A new restaurant is quiet because nobody knows it; a bad one stays quiet
+after they do. Two problems, two different fixes — and **marketing, when it exists, belongs on
+awareness rather than on standing.** You can buy people knowing about you. You cannot buy them
+rating you highly.
+
+Calibration caught me out the same way the reputation rates did: `MealsToBecomeKnown` was
+3,000, which was meant to be a season and which a busy dinner service cleared in five weeks.
+A working restaurant here serves roughly 2,600 covers a month, so it is now 12,000.
+
+**Measured effect: a real opening ramp, and no change to the endgame.** Month-3 cash falls
+about 30% across all four sites (city 49,945 -> 33,135, business 30,371 -> 18,679) while
+twelve-month outcomes move by a few percent. That is the right shape for a modelling fix —
+being unknown costs you early and stops mattering once you are established.
+
+**It does NOT make the game harder, and should not be mistaken for having done so.**
+
+### The game is easy because the systems that create pressure do not exist yet (Aaron)
+
+Aaron's framing, and it is the right one to hold before touching any difficulty dial:
+
+> *"in this model, it was hire a cook. In the real game, there will be profiles of cooks with
+> their own rates, you can hire good cooks or bad cooks, they can do a good job or bad job,
+> things can go wrong... I think the complexity will be higher than in this version."*
+
+`Payroll.Hire(new Employee(...))` is a placeholder: a generic unit at a fixed wage that always
+performs identically and never leaves. Real profiles bring rates, skill, variance and failure,
+and those are costs and decisions the current economy simply does not have. The same is true
+of marketing spend, spoilage, purchase-vs-consumption accounting, competitors and events —
+every one of them a drag that is not being paid today.
+
+**So do not tune the economy to be hard against this version.** The same trap as tuning
+interrupts against a terminal and the browser port: calibrating against a model that is about
+to stop existing. Fix what is *wrong* (the traffic hole was wrong). Leave what is merely
+*easy* until the systems that make it hard are in.
+
 ### RETRACTED: "the game is unwinnable" was an instrument bug
 
 A previous version of this section reported that no site could afford a working restaurant

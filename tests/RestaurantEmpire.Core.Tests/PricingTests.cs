@@ -32,6 +32,11 @@ namespace RestaurantEmpire.Core.Tests
 
             foreach (var id in definitions.IngredientIds) restaurant.Inventory.Receive(id, 100000m);
 
+
+            // These tests are about pricing, not about being the new place in town. Open the
+            // doors on a restaurant the neighborhood already knows, so the awareness ramp
+            // does not quietly halve the sample.
+            restaurant.Reputation.Restore(Reputation.Neutral, Reputation.MealsToBecomeKnown);
             return restaurant;
         }
 
