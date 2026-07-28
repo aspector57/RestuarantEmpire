@@ -466,6 +466,44 @@ for testing the loop but means the player cannot currently make the actual menu-
 move: repricing ONE dish and watching the Kasavana-Smith matrix rearrange. Until then
 `[x]matrix` in the harness is decoration.
 
+### M1(b) now has a number instead of a feeling — and it still fails
+
+`AdvisedCampaign` is the instrument the bar was missing. It opens identically to `Campaign`
+on all four sites and then does **nothing except what the Advisor tells it**, in the
+Advisor's own words. If following the advice survives where the naive policy busts, the
+Advisor is carrying the player across the gap, which is what M1(b) is really asking.
+
+**First run: 0 of 4 survived — worse than the naive campaign's 1 of 4.** The cause was in one
+column: `seats 12` on every site after a year. The Advisor had built kitchens of five to
+eleven units, hired crew to staff them, and **never once mentioned the dining room**. An
+Advisor-guided player builds a magnificent kitchen serving twelve covers and goes broke.
+
+`ServiceResult.PartiesTurnedAway` had been counted by the simulation since M1 and read by
+nothing. **That is the third instance of the same shape** — a field that is populated, correct,
+and only consulted on one side of the decision it exists to inform. `PriceSensitivity` judged
+without choosing; `IngredientQuality` scored without steering; `PartiesTurnedAway` counted
+without advising. Worth actively hunting for the fourth.
+
+**Two Advisor fixes came out of it, both real:**
+
+1. **`opportunity:room`** — it now says "we are turning people away at the door", with how
+   many parties left and how many more covers the free floor would take.
+2. **Advice has to say what matters FIRST, or it is only a list.** Every suggestion was
+   individually correct and the sequence was ruinous. `Ordered()` now sorts by urgency —
+   restocking first because it is free and unblocks sales already paid for, then seats,
+   because a guest who cannot sit down never reaches the queue, then the kitchen behind them.
+   And **anything that spends money is dropped entirely below two months of runway**: a
+   restaurant with three weeks of cash should not be told to buy an oven.
+
+**After both fixes: still 0 of 4.** Suburban reaches 32 covers and holds positive cash to
+month three, then goes under. So **M1(b) does not pass**, and that is now a measured claim.
+
+**What the instrument cannot settle, stated so it is not mistaken for proof:** the probe acts
+on EVERY suggestion EVERY month, which no player does — a player triages. A flat obedient
+reading is the harshest possible test of advice. The gap between "a good static build earns
+100/100 in the sweep" and "no incremental path reaches one" is the live question, and it is
+about the opening economy rather than about the Advisor.
+
 ### Playtest verdict so far: (a) passes, (b) does NOT
 
 Two sessions, Aaron at the keyboard. Both found real defects the tests could not — a walkout death spiral, then an economy where tripling prices tripled revenue. Both are fixed.

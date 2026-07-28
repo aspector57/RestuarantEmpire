@@ -121,7 +121,57 @@ namespace RestaurantEmpire.Core.Model
             AddProposals(found, trading);
             AddOpportunities(found, trading);
 
-            return found;
+            return Ordered(found);
+        }
+
+        /// <summary>
+        /// ADVICE HAS TO SAY WHAT MATTERS FIRST, or it is only a list.
+        ///
+        /// An Advisor-guided campaign went bust on all four sites doing exactly what it was
+        /// told. Every suggestion was individually correct and the sequence was ruinous: it
+        /// staffed the kitchen it had, bought more kitchen because the queue was long, and
+        /// paid eleven units and five staff to serve twelve covers. Nothing in a flat list
+        /// says "the room is why you are poor, deal with that first".
+        ///
+        /// So the order carries meaning. Restocking comes first because it costs nothing and
+        /// unblocks revenue you have already paid for. Seats come before kitchen, because a
+        /// guest who cannot sit down never reaches the queue. And anything that spends money
+        /// is dropped entirely when there is not two months of rent in the bank — a
+        /// restaurant with three weeks of runway should not be told to buy an oven.
+        /// </summary>
+        private IReadOnlyList<Suggestion> Ordered(List<Suggestion> found)
+        {
+            var rent = _restaurant.Location == null ? 0m : _restaurant.Location.MonthlyRent;
+            var broke = rent > 0m && _restaurant.Company.Economy.CashOnHand < rent * 2m;
+
+            var kept = new List<Suggestion>();
+            for (var i = 0; i < found.Count; i++)
+            {
+                if (broke && Spends(found[i].Id)) continue;
+                kept.Add(found[i]);
+            }
+
+            kept.Sort((a, b) => Urgency(a.Id).CompareTo(Urgency(b.Id)));
+            return kept;
+        }
+
+        private static bool Spends(string id)
+        {
+            return id == "opportunity:room" || id == "opportunity:capacity"
+                || id == "opportunity:space" || id == "opportunity:upgrade"
+                || id.StartsWith("understaffed:");
+        }
+
+        private static int Urgency(string id)
+        {
+            if (id.StartsWith("restock:")) return 0;          // free, and it unblocks sales
+            if (id == "risk:runway") return 1;                 // know before you spend
+            if (id == "opportunity:room") return 2;            // nobody queues who cannot sit
+            if (id == "understaffed:floor") return 3;          // seats you cannot serve
+            if (id == "opportunity:capacity") return 4;        // then the kitchen behind them
+            if (id == "understaffed:kitchen") return 5;
+            if (id.StartsWith("feature:")) return 6;
+            return 7;
         }
 
         // ---- Tier 1: chores. Flatly stated, never a question. ----
@@ -260,6 +310,30 @@ namespace RestaurantEmpire.Core.Model
                     trading.CoversServed + " covers served" +
                     (busiest == null ? "." : ". The " + busiest + " is where the queue builds."),
                     subjectId: busiest));
+            }
+
+            // THE ROOM, which the Advisor was silent about entirely until an Advisor-guided
+            // campaign went bust on all four sites with twelve covers after a year. It kept
+            // buying kitchen — five to eleven units — because the kitchen is what it could
+            // see, and never once said the dining room was the thing stopping the money.
+            // `PartiesTurnedAway` was counted by the simulation from the start and read by
+            // nothing, which is the same judged-but-never-consulted shape as PriceSensitivity
+            // and IngredientQuality before it. Third time.
+            if (trading != null && trading.PartiesTurnedAway > trading.CoversServed / 3
+                && trading.PartiesTurnedAway > 5)
+            {
+                var room = _restaurant.FreeFloorArea;
+                var couldSeat = (int)(room / 15m);
+
+                found.Add(new Suggestion(
+                    "opportunity:room", AdvisorTier.Strategic,
+                    "We are turning people away at the door.",
+                    trading.PartiesTurnedAway + " parties left because every table was full, against " +
+                    trading.CoversServed + " covers served. " +
+                    (couldSeat >= 4
+                        ? "There is floor for about " + couldSeat + " more covers without building anything."
+                        : "There is no floor left to put a table on."),
+                    subjectId: couldSeat >= 4 ? "seats" : null));
             }
 
             if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 32m && _restaurant.ExpansionHeadroom > 110m)
