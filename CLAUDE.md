@@ -597,6 +597,14 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
+- **A browser port of the sim is a playtest instrument, and it WILL drift.** `pass.html`
+  reimplements the rules in JavaScript so the loop can be felt rather than read. Two drift
+  bugs appeared within a day of writing it: the equipment table had invented footprints and
+  speeds, and `Markup` was ported as price-over-ingredient-cost when the real definition is
+  price over the price the dish was DESIGNED to sell at. The second one made every guest
+  balk at every price, because a healthy 30% food cost is a 3x price/cost ratio and the port
+  read that as gouging. **When porting, copy the definition, not the name** — and re-derive
+  every constant from the C# rather than from memory. The C# core is the source of truth.
 - **Tests protect what is already right; playing is what finds what is wrong.** 182 tests found
   none of the four defects that actually mattered — the walkout death spiral, the price-gouging
   exploit, the equipment/cook ratio, and the false win rate. All four came from Aaron playing.
