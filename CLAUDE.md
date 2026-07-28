@@ -881,6 +881,12 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
+- **The browser build (`pass.html`) is synced as of the staff work.** It now carries the
+  awareness split, staff as people with claimed-versus-actual skill, mistakes and comps scaled
+  by dish complexity, and category-based menu engineering. Two readouts were added to the pass
+  so the new systems are visible while playing: **"heard of you"** (awareness) and
+  **"kitchen"** (brigade skill out of five). Hiring is a list of applicants with what their CV
+  reads as, and the Team tab shows who turned out better or worse than they claimed.
 - **A browser port of the sim is a playtest instrument, and it WILL drift.** `pass.html`
   reimplements the rules in JavaScript so the loop can be felt rather than read. Two drift
   bugs appeared within a day of writing it: the equipment table had invented footprints and
