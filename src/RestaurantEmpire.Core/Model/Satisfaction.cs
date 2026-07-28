@@ -110,7 +110,7 @@ namespace RestaurantEmpire.Core.Model
         /// That is what stops "put every price up 3x" being free money.
         /// </summary>
         public static decimal ScoreValue(decimal markup, decimal priceSensitivity,
-            decimal ingredientQuality = 0m)
+            decimal ingredientQuality = 0m, decimal reputation = Model.Reputation.Neutral)
         {
             if (priceSensitivity <= 0m) priceSensitivity = 1m;
             if (markup <= 0m) return 1m;   // comped, and nobody complains about free
@@ -132,6 +132,16 @@ namespace RestaurantEmpire.Core.Model
             if (ingredientQuality > 0m)
                 worth *= 0.6m + (ingredientQuality * 0.8m);   // tier 1 -> 0.76x, tier 5 -> 1.40x
 
+            // A REPUTATION IS WHAT LETS YOU CHARGE. This is the half that makes buying good
+            // ingredients rational at all: without it, reputation bought nothing but footfall,
+            // footfall does not pay for truffles, and budget stock out-earned premium at every
+            // horizon — so no player would ever have sourced well.
+            //
+            // It is also simply how the trade works. Nobody pays £200 a head because the
+            // ingredients cost £60; they pay it because of what the place is. Neutral standing
+            // is exactly 1.0, so this changes nothing for a restaurant nobody has heard of.
+            worth *= 0.75m + (Clamp(reputation) * 0.5m);   // unknown 1.0x, beloved ~1.20x
+
             return Clamp(worth / priceSensitivity);
         }
 
@@ -144,7 +154,8 @@ namespace RestaurantEmpire.Core.Model
 
         public static SatisfactionResult Evaluate(
             CustomerParty party, Ticket ticket, string dishName,
-            decimal ingredientQuality, decimal markup, decimal comfort = 0.5m)
+            decimal ingredientQuality, decimal markup, decimal comfort = 0.5m,
+            decimal reputation = Model.Reputation.Neutral)
         {
             if (party == null) throw new ArgumentNullException(nameof(party));
             if (ticket == null) throw new ArgumentNullException(nameof(ticket));
@@ -164,7 +175,7 @@ namespace RestaurantEmpire.Core.Model
 
             var speed = ScoreSpeed(ticket.WaitMinutes, party.PatienceMinutes);
             var quality = Clamp(ingredientQuality);
-            var value = ScoreValue(markup, party.PriceSensitivity, ingredientQuality);
+            var value = ScoreValue(markup, party.PriceSensitivity, ingredientQuality, reputation);
             var ambiance = Clamp(comfort);
 
             var overall = (quality * FoodQualityWeight)

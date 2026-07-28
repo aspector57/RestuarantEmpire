@@ -886,6 +886,22 @@ Method: sequence everything designed in Phases 4–7 into milestones, each one s
 
 **Exit test:** none required to consider the "core" game complete — M5 is enrichment on an already-whole game, not a dependency for it.
 
+#### M5 addendum — Scaling costs something: prestige erosion, bulk sourcing, and the franchise offer (Aaron)
+
+**DO NOT BUILD THIS YET.** Recorded here so it is captured rather than lost. Every part of it depends on Reputation→volume and the Prestige rank being real and meaningful, which is M3 at the earliest, and the project's largest named risk (Phase 10) is building late-milestone content before the early bars pass. This section exists to be read at M4/M5, not now.
+
+The premise: **growth should threaten the thing that made you worth growing.** Today the two Power Rankings tracks (Prestige and Empire) are parallel ladders climbed independently — Phase 7's audit explicitly exempted them from the tradeoff requirement as "parallel goals, not a tradeoff," which was accurate and is a soft spot. This addendum converts them into a genuine tension, which is why it earns a place despite being late-milestone content.
+
+**1. Prestige erosion under scale.** A restaurant known for something specific loses that distinctiveness as it replicates — the real-world pattern behind acclaimed restaurants that expanded and became ordinary. Mechanically this should be a *derived value, not a new tracked score* (the discipline applied to furniture and menu cohesion elsewhere in this document): as location count rises, Prestige faces a drag that can be offset by spending — the founder's personal presence, higher-tier GMs, keeping sourcing quality up, per-location menu variation rather than a single replicated template. Scale cheaply, and you converge on cookie-cutter and your Prestige rank slides even as your Empire rank climbs. Scale expensively and deliberately, and you hold both. **This is the mechanism that makes "biggest empire" and "world's best" a real choice rather than two scoreboards.**
+
+**2. Bulk sourcing — the cheapest piece to build, and it needs no new system.** A boutique supplier cannot feed forty locations. Growth should force a switch to bulk distribution: lower unit cost, lower quality tier. That flows through the *existing* chain — `SupplierPolicy` → `MenuCosting.IngredientQuality` → satisfaction — with no new machinery at all. It also reuses the propagation contract exactly as intended: one company-scope assignment change, felt everywhere, with per-location overrides available at a price for the flagship you want to protect. Expansion therefore threatens food quality through a mechanism the player already understands from hour one, which is far better than introducing a new penalty they have to learn.
+
+**3. The franchise offer is NOT a new mechanic.** An investor approaching the player to franchise the concept is a **Marquee Opportunity** (Events) — the bidding-war and deal-structure system already designed, with Economy's revenue-share obligation as the tradeoff: a lump sum and rapid reach now, against a permanent cut and reduced control over quality (which feeds straight back into prestige erosion above). Building it as its own system would duplicate three things that already exist.
+
+**Ratio worth noting, and the reason this is a healthy addition rather than scope creep:** of the three ideas, two are reskins of existing systems and only prestige erosion is genuinely new — and that one is a single derived value, not a subsystem.
+
+**One architectural confirmation this produces early, which is the real reason to write it down now:** Phase 9 claimed franchising would generalize the Supplier propagation pattern — a Brand/Concept as a first-class object referenced by many Restaurant instances, with bounded per-instance overrides. This addendum stress-tests that claim and it holds: prestige erosion reads location count and per-location divergence from the Brand; bulk sourcing is a company-scope supplier assignment with local overrides; the franchise deal is a Brand licensed to an owner who is not the player. Nothing here needs a pattern that does not already exist. That is worth knowing before M4 builds on it.
+
 ---
 
 ### Cross-Cutting Findings (Phase 8 Synthesis)

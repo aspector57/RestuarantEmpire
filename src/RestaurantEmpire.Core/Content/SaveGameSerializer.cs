@@ -117,7 +117,9 @@ namespace RestaurantEmpire.Core.Content
                     Prices = new Dictionary<string, decimal>(restaurant.Pricing.LocalPrices),
                     Stations = new List<StationState>(),
                     Fittings = new List<FittingState>(),
-                    Inventory = new List<StockState>()
+                    Inventory = new List<StockState>(),
+                    ReputationStanding = restaurant.Reputation.Standing,
+                    ReputationMeals = restaurant.Reputation.MealsRemembered
                 };
 
                 foreach (var station in restaurant.Kitchen.Stations)
@@ -347,6 +349,10 @@ namespace RestaurantEmpire.Core.Content
                         station.Cost < 0m ? 0m : station.Cost);
                 }
             }
+
+            // Accumulated history, restored as-is. A save written before reputation existed
+            // has no value here and lands at neutral — an unknown restaurant, not a hated one.
+            restaurant.Reputation.Restore(state.ReputationStanding, state.ReputationMeals);
 
             if (state.Fittings != null)
             {

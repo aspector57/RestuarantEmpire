@@ -42,6 +42,15 @@ namespace RestaurantEmpire.Sim
             Console.WriteLine("  cash " + runner.ProjectedCash.ToString("N2") +
                               "   ·   " + r.Menu.Count + " dishes   ·   " +
                               string.Join(", ", r.ServiceWindows.Select(w => w.ToString())));
+
+            // What the neighbourhood thinks, and — when it is being held back by what you
+            // source rather than by how you run the place — why.
+            var rep = r.Reputation;
+            Console.WriteLine("  standing " + System.Math.Round(rep.Standing * 100m) + "/100" +
+                              (rep.AtCeiling && rep.Ceiling < 0.95m
+                                  ? " (capped at " + System.Math.Round(rep.Ceiling * 100m) + " by what you source)"
+                                  : "") +
+                              "   ·   " + rep.Verdict);
         }
 
         public static void Happened(Delta delta, GameClock clock)
@@ -116,6 +125,8 @@ namespace RestaurantEmpire.Sim
 
             Console.WriteLine();
             Console.WriteLine("  WHAT PEOPLE THINK          price   rating       food  speed  value   room");
+            Console.WriteLine("  (the restaurant's own standing is separate — a cheap plate can please");
+            Console.WriteLine("   the person eating it without anyone loving the place)");
 
             foreach (var r in ratings)
             {

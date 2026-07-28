@@ -97,6 +97,18 @@ namespace RestaurantEmpire.Core.Content
         public List<FittingState> Fittings { get; set; }
 
         public List<StockState> Inventory { get; set; }
+
+        /// <summary>
+        /// What the neighbourhood thinks, 0 to 1, and how many meals built that opinion.
+        ///
+        /// Stored, unlike almost everything else here, because it genuinely cannot be
+        /// recomputed — it is accumulated history rather than a value derived from current
+        /// policy. An older save without it loads at neutral, which is the correct
+        /// degradation: an unknown restaurant, not a hated one.
+        /// </summary>
+        public decimal ReputationStanding { get; set; } = Model.Reputation.Neutral;
+
+        public int ReputationMeals { get; set; }
     }
 
     public sealed class StationState

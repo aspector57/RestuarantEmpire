@@ -79,6 +79,38 @@ namespace RestaurantEmpire.Core.Model
         public DiningRoom DiningRoom { get; }
 
         /// <summary>
+        /// What the neighbourhood thinks, and therefore how many people turn up. Genuine
+        /// accumulated state rather than a live computation — it remembers what you served
+        /// last month, which is the entire point — so it is saved with the game.
+        /// </summary>
+        public Reputation Reputation { get; } = new Reputation();
+
+        /// <summary>
+        /// The best this place could ever be thought of, from what it is actually attempting:
+        /// the ingredients across its menu, and the room they are eaten in.
+        ///
+        /// Competence is free and gets you to the middle. Being loved is bought.
+        /// </summary>
+        public decimal ReputationCeiling
+        {
+            get
+            {
+                var quality = 0m;
+                var counted = 0;
+
+                foreach (var recipe in Menu.Recipes)
+                {
+                    quality += Costing.IngredientQuality(recipe.Id);
+                    counted++;
+                }
+
+                if (counted > 0) quality /= counted;
+
+                return Model.Reputation.CeilingFor(quality, DiningRoom.Comfort);
+            }
+        }
+
+        /// <summary>
         /// Who works here. Hiring and firing are the player's call at any moment — and staff
         /// are what make the assets work, so an unstaffed kitchen is idle equipment and an
         /// unstaffed floor is empty seats.

@@ -213,6 +213,10 @@ namespace RestaurantEmpire.Core.Model
                     _walkouts++;
                     _lostTradeStreak++;
 
+                    // People who leave hungry talk too, and a place that seats you and then
+                    // loses you is exactly the sort of thing that gets talked about.
+                    _restaurant.Reputation.RecordWalkout(_restaurant.ReputationCeiling);
+
                     int blamed;
                     _recentWalkoutStations.TryGetValue(order.Ticket.StationId, out blamed);
                     _recentWalkoutStations[order.Ticket.StationId] = blamed + 1;
@@ -290,7 +294,14 @@ namespace RestaurantEmpire.Core.Model
                 //
                 // Exactly one draw per open minute, whatever the chunk size — this is what
                 // keeps a month-long jump identical to a minute-by-minute one.
-                if (_rng.Chance(_restaurant.TrafficAt(now) / 60.0))
+                // Word of mouth scales the street's own footfall. Exactly one draw per open
+                // minute still, whatever the chunk size, so a month-long jump stays identical
+                // to a minute-by-minute one — the multiplier changes the odds, never the
+                // number of rolls.
+                var footfall = _restaurant.TrafficAt(now)
+                             * (double)_restaurant.Reputation.TrafficMultiplier;
+
+                if (_rng.Chance(footfall / 60.0))
                 {
                     var stockoutInterrupt = Seat(tick, now);
                     if (interrupt == null) interrupt = stockoutInterrupt;
@@ -423,7 +434,8 @@ namespace RestaurantEmpire.Core.Model
             {
                 totalWait += _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick, party.Size);
                 totalValue += SatisfactionModel.ScoreValue(costing.Markup(recipeId),
-                    party.PriceSensitivity, costing.IngredientQuality(recipeId));
+                    party.PriceSensitivity, costing.IngredientQuality(recipeId),
+                    _restaurant.Reputation.Standing);
             }
 
             // The typical wait for whatever they end up ordering, not the luckiest case —
@@ -543,7 +555,8 @@ namespace RestaurantEmpire.Core.Model
                 table.Party, order.Ticket, recipe.Name,
                 _restaurant.Costing.IngredientQuality(order.RecipeId),
                 _restaurant.Costing.Markup(order.RecipeId),
-                _restaurant.DiningRoom.Comfort);
+                _restaurant.DiningRoom.Comfort,
+                _restaurant.Reputation.Standing);
 
             int sold;
             _unitsSold.TryGetValue(order.RecipeId, out sold);
@@ -552,6 +565,7 @@ namespace RestaurantEmpire.Core.Model
             _revenue += _restaurant.Costing.MenuPrice(order.RecipeId);
             _coversServed++;
             _satisfactionTotal += satisfaction.Overall;
+            _restaurant.Reputation.RecordMeal(satisfaction.Overall, _restaurant.ReputationCeiling);
             _lostTradeStreak = 0;              // a served cover breaks the streak
             _recentWalkoutStations.Clear();  // and the blame tally that describes it
 

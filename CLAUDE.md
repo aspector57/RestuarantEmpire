@@ -233,6 +233,81 @@ account for. It chokes the oven instead. The assertions are untouched.
 surviving twelve months** (3,748 cash) where all four sites busted before. First winning path
 that probe has ever produced.
 
+### Reputation: meals are remembered, and a dish is not the restaurant (Aaron)
+
+The loop that makes bad food cost something. Until this existed a meal was judged and then
+forgotten, so cutting every corner was free.
+
+**Aaron's design call, which is the good part:** *"the dish could have a different ranking
+than the restaurant itself — if you get a cheap decent dish you might be satisfied with it
+but you probably don't love the restaurant... you can be moderately successful but not like
+the best in the world."*
+
+So the two ratings are connected without being the same number. `DishRating` says whether a
+plate pleased the person eating it. `Reputation` says what the neighbourhood thinks of the
+place — and it has a **CEILING set by what you are actually attempting**:
+
+    ceiling = 0.45 competence + (ingredient quality x 0.40) + (room x 0.08)
+
+Competence is free and gets you to the middle. Past that you are buying it. The room counts
+for exactly what it counts for in a single meal (`AmbianceWeight`), deliberately, so decor is
+the smallest lever everywhere rather than a nudge in one system and a decider in another — at
+0.15 a set of walnut tables moved the ceiling 0.69 -> 0.84 on furniture alone.
+
+**Reputation also decides what you can CHARGE**, and that half is what makes sourcing well
+rational at all. Without it reputation buys only footfall, footfall does not pay for truffles,
+and budget stock out-earns premium at every horizon — so no player would ever source well. It
+is also just how the trade works: nobody pays £200 a head because the ingredients cost £60.
+
+Measured, 180 days, one menu, only the supplier and the price multiplier moved:
+
+| | Budget stock | Premium stock |
+|---|---:|---:|
+| at 1.0x | 248k | 179k (giving it away) |
+| at 1.4x | **345k** | 312k |
+| at 1.8x | 335k, and 5,586 parties balk | **448k**, nobody balks |
+
+Cheap food peaks and then *loses* money as you push the price, because the standing is not
+there to carry it. Good food keeps climbing — but you must survive the lean years at 179k
+while you earn the name. That is the arc.
+
+And the ladder of standing itself, all run equally competently:
+
+| Supplier | Ceiling | Settles at | Verdict |
+|---|---:|---:|---|
+| Budget | 0.57 | **0.551** | no strong opinion either way |
+| Mid-tier | 0.73 | 0.730 (at ceiling) | as well liked as these ingredients allow |
+| Premium | 0.89 | 0.890 (at ceiling) | people go out of their way to eat here |
+
+**Note the budget row never reaches its own ceiling.** What holds it back is the food people
+are actually eating, not an artificial cap. The ceiling earns its keep one tier up, where
+competent execution would otherwise carry a restaurant somewhere its ingredients do not
+deserve. Tests assert the plateau message against MID-TIER for that reason.
+
+**This is genuine STATE, and not an Architecture Rule 1 violation.** Rule 1 forbids caching
+values DERIVED from policy — a plate cost, a contribution margin. Reputation is accumulated
+history and cannot be recomputed from current state; remembering last month is the entire
+point. It is saved, and an older save without it loads at neutral (unknown, not hated).
+
+**Calibration error worth remembering:** the first rates were ten times too fast. A busy
+restaurant moved a third of the way to a new standing in a SINGLE DAY, which is a status
+effect wearing a reputation's clothes — and it broke two location tests, which is how it was
+caught. Rates are per MEAL, and a night is a hundred-plus meals, so they must be set against
+that and not against intuition about nights. Now: a night moves standing ~4%, a month ~70%.
+
+**Two existing tests were wrong in ways reputation exposed rather than caused.**
+`ARestoredGameStillSimulatesIdentically` ran the compared night FIRST and saved afterwards,
+so it silently compared two different starting states; it passed only because nothing
+persistent survived a service. It now saves first, which is what it always meant to test.
+And `DecorNudgesSatisfaction` asserted a formula bound by measuring a whole run — now that a
+nicer room also lifts standing and therefore footfall, the observed gap came out at 0.0814
+against a 0.08 weight. That overage is a real second channel, not a breach, so the bound is
+now asserted against the formula via `DishRating` where it actually lives.
+
+**Effect on the instruments:** sweep unchanged at 100/100; the campaign's city site went from
+BUST, to surviving at 3,748, to **comfortable at 16,032**. Business, nightlife and suburban
+still bust under the probe's buy-an-oven-first policy.
+
 ## Earlier milestone: M1 — Single Restaurant, Placeholder Graphics, the Core Loop
 
 Not started. Scope per the design doc's Phase 8, plus the Time Control & Interrupts model from Phase 5, which is M1's primary time interface rather than a convenience feature.

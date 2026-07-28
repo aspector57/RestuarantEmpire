@@ -124,9 +124,17 @@ namespace RestaurantEmpire.Core.Tests
             var original = company.GetRestaurant("flagship");
             foreach (var id in company.Definitions.IngredientIds) original.Inventory.Receive(id, 10000m);
 
-            var before = Dinner.Run(original, 25, 99);
-
+            // SAVE FIRST, then run the same night in both worlds.
+            //
+            // This used to save AFTER running the original's night, which quietly compared two
+            // different starting states — the save captured a restaurant that had already
+            // served the night being measured. It passed only because nothing persistent
+            // survived a service: stock was topped up well past what one night could use, and
+            // there was nothing else to carry over. Reputation is the first thing that
+            // genuinely accumulates, so the flaw stopped being harmless.
             var loaded = SaveGameSerializer.FromJson(SaveGameSerializer.ToJson(company, clock), Definitions());
+
+            var before = Dinner.Run(original, 25, 99);
             var after = Dinner.Run(loaded.Company.GetRestaurant("flagship"), 25, 99);
 
             Assert.Equal(before.Revenue, after.Revenue);
