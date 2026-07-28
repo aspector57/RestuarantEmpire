@@ -24,7 +24,7 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             restaurant.Location = where;
-            restaurant.FloorArea = 200m;
+            restaurant.FloorArea = 2150m;
 
             foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
             company.SupplierPolicy.AssignAll("valley-produce");

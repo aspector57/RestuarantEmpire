@@ -71,7 +71,7 @@ namespace RestaurantEmpire.Core.Tests
                 }
             }
 
-            var fits = (int)(r.FreeFloorArea / 1.4m);
+            var fits = (int)(r.FreeFloorArea / 15m);
             var actualSeats = Math.Min(seats, fits);
             if (actualSeats > 0) r.BuyTables("t", "Tables", actualSeats * 120m, actualSeats);
 

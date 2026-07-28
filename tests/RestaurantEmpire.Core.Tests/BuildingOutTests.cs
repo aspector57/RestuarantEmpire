@@ -16,7 +16,7 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class BuildingOutTests
     {
-        private static Restaurant Build(out Company company, Neighborhood where, decimal floorArea = 90m)
+        private static Restaurant Build(out Company company, Neighborhood where, decimal floorArea = 970m)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
@@ -40,21 +40,21 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.True(city.TrafficAtHour(13) > suburb.TrafficAtHour(13));   // better trade
             Assert.True(city.MaxFloorArea < suburb.MaxFloorArea);             // less room
-            Assert.True(city.ExtensionCostPerSquareMeter > suburb.ExtensionCostPerSquareMeter * 2m); // dearer land
+            Assert.True(city.ExtensionCostPerSquareFoot > suburb.ExtensionCostPerSquareFoot * 2m); // dearer land
         }
 
         [Fact]
         public void ASuburbanSiteHasRoomBehindIt_AndLandIsCheap()
         {
-            var restaurant = Build(out var company, Neighborhood.SuburbanHighStreet(), floorArea: 90m);
+            var restaurant = Build(out var company, Neighborhood.SuburbanHighStreet(), floorArea: 970m);
             var cashBefore = company.Economy.CashOnHand;
 
-            Assert.Equal(190m, restaurant.ExpansionHeadroom);   // 280 cap, at 90
+            Assert.Equal(2030m, restaurant.ExpansionHeadroom);   // 3,000 cap, at 970
 
-            restaurant.ExtendBuilding(60m);
+            restaurant.ExtendBuilding(600m);
 
-            Assert.Equal(150m, restaurant.FloorArea);
-            Assert.Equal(cashBefore - (60m * 340m), company.Economy.CashOnHand);
+            Assert.Equal(1570m, restaurant.FloorArea);
+            Assert.Equal(cashBefore - (600m * 32m), company.Economy.CashOnHand);
             Assert.Contains(company.Economy.Entries, e => e.Description.Contains("Extended into"));
         }
 
@@ -62,12 +62,12 @@ namespace RestaurantEmpire.Core.Tests
         public void ACitySiteRunsOutOfBuilding_AndSaysWhyPlainly()
         {
             // Aaron's case exactly: you cannot just knock down the wall.
-            var restaurant = Build(out _, Neighborhood.CityCenter(), floorArea: 90m);
+            var restaurant = Build(out _, Neighborhood.CityCenter(), floorArea: 970m);
 
-            Assert.Equal(40m, restaurant.ExpansionHeadroom);   // 130 cap, at 90
+            Assert.Equal(430m, restaurant.ExpansionHeadroom);   // 1,400 cap, at 970
 
-            restaurant.ExtendBuilding(40m);                    // take everything there is
-            Assert.Equal(130m, restaurant.FloorArea);
+            restaurant.ExtendBuilding(430m);                   // take everything there is
+            Assert.Equal(1400m, restaurant.FloorArea);
             Assert.Equal(0m, restaurant.ExpansionHeadroom);
 
             var blocked = Assert.Throws<InvalidOperationException>(() => restaurant.ExtendBuilding(10m));
@@ -81,13 +81,13 @@ namespace RestaurantEmpire.Core.Tests
         {
             // The moment the two systems meet: no room to build, so the only way to add
             // throughput is better equipment in the same space.
-            var restaurant = Build(out var company, Neighborhood.CityCenter(), floorArea: 130m);
+            var restaurant = Build(out var company, Neighborhood.CityCenter(), floorArea: 1400m);
             var definitions = company.Definitions;
 
-            restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 10); // 50.0m2
-            restaurant.BuyTables("tables", "Tables", 6800m, 57);                      // 79.8m2
+            restaurant.BuyEquipment(definitions.GetEquipment("oven-secondhand"), 10); // 50.0 sq ft
+            restaurant.BuyTables("tables", "Tables", 6800m, 57);                      // 79.8 sq ft
 
-            Assert.True(restaurant.FreeFloorArea < 1m);
+            Assert.True(restaurant.FreeFloorArea < 12m);
             Assert.Equal(0m, restaurant.ExpansionHeadroom);
             Assert.Throws<InvalidOperationException>(() => restaurant.ExtendBuilding(10m));
 
@@ -101,17 +101,17 @@ namespace RestaurantEmpire.Core.Tests
             restaurant.BuyEquipment(definitions.GetEquipment("oven-hearth"), 10);
 
             Assert.True(restaurant.Kitchen.Get("oven").SpeedMultiplier > before * 2m);
-            Assert.True(restaurant.FreeFloorArea > 14m);   // and it freed up room as well
+            Assert.True(restaurant.FreeFloorArea > 150m);   // and it freed up room as well
         }
 
         [Fact]
         public void AnUnconstrainedSiteCanGrowForever()
         {
-            var restaurant = Build(out _, Neighborhood.Flat(10), floorArea: 50m);
+            var restaurant = Build(out _, Neighborhood.Flat(10), floorArea: 540m);
 
             Assert.Equal(decimal.MaxValue, restaurant.ExpansionHeadroom);
-            restaurant.ExtendBuilding(500m);
-            Assert.Equal(550m, restaurant.FloorArea);
+            restaurant.ExtendBuilding(5000m);
+            Assert.Equal(5540m, restaurant.FloorArea);
         }
 
         [Fact]

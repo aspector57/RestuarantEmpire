@@ -24,7 +24,7 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             restaurant.Location = Neighborhood.SuburbanHighStreet();
-            restaurant.FloorArea = 200m;
+            restaurant.FloorArea = 2150m;
             restaurant.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
             company.SupplierPolicy.AssignAll(supplierId);
 

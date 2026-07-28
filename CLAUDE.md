@@ -2,6 +2,10 @@
 
 A restaurant management/tycoon game. Full design rationale lives in `docs/design.md` — read the relevant section before implementing anything, but do not load the whole document unless you need to.
 
+**Setting: American.** US spellings throughout (`Neighborhood`, `labor`, `center`), dollars,
+and square feet — including in identifiers and data IDs, not just prose. Overseas expansion is
+a later feature, not a reason to write British English now.
+
 **Genre framing (this governs every judgment call):** this is a **tycoon/empire management game, cooking-themed** — not a cooking game. The player is a chef who opens one restaurant on a tight budget and builds it into an empire. Business and strategic decisions carry more weight than culinary execution.
 
 ---
@@ -348,7 +352,7 @@ Three is the point. Do not grow this list at M1 — the question is whether the 
 
 `data/equipment.json` is the catalogue: every station has a cheap, standard and premium model, and **premium is deliberately faster AND smaller per unit**. That makes upgrading a real alternative to expanding — when the building is full, better equipment is the only way left to add throughput. It is also the seed of the Sims-style shop Aaron wants.
 
-A 90m2 unit comfortably holds a working kitchen (3 ovens, 2 saute, 2 cold) and 40 covers, and nothing like fifteen of anything. `FloorArea = 0` means unmeasured and constrains nothing, which keeps food trucks and test fixtures from needing a lease.
+A 900 sq ft unit comfortably holds a working kitchen (3 ovens, 2 saute, 2 cold) and 40 covers, and nothing like fifteen of anything. `FloorArea = 0` means unmeasured and constrains nothing, which keeps food trucks and test fixtures from needing a lease.
 
 ### Build mode, and why a location has a ceiling (Aaron)
 
@@ -360,10 +364,10 @@ The tension is deliberate and is what makes location a real choice rather than "
 
 | | Lunch traffic | Site cap | Land |
 |---|---|---|---|
-| City Center | highest | 110m2 | 950/m2 |
-| Business District | high | 150m2 | 720/m2 |
-| Nightlife Quarter | (evenings) | 140m2 | 660/m2 |
-| Suburban High Street | modest | 280m2 | 340/m2 |
+| City Center | highest | 110 sq ft | 950/ sq ft |
+| Business District | high | 150 sq ft | 720/ sq ft |
+| Nightlife Quarter | (evenings) | 140 sq ft | 660/ sq ft |
+| Suburban High Street | modest | 280 sq ft | 340/ sq ft |
 
 Outgrowing a city site is therefore a real, unfixable predicament — and the only remaining move is upgrading equipment into the same space, which is exactly what the premium tier exists for. There is a test covering that moment.
 

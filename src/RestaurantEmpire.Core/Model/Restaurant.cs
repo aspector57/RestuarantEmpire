@@ -168,16 +168,16 @@ namespace RestaurantEmpire.Core.Model
             {
                 throw new InvalidOperationException(
                     "Cannot extend: " + Location.Name + " allows this site up to " +
-                    Location.MaxFloorArea.ToString("0.0") + "m2 and you are at " + FloorArea.ToString("0.0") +
-                    "m2, so there is only " + (headroom < 0m ? 0m : headroom).ToString("0.0") +
-                    "m2 to build into. You cannot knock through into the building next door.");
+                    Location.MaxFloorArea.ToString("0.0") + " sq ft and you are at " + FloorArea.ToString("0.0") +
+                    " sq ft, so there is only " + (headroom < 0m ? 0m : headroom).ToString("0.0") +
+                    " sq ft to build into. You cannot knock through into the building next door.");
             }
 
-            var cost = extraSquareMeters * Location.ExtensionCostPerSquareMeter;
+            var cost = extraSquareMeters * Location.ExtensionCostPerSquareFoot;
 
             FloorArea += extraSquareMeters;
             Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, cost,
-                "Extended into " + extraSquareMeters.ToString("0.0") + "m2 more of the site", Id);
+                "Extended into " + extraSquareMeters.ToString("0.0") + " sq ft more of the site", Id);
         }
 
         public decimal FreeFloorArea { get { return FloorArea - UsedFloorArea; } }
@@ -211,8 +211,8 @@ namespace RestaurantEmpire.Core.Model
             if (!HasRoomFor(spaceNeeded))
             {
                 throw new InvalidOperationException(
-                    "No room: that needs " + spaceNeeded.ToString("0.0") + "m2 and only " +
-                    FreeFloorArea.ToString("0.0") + "m2 of " + FloorArea.ToString("0.0") + "m2 is free. " +
+                    "No room: that needs " + spaceNeeded.ToString("0.0") + " sq ft and only " +
+                    FreeFloorArea.ToString("0.0") + " sq ft of " + FloorArea.ToString("0.0") + " sq ft is free. " +
                     "Sell something, buy a smaller model, or find a bigger building.");
             }
 
@@ -270,7 +270,7 @@ namespace RestaurantEmpire.Core.Model
             {
                 throw new InvalidOperationException(
                     "No room: " + fitting.Name + " needs " + fitting.Footprint.ToString("0.0") +
-                    "m2 and only " + FreeFloorArea.ToString("0.0") + "m2 is free. " +
+                    " sq ft and only " + FreeFloorArea.ToString("0.0") + " sq ft is free. " +
                     "The kitchen and the dining room are competing for the same floor.");
             }
 

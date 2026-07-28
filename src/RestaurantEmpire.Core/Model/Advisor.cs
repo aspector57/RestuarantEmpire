@@ -262,18 +262,18 @@ namespace RestaurantEmpire.Core.Model
                     subjectId: busiest));
             }
 
-            if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 3m && _restaurant.ExpansionHeadroom > 10m)
+            if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 32m && _restaurant.ExpansionHeadroom > 110m)
             {
-                var perM2 = _restaurant.Location.ExtensionCostPerSquareMeter;
+                var perSqFt = _restaurant.Location.ExtensionCostPerSquareFoot;
                 found.Add(new Suggestion(
                     "opportunity:space", AdvisorTier.Strategic,
                     "The building is full.",
                     "Nothing more fits, but " + _restaurant.Location.Name + " would allow another " +
-                    _restaurant.ExpansionHeadroom.ToString("0") + "m2 at " + perM2.ToString("N0") + " a meter.",
-                    price: perM2));
+                    _restaurant.ExpansionHeadroom.ToString("0") + " sq ft at " + perSqFt.ToString("N0") + " a foot.",
+                    price: perSqFt));
             }
 
-            if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 3m && _restaurant.ExpansionHeadroom <= 0m)
+            if (_restaurant.FloorArea > 0m && _restaurant.FreeFloorArea < 32m && _restaurant.ExpansionHeadroom <= 0m)
             {
                 found.Add(new Suggestion(
                     "opportunity:upgrade", AdvisorTier.Strategic,

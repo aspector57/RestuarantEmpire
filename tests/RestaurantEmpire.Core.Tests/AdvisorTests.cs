@@ -24,7 +24,7 @@ namespace RestaurantEmpire.Core.Tests
             var restaurant = company.OpenRestaurant("flagship", "The Flagship", LocationType.BrickAndMortar);
 
             restaurant.Location = Neighborhood.SuburbanHighStreet();
-            restaurant.FloorArea = 90m;
+            restaurant.FloorArea = 970m;
             restaurant.Menu.Add("margherita", "caprese-salad", "truffle-risotto", "house-focaccia");
             company.SupplierPolicy.AssignAll("valley-produce");
 
@@ -184,7 +184,7 @@ namespace RestaurantEmpire.Core.Tests
             // a maintenance exercise, which is the wrong shape for a fantasy about building
             // something.
             var restaurant = Build(out _);
-            restaurant.BuyTables("t", "Tables", 4800m, 35);   // 49.0m2 of the 49.6m2 left
+            restaurant.BuyTables("t", "Tables", 4800m, 35);   // 49.0 sq ft of the 49.6 sq ft left
 
             var suggestions = new Advisor(restaurant).Review();
             var opportunity = suggestions.FirstOrDefault(s => s.Id == "opportunity:space");

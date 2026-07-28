@@ -17,7 +17,7 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class FloorSpaceTests
     {
-        private static Restaurant Build(out Company company, decimal floorArea = 90m)
+        private static Restaurant Build(out Company company, decimal floorArea = 970m)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
@@ -58,23 +58,23 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.True(best.SpeedMultiplier > cheap.SpeedMultiplier);
             Assert.True(best.Footprint < cheap.Footprint);
-            Assert.True(best.SpeedPerSquareMeter > cheap.SpeedPerSquareMeter * 2m);
+            Assert.True(best.SpeedPerSquareFoot > cheap.SpeedPerSquareFoot * 2m);
         }
 
         [Fact]
         public void FifteenOvensIsNotAStrategy_ItIsADiningRoomYouNoLongerHave()
         {
-            var restaurant = Build(out var company, floorArea: 90m);
+            var restaurant = Build(out var company, floorArea: 970m);
             var oven = company.Definitions.GetEquipment("oven-commercial");
 
-            // 4m2 each, so fifteen is 60m2 of a 90m2 unit.
+            // 4 sq ft each, so fifteen is 60 sq ft of a 90 sq ft unit.
             restaurant.BuyEquipment(oven, 15);
-            Assert.Equal(60m, restaurant.Kitchen.Footprint);
-            Assert.Equal(30m, restaurant.FreeFloorArea);
+            Assert.Equal(645m, restaurant.Kitchen.Footprint);
+            Assert.Equal(325m, restaurant.FreeFloorArea);
 
-            // 30m2 left seats about 21 covers, and that is before a single other station.
+            // 30 sq ft left seats about 21 covers, and that is before a single other station.
             restaurant.BuyTables("tables", "Tables", 2400m, 21);
-            Assert.True(restaurant.FreeFloorArea < 1m);
+            Assert.True(restaurant.FreeFloorArea < 12m);
 
             var more = Assert.Throws<InvalidOperationException>(
                 () => restaurant.BuyTables("more", "More tables", 1200m, 10));
@@ -87,7 +87,7 @@ namespace RestaurantEmpire.Core.Tests
         public void UpgradingToABetterModel_BuysThroughputWithoutBuyingSpace()
         {
             // The move that matters once the building is full.
-            var restaurant = Build(out var company, floorArea: 90m);
+            var restaurant = Build(out var company, floorArea: 970m);
             var commercial = company.Definitions.GetEquipment("oven-commercial");
             var hearth = company.Definitions.GetEquipment("oven-hearth");
 
@@ -120,13 +120,13 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void RunningOutOfFloorIsReportedPlainly_NotSilentlyAllowed()
         {
-            var restaurant = Build(out var company, floorArea: 20m);
+            var restaurant = Build(out var company, floorArea: 215m);
             var oven = company.Definitions.GetEquipment("oven-commercial");
 
             var error = Assert.Throws<InvalidOperationException>(() => restaurant.BuyEquipment(oven, 10));
 
             Assert.Contains("No room", error.Message);
-            Assert.Contains("20.0m2", error.Message);
+            Assert.Contains("215.0 sq ft", error.Message);
             Assert.Contains("bigger building", error.Message);
 
             // And nothing was bought or billed.
@@ -150,19 +150,19 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void ARealisticUnitFitsARealisticRestaurant()
         {
-            // Sanity check on the numbers: a 90m2 unit should comfortably hold a working
+            // Sanity check on the numbers: a 900 sq ft unit should comfortably hold a working
             // kitchen and a proper dining room, and nothing like fifteen ovens.
-            var restaurant = Build(out var company, floorArea: 90m);
+            var restaurant = Build(out var company, floorArea: 900m);
             var definitions = company.Definitions;
 
-            restaurant.BuyEquipment(definitions.GetEquipment("oven-commercial"), 3);      // 12.0
-            restaurant.BuyEquipment(definitions.GetEquipment("saute-commercial"), 2);     //  7.0
-            restaurant.BuyEquipment(definitions.GetEquipment("gm-refrigerated"), 2);      //  5.2
-            restaurant.BuyTables("tables", "Tables and chairs", 4800m, 40);               // 56.0
+            restaurant.BuyEquipment(definitions.GetEquipment("oven-commercial"), 3);      // 129
+            restaurant.BuyEquipment(definitions.GetEquipment("saute-commercial"), 2);     //  76
+            restaurant.BuyEquipment(definitions.GetEquipment("gm-refrigerated"), 2);      //  56
+            restaurant.BuyTables("tables", "Tables and chairs", 4800m, 40);               // 600
 
             Assert.Equal(40, restaurant.SeatingCapacity);
-            Assert.True(restaurant.UsedFloorArea <= 90m);
-            Assert.True(restaurant.FreeFloorArea < 12m, "a working restaurant should nearly fill its unit");
+            Assert.True(restaurant.UsedFloorArea <= 900m);
+            Assert.True(restaurant.FreeFloorArea < 45m, "a working restaurant should nearly fill its unit");
         }
     }
 }

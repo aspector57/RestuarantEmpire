@@ -60,7 +60,7 @@ namespace RestaurantEmpire.Core.Tests
                 var r = company.OpenRestaurant("s", site.Name, LocationType.BrickAndMortar);
 
                 r.Location = site;
-                r.FloorArea = 90m;
+                r.FloorArea = 970m;
                 company.Economy.Record(0, LedgerCategory.CapitalExpenditure, site.LeasePremium, "Key money", r.Id);
 
                 foreach (var recipe in definitions.Recipes) r.Menu.Add(recipe.Id);
@@ -136,9 +136,9 @@ namespace RestaurantEmpire.Core.Tests
                                 r.BuyTables("t" + month + Guid.NewGuid().ToString("N").Substring(0, 4), "More tables", 1200m, 10, 0.55m, tick);
                                 spendable -= 1200m; boughtSomething = true;
                             }
-                            else if (r.ExpansionHeadroom >= 20m && spendable > 20m * site.ExtensionCostPerSquareMeter)
+                            else if (r.ExpansionHeadroom >= 20m && spendable > 20m * site.ExtensionCostPerSquareFoot)
                             {
-                                r.ExtendBuilding(20m, tick); spendable -= 20m * site.ExtensionCostPerSquareMeter; boughtSomething = true;
+                                r.ExtendBuilding(20m, tick); spendable -= 20m * site.ExtensionCostPerSquareFoot; boughtSomething = true;
                             }
                         }
 

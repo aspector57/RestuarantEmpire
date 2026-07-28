@@ -52,7 +52,7 @@ namespace RestaurantEmpire.Core.Definitions
         public decimal Quality { get; }
 
         /// <summary>Throughput per square meter — the number that decides whether upgrading beats expanding.</summary>
-        public decimal SpeedPerSquareMeter { get { return SpeedMultiplier / Footprint; } }
+        public decimal SpeedPerSquareFoot { get { return SpeedMultiplier / Footprint; } }
 
         public override string ToString()
         {

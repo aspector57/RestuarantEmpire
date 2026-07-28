@@ -175,7 +175,7 @@ namespace RestaurantEmpire.Core.Tests
 
             // And the suburbs are quiet but cheap and roomy — the slow, safe start.
             Assert.True(suburb.LeasePremium < city.LeasePremium / 3m);
-            Assert.True(suburb.ExtensionCostPerSquareMeter < city.ExtensionCostPerSquareMeter / 2m);
+            Assert.True(suburb.ExtensionCostPerSquareFoot < city.ExtensionCostPerSquareFoot / 2m);
         }
     }
 }

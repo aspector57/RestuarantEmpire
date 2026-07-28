@@ -34,7 +34,7 @@ namespace RestaurantEmpire.Core.Model
 
             // A cover needs about 1.4 square meters once you allow room to walk between
             // tables; pure decor takes a token half-meter.
-            Footprint = footprint >= 0m ? footprint : (seats > 0 ? seats * 1.4m : 0.5m);
+            Footprint = footprint >= 0m ? footprint : (seats > 0 ? seats * 15m : 5m);
         }
 
         public string Id { get; }

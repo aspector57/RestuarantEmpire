@@ -91,7 +91,7 @@ namespace RestaurantEmpire.Sim
             }
 
             // A real unit, with a real floor. The kitchen and the dining room compete for it.
-            restaurant.FloorArea = Dec(args, "--floor", 90m);
+            restaurant.FloorArea = Dec(args, "--floor", 970m);
 
             // Fit out from the catalogue, cheapest model of whatever the menu needs.
             foreach (var stationId in restaurant.Menu.Recipes.Select(r => r.StationId).Distinct())
@@ -166,10 +166,10 @@ namespace RestaurantEmpire.Sim
                               restaurant.Payroll.HourlyWageBill.ToString("N0") + "/hr while open  ·  can serve " +
                               restaurant.ServableSeats + " covers");
             Console.WriteLine("  floor: " + restaurant.UsedFloorArea.ToString("0.0") + " of " +
-                              restaurant.FloorArea.ToString("0.0") + "m2 used  ·  " +
+                              restaurant.FloorArea.ToString("0.0") + " sq ft used  ·  " +
                               restaurant.SeatingCapacity + " seats  ·  site allows up to " +
-                              restaurant.Location.MaxFloorArea.ToString("0.0") + "m2 at " +
-                              restaurant.Location.ExtensionCostPerSquareMeter.ToString("N0") + "/m2");
+                              restaurant.Location.MaxFloorArea.ToString("0.0") + " sq ft at " +
+                              restaurant.Location.ExtensionCostPerSquareFoot.ToString("N0") + "/sq ft");
 
             foreach (var window in restaurant.ServiceWindows)
             {
@@ -366,8 +366,8 @@ namespace RestaurantEmpire.Sim
                     switch (input.Trim())
                     {
                         case "1":
-                            Console.WriteLine("    floor: " + restaurant.FreeFloorArea.ToString("0.0") + "m2 free of " +
-                                              restaurant.FloorArea.ToString("0.0") + "m2");
+                            Console.WriteLine("    floor: " + restaurant.FreeFloorArea.ToString("0.0") + " sq ft free of " +
+                                              restaurant.FloorArea.ToString("0.0") + " sq ft");
                             Console.Write("    which station? (" +
                                 string.Join(", ", restaurant.Kitchen.Stations.Select(s => s.Id)) + ") > ");
                             var stationId = Console.ReadLine();
@@ -382,7 +382,7 @@ namespace RestaurantEmpire.Sim
                                 var kit = catalogue[i];
                                 Console.WriteLine("      [" + (i + 1) + "] " + kit.Name.PadRight(28) +
                                     kit.Cost.ToString("N0").PadLeft(7) + "   x" + kit.SpeedMultiplier +
-                                    " speed   " + kit.Footprint + "m2 each");
+                                    " speed   " + kit.Footprint + " sq ft each");
                             }
 
                             Console.Write("    which model, and how many? e.g. '2 x3' > ");
@@ -399,7 +399,7 @@ namespace RestaurantEmpire.Sim
                             {
                                 var bought = restaurant.BuyEquipment(catalogue[pick - 1], Math.Max(1, units), _runner.Clock.Tick);
                                 Console.WriteLine("    " + bought.Name + " x" + bought.ConcurrentCapacity +
-                                    "   ·   " + restaurant.FreeFloorArea.ToString("0.0") + "m2 still free");
+                                    "   ·   " + restaurant.FreeFloorArea.ToString("0.0") + " sq ft still free");
                             }
                             catch (InvalidOperationException ex) { Console.WriteLine("    " + ex.Message); }
                             break;
@@ -497,8 +497,8 @@ namespace RestaurantEmpire.Sim
                             break;
 
                         case "6":
-                            Console.WriteLine("    building is " + restaurant.FloorArea.ToString("0.0") + "m2, " +
-                                restaurant.FreeFloorArea.ToString("0.0") + "m2 of it free.");
+                            Console.WriteLine("    building is " + restaurant.FloorArea.ToString("0.0") + " sq ft, " +
+                                restaurant.FreeFloorArea.ToString("0.0") + " sq ft of it free.");
 
                             var headroom = restaurant.ExpansionHeadroom;
                             if (headroom <= 0m)
@@ -508,8 +508,8 @@ namespace RestaurantEmpire.Sim
                                 break;
                             }
 
-                            Console.Write("    how many more m2? (up to " + headroom.ToString("0.0") + " at " +
-                                restaurant.Location.ExtensionCostPerSquareMeter.ToString("N0") + "/m2) > ");
+                            Console.Write("    how many more  sq ft? (up to " + headroom.ToString("0.0") + " at " +
+                                restaurant.Location.ExtensionCostPerSquareFoot.ToString("N0") + "/sq ft) > ");
                             var areaText = Console.ReadLine();
                             if (areaText == null) return false;
 
@@ -521,7 +521,7 @@ namespace RestaurantEmpire.Sim
                             {
                                 restaurant.ExtendBuilding(extra, _runner.Clock.Tick);
                                 Console.WriteLine("    the building is now " + restaurant.FloorArea.ToString("0.0") +
-                                    "m2, with " + restaurant.FreeFloorArea.ToString("0.0") + "m2 free.");
+                                    " sq ft, with " + restaurant.FreeFloorArea.ToString("0.0") + " sq ft free.");
                             }
                             catch (InvalidOperationException ex) { Console.WriteLine("    " + ex.Message); }
                             break;
@@ -635,10 +635,10 @@ namespace RestaurantEmpire.Sim
                 var peakHour = 0;
                 for (var h = 0; h < 24; h++) { if (site.TrafficAtHour(h) > site.TrafficAtHour(peakHour)) peakHour = h; }
 
-                Console.WriteLine(string.Format("      [{0}] {1,-20} {2,8}   {3,10}   {4,5}m2   {5,5}/m2   {6,9}   {7,6}/mo",
+                Console.WriteLine(string.Format("      [{0}] {1,-20} {2,8}   {3,10}   {4,5} sq ft   {5,5}/ sq ft   {6,9}   {7,6}/mo",
                     i + 1, site.Name, peakHour.ToString("00") + ":00",
                     site.BusiestHourTraffic.ToString("0") + " parties",
-                    site.MaxFloorArea.ToString("0"), site.ExtensionCostPerSquareMeter.ToString("N0"),
+                    site.MaxFloorArea.ToString("0"), site.ExtensionCostPerSquareFoot.ToString("N0"),
                     site.LeasePremium.ToString("N0"), site.MonthlyRent.ToString("N0")));
             }
 
