@@ -49,6 +49,9 @@ namespace RestaurantEmpire.Core.Definitions
         /// <summary>Prep time a dish defaults to when its data file doesn't give one.</summary>
         public const int DefaultPrepMinutes = 5;
 
+        /// <summary>Where a dish lands when its file doesn't say what kind of thing it is.</summary>
+        public const string DefaultCategory = "main";
+
         public string Id { get; }
         public string Name { get; }
 
@@ -84,7 +87,7 @@ namespace RestaurantEmpire.Core.Definitions
         public RecipeDefinition(
             string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients,
             string stationId = DefaultStationId, int prepMinutes = DefaultPrepMinutes,
-            IList<Model.Daypart> dayparts = null, IList<string> tags = null)
+            IList<Model.Daypart> dayparts = null, IList<string> tags = null, string category = DefaultCategory)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Recipe id is required.", nameof(id));
             if (menuPrice < 0m) throw new ArgumentOutOfRangeException(nameof(menuPrice), "Menu price cannot be negative.");
@@ -98,6 +101,7 @@ namespace RestaurantEmpire.Core.Definitions
             Ingredients = new List<RecipeIngredient>(ingredients ?? new List<RecipeIngredient>()).AsReadOnly();
             Dayparts = new List<Model.Daypart>(dayparts ?? new List<Model.Daypart>()).AsReadOnly();
             Tags = new List<string>(tags ?? new List<string>()).AsReadOnly();
+            Category = string.IsNullOrWhiteSpace(category) ? DefaultCategory : category;
         }
 
         /// <summary>
@@ -106,6 +110,18 @@ namespace RestaurantEmpire.Core.Definitions
         /// what makes the popularity axis of the menu matrix mean anything.
         /// </summary>
         public IReadOnlyList<string> Tags { get; }
+
+        /// <summary>
+        /// What kind of thing this is — a drink, a small plate, a main. Kasavana-Smith is
+        /// applied WITHIN a category, never across the whole card, because comparing a $3.80
+        /// coffee against a $34 risotto guarantees the coffee is a Dog however good it is.
+        /// Aaron found exactly that by playing: "it says dog on a flat white but the stars
+        /// are a 4.5, and it's as expensive as I can make it."
+        ///
+        /// A string rather than an enum so a content pack can add "dessert" or "wine" without
+        /// a code change (Architecture Rule 2).
+        /// </summary>
+        public string Category { get; }
 
         public bool HasTag(string tag)
         {

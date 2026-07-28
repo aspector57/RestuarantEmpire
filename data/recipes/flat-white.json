@@ -17,5 +17,6 @@
       "ingredientId": "coffee-beans",
       "quantity": 0.018
     }
-  ]
+  ],
+  "category": "drink"
 }

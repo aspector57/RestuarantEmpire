@@ -30,5 +30,6 @@
       "ingredientId": "olive-oil",
       "quantity": 0.02
     }
-  ]
+  ],
+  "category": "main"
 }

@@ -160,8 +160,38 @@ namespace RestaurantEmpire.Core.Model
                 totalContribution += margins[i] * sold;
             }
 
-            // Sales-weighted average margin is the profitability axis. With no sales at all,
-            // fall back to a plain average so the matrix still means something.
+            // MARGIN IS MEASURED WITHIN A CATEGORY. POPULARITY IS NOT.
+            //
+            // The split is deliberate and the two axes are not the same kind of number.
+            //
+            // CONTRIBUTION MARGIN IS SCALE-BOUND TO ITS CATEGORY. A $3.80 coffee cannot
+            // out-earn a $34 risotto in absolute dollars however well it is priced, so
+            // measuring it against a card-wide average reports a category error as a business
+            // verdict. Aaron found this by playing: "it says dog on a flat white but the
+            // stars are a 4.5, and it's as expensive as I can make it." He was right.
+            //
+            // POPULARITY SHARE IS NOT SCALE-BOUND. "What fraction of everything we sold was
+            // this dish" is a real question with a comparable answer across the whole card,
+            // and keeping it card-wide is what stops the matrix collapsing on a small menu:
+            // measured per category, two dishes in a category BOTH clear a 0.7/2 bar, so
+            // Puzzles and Dogs become unreachable until every category has several dishes.
+            var catUnits = new Dictionary<string, int>();
+            var catContribution = new Dictionary<string, decimal>();
+            var catMarginSum = new Dictionary<string, decimal>();
+            var catCount = new Dictionary<string, int>();
+
+            for (var i = 0; i < recipeIds.Count; i++)
+            {
+                var category = definitions.GetRecipe(recipeIds[i]).Category;
+
+                int u; catUnits.TryGetValue(category, out u); catUnits[category] = u + units[i];
+                decimal c; catContribution.TryGetValue(category, out c);
+                catContribution[category] = c + (margins[i] * units[i]);
+                decimal m; catMarginSum.TryGetValue(category, out m); catMarginSum[category] = m + margins[i];
+                int n; catCount.TryGetValue(category, out n); catCount[category] = n + 1;
+            }
+
+            // Kept for the read surface: the card-wide figures are still what the books show.
             decimal averageMargin;
             if (totalUnits > 0)
             {
@@ -177,15 +207,24 @@ namespace RestaurantEmpire.Core.Model
             var expectedShare = 1m / recipeIds.Count;
             var popularityThreshold = expectedShare * popularityFactor;
 
-            // Pass 2: place each dish in its quadrant.
+            // Pass 2: place each dish in its quadrant, against its own kind.
             var items = new List<MenuItemAnalysis>(recipeIds.Count);
 
             for (var i = 0; i < recipeIds.Count; i++)
             {
                 var recipe = definitions.GetRecipe(recipeIds[i]);
+                var category = recipe.Category;
+
+                var unitsHere = catUnits[category];
+                var countHere = catCount[category];
+
                 var share = totalUnits > 0 ? (decimal)units[i] / totalUnits : 0m;
 
-                var highMargin = margins[i] >= averageMargin;
+                var averageHere = unitsHere > 0
+                    ? catContribution[category] / unitsHere
+                    : catMarginSum[category] / countHere;
+
+                var highMargin = margins[i] >= averageHere;
                 var highVolume = share >= popularityThreshold;
 
                 MenuClassification classification;

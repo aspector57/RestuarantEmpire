@@ -52,11 +52,20 @@ namespace RestaurantEmpire.Core.Tests
             // Sales-weighted average margin across the week.
             Assert.Equal(10.38754m, analysis.AverageContributionMargin);
 
-            // High margin (11.403) + high volume (50%) -> protect it.
-            Assert.Equal(MenuClassification.Star, analysis["margherita"].Classification);
+            // Margin is judged against the dish's OWN CATEGORY, popularity against the whole
+            // card. Mains average 12.234 a plate across the week (margherita 11.403 at 50
+            // covers, risotto 19.160 at 6); small plates average 7.810 (caprese 8.346 at 34,
+            // focaccia 5.988 at 10).
+            //
+            // So the pizza is the popular, thinner-margin MAIN — a plowhorse among mains,
+            // which is the useful reading. Card-wide it looked like a Star only because it
+            // was being averaged against small plates it does not compete with.
+            Assert.Equal(MenuClassification.Plowhorse, analysis["margherita"].Classification);
 
-            // Low margin (8.346) + high volume (34%) -> popular but barely profitable.
-            Assert.Equal(MenuClassification.Plowhorse, analysis["caprese-salad"].Classification);
+            // And the caprese is the better-margin small plate that also sells: a Star among
+            // its own kind, where before it was dragged under a card-wide average inflated
+            // by the mains.
+            Assert.Equal(MenuClassification.Star, analysis["caprese-salad"].Classification);
 
             // High margin (19.160) + low volume (6%) -> profitable, nobody orders it.
             Assert.Equal(MenuClassification.Puzzle, analysis["truffle-risotto"].Classification);
@@ -94,8 +103,11 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(flagship.Costing.FoodCostRatio("truffle-risotto") > 0.9m);
 
             // Every other dish is untouched — it was one ingredient, in one dish.
+            // The pizza becomes a Star: the risotto's collapse drags the MAINS average from
+            // 12.234 down to 10.145, and the pizza's 11.403 now clears it. That is the
+            // propagation working — one supplier write reclassified two dishes.
             Assert.Equal(MenuClassification.Star, after["margherita"].Classification);
-            Assert.Equal(MenuClassification.Plowhorse, after["caprese-salad"].Classification);
+            Assert.Equal(MenuClassification.Star, after["caprese-salad"].Classification);
             Assert.Equal(before.TotalUnitsSold, after.TotalUnitsSold);
         }
 

@@ -101,7 +101,17 @@ namespace RestaurantEmpire.Core.Tests
 
             // And the quadrant that was previously unreachable now appears — on a dish
             // people are genuinely buying, not on an unsold one.
-            Assert.NotEmpty(SoldPuzzles(lunch));
+            //
+            // Demonstrated at DINNER rather than at this lunch service, because the only
+            // luxury main on the card is dinner-only: at a business lunch the risotto never
+            // reaches a table, so the mains on offer are a pizza and a fish and there is
+            // nothing that SHOULD read as high-margin-low-volume. Asserting a Puzzle there
+            // would be demanding one from a service that has no candidate for it.
+            var evening = Build(out _, Neighborhood.SuburbanHighStreet());
+            var dinner = TradeFor(evening, new ServiceWindow("Dinner", 18, 23), 18);
+
+            Assert.NotEmpty(SoldPuzzles(dinner));
+            Assert.Equal(MenuClassification.Puzzle, dinner["truffle-risotto"].Classification);
         }
 
         [Fact]

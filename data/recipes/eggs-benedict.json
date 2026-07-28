@@ -25,5 +25,6 @@
       "ingredientId": "flour",
       "quantity": 0.08
     }
-  ]
+  ],
+  "category": "main"
 }

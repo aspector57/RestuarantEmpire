@@ -217,7 +217,7 @@ namespace RestaurantEmpire.Core.Content
                     dto.Id, dto.Name, dto.MenuPrice, lines,
                     string.IsNullOrWhiteSpace(dto.Station) ? RecipeDefinition.DefaultStationId : dto.Station,
                     dto.PrepMinutes > 0 ? dto.PrepMinutes : RecipeDefinition.DefaultPrepMinutes,
-                    dayparts, dto.Tags));
+                    dayparts, dto.Tags, dto.Category));
             }
 
             return result;
@@ -300,6 +300,7 @@ namespace RestaurantEmpire.Core.Content
             public List<string> Tags { get; set; }
             public decimal MenuPrice { get; set; }
             public List<RecipeIngredientDto> Ingredients { get; set; }
+            public string Category { get; set; }
         }
 
         private sealed class RecipeIngredientDto
