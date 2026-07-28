@@ -84,6 +84,33 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void DoesItMatterWhoYouHire()
+        {
+            // The bet: the Advisor over-invests partly because staff were free of
+            // consequence. Every cook was identical, so "hire a cook" was always safe and
+            // never a decision. Now there are people, with claims and wages and a truth
+            // underneath — so run the same advice twice, once hiring the cheapest body
+            // available and once hiring the best CV affordable, and see whether it matters.
+            _out.WriteLine("The same advice, followed twice. The only difference is who gets hired.");
+            _out.WriteLine("");
+            _out.WriteLine("site        hiring        12mo      24mo      36mo  paid/hr  got");
+            _out.WriteLine("------------------------------------------------------------------");
+
+            foreach (var site in Sites())
+            {
+                foreach (var best in new[] { false, true })
+                {
+                    var a = Play(site, new Dictionary<string, int>(), out _, out _, out _, out _, out _, best, out var wage, out var skill, 12);
+                    var b = Play(site, new Dictionary<string, int>(), out _, out _, out _, out _, out _, best, out _, out _, 24);
+                    var c = Play(site, new Dictionary<string, int>(), out _, out _, out _, out _, out _, best, out _, out _, 36);
+
+                    _out.WriteLine(string.Format("{0,-10} {1,-11} {2,9:N0} {3,9:N0} {4,9:N0} {5,7:N0}  {6,4:0.00}",
+                        site.Key, best ? "best CV" : "cheapest", a, b, c, wage, skill));
+                }
+            }
+        }
+
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
         public void AnAdvisedOpeningAgainstANaiveOne()
         {
             _out.WriteLine("Identical opening on every site: 30,000 bankroll less key money, one");
@@ -97,7 +124,8 @@ namespace RestaurantEmpire.Core.Tests
             foreach (var site in Sites())
             {
                 var taken = new Dictionary<string, int>();
-                var cash = Play(site, taken, out var seats, out var units, out var crew, out var m3, out var m6);
+                var cash = Play(site, taken, out var seats, out var units, out var crew, out var m3, out var m6,
+                    true, out _, out _);
 
                 var verdict = cash > 0m ? "surviving" : "BUST";
                 if (cash > 0m) survived++;
@@ -390,7 +418,8 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         private static decimal Play(Site site, IDictionary<string, int> taken,
-            out int seats, out int units, out int crew, out decimal m3, out decimal m6)
+            out int seats, out int units, out int crew, out decimal m3, out decimal m6,
+            bool hireTheBest, out decimal wageBill, out decimal gotSkill, int months = 12)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
             var company = new Company("co", "Co", definitions, 30000m - site.Where.LeasePremium);
@@ -424,7 +453,7 @@ namespace RestaurantEmpire.Core.Tests
             m3 = 0m; m6 = 0m;
             ServiceResult booked = null;
 
-            for (var month = 1; month <= 12; month++)
+            for (var month = 1; month <= months; month++)
             {
                 runner.AdvanceDays(30);
                 booked = BookMonth(company, r, runner, booked, clock.Tick, site.Where.MonthlyRent);
@@ -432,7 +461,7 @@ namespace RestaurantEmpire.Core.Tests
 
                 // ---- the entire policy: do what the Advisor says, and nothing else ----
                 foreach (var s in new Advisor(r).Review(trading))
-                    Act(company, r, definitions, s, taken);
+                    Act(company, r, definitions, s, taken, month, hireTheBest);
 
                 if (month == 3) m3 = company.Economy.CashOnHand;
                 if (month == 6) m6 = company.Economy.CashOnHand;
@@ -442,6 +471,8 @@ namespace RestaurantEmpire.Core.Tests
             units = 0;
             foreach (var st in r.Kitchen.Stations) units += st.ConcurrentCapacity;
             crew = r.Payroll.Headcount;
+            wageBill = r.Payroll.HourlyWageBill;
+            gotSkill = r.Payroll.AverageSkill(StaffRole.Cook);
 
             return company.Economy.CashOnHand;
         }
@@ -452,8 +483,34 @@ namespace RestaurantEmpire.Core.Tests
         /// is what makes the result a measurement of the ADVICE rather than of a heuristic
         /// wearing the Advisor's name.
         /// </summary>
+        /// <summary>
+        /// Hire out of this month's applicants rather than conjuring an identical body.
+        ///
+        /// Two strategies, and the comparison is the experiment: take the cheapest person who
+        /// will do the job, or pay for the best CV on the pile. Neither knows what they are
+        /// actually getting — that is `ScoutingError`, and it is the risk being measured.
+        /// </summary>
+        private static bool TakeSomeoneOn(Restaurant r, StaffRole role, int month, bool best)
+        {
+            var applicants = HiringPool.Applicants(month * 1000 + (int)role, 8);
+            var forRole = applicants.Where(c => c.Role == role).ToList();
+            if (forRole.Count == 0) return false;
+
+            var pick = best
+                ? forRole.OrderByDescending(c => c.Advertises).First()
+                : forRole.OrderBy(c => c.HourlyWage).First();
+
+            // Ids must be unique on a payroll, and the same applicant can come round again.
+            var hire = pick.Accept();
+            var unique = new Employee(hire.Id + "-" + r.Payroll.Headcount, hire.Name,
+                hire.Role, hire.HourlyWage, hire.Skill);
+
+            r.Payroll.Hire(unique);
+            return true;
+        }
+
         private static void Act(Company company, Restaurant r, DefinitionRegistry definitions,
-            Suggestion s, IDictionary<string, int> taken)
+            Suggestion s, IDictionary<string, int> taken, int month, bool hireTheBest)
         {
             var cash = company.Economy.CashOnHand;
             var id = s.Id;
@@ -469,15 +526,13 @@ namespace RestaurantEmpire.Core.Tests
 
             if (id == "understaffed:kitchen" && cash > 4000m)
             {
-                r.Payroll.Hire(new Employee("c" + Guid.NewGuid().ToString("N").Substring(0, 4), "Cook", StaffRole.Cook, 16m));
-                Count("hire cook");
+                if (TakeSomeoneOn(r, StaffRole.Cook, month, hireTheBest)) Count("hire cook");
                 return;
             }
 
             if (id == "understaffed:floor" && cash > 3000m)
             {
-                r.Payroll.Hire(new Employee("s" + Guid.NewGuid().ToString("N").Substring(0, 4), "Server", StaffRole.Server, 12m));
-                Count("hire server");
+                if (TakeSomeoneOn(r, StaffRole.Server, month, hireTheBest)) Count("hire server");
                 return;
             }
 

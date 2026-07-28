@@ -539,6 +539,37 @@ wage line, one person, two-thirds more trade.
 a headcount and re-multiplying threw the skill away — three excellent cooks came out at 3.9,
 floored to 3, which is exactly three average ones.
 
+### M1(b), diagnosed: the Advisor has a ratchet and no brake
+
+The bet was that richer hiring would sharpen the advice. **It did not, and the experiment
+found something better than an answer to it.** Same advice followed twice, differing only in
+who gets hired:
+
+| Site | Cheapest 12/24/36mo | Best CV 12/24/36mo |
+|---|---:|---:|
+| City | **+12,289** / −8,348 / −45,667 | +1,115 / −18,617 / **−37,119** |
+| Business | −785 / −26,206 / −51,126 | −11,793 / −57,726 / −101,017 |
+| Nightlife | −28,048 / −71,868 / −117,236 | −34,611 / −87,458 / −140,827 |
+| Suburban | −29,871 / −68,316 / −108,596 | −40,668 / −87,977 / −137,279 |
+
+Three findings, in order of how much they matter:
+
+1. **Every advised run declines toward bust, whoever it hires.** The hiring comparison is
+   happening inside a system that is already losing. **The Advisor forms a ratchet with no
+   brake:** buying kitchen raises `understaffed:kitchen`, hiring for it raises the wage bill,
+   the wage bill is paid forever, and nothing anywhere weighs the next suggestion against what
+   the restaurant actually earns. Runway suppression was not enough, because cash stays
+   healthy while the ratchet is winding and is gone by the time it bites. **That is the M1(b)
+   defect, now isolated: the Advisor knows what is wrong and has no idea what you can afford.**
+2. **Hiring cheap beats hiring well nearly everywhere**, and only crosses over on city at
+   about thirty-six months. Skill costs roughly double at the top of the market and pays back
+   through quality, which reaches money only via reputation, which moves over months. A
+   decision whose right answer is "always take the cheap one" is decoration — worth fixing,
+   but AFTER the ratchet, since the ratchet is what makes every column negative.
+3. **Hiring choice does measurably move the outcome** (city +12,289 against +1,115), and the
+   risk is real: nightlife paid MORE for a WORSE brigade because `ScoutingError` burned it.
+   The mechanic works; its incentives are backwards.
+
 **On the M1(b) bet: not settled.** Advised runs improved a great deal (nightlife −69,708 to
 −8,467, suburban −54,264 to −15,039, business to −969) but **still bust on all four sites**.
 And the improvement cannot be attributed to this work: those runs span both this change and
