@@ -823,37 +823,48 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 
 Ideas raised and consciously NOT built, with the reasoning, so they are choices rather than oversights:
 
-- **Spoilage — ATTEMPTED AND REVERTED, with the design and the traps recorded.** Built once
-  (2026-07-28) and backed out because it could not be finished green in the time available;
-  a broken tree left overnight is worse than an unbuilt feature. What it should be, and what
-  bit, so the next attempt is cheaper:
+- **Spoilage — BUILT TWICE, WORKING, AND HELD BACK ON A BALANCE DECISION THAT IS AARON'S.**
+  Aaron asked for it plainly: *"spoilage should happen over time, so your food goes bad if you
+  are over buying."* It is built and it is correct. It is not committed, because at current
+  balance **it makes every site unwinnable** — City Center measured at **−66,114 on revenue of
+  77,676** — and softening the economy to absorb it is a balance pass Aaron has deliberately
+  parked. Shipping it silently would have made the game unplayable; deciding to rebalance
+  instead of him is not mine to make. **This is the single item waiting on him.**
 
-  **The design that was right.** `IngredientDefinition.ShelfLifeDays`, data-driven per
-  Architecture Rule 2 (sea bass 2 days, basil 4, flour 180, olive oil 365 — the spread is the
-  point). `IngredientStock` keeps DATED BATCHES rather than one running total, because a
-  single number with an average age lets a fresh delivery hide stock that turned a fortnight
-  ago — top up often enough and nothing ever spoils, which is the free lunch this removes.
-  Consumption takes oldest first, the way a kitchen rotates. A once-a-day sweep at a fixed
-  boundary keeps M1(a)'s chunk-size invariance.
+  **The design, which survived contact and should be rebuilt exactly:**
+  - `IngredientDefinition.ShelfLifeDays`, data-driven (sea bass 2, basil 4, flour 180, olive
+    oil 365 — the spread is the point).
+  - `IngredientStock` holds DATED BATCHES, not one total. An average age lets a fresh delivery
+    hide stock that turned a fortnight ago. Consumption takes oldest first.
+  - A once-a-day sweep at a fixed tick boundary, so chunk-size invariance holds.
+  - Spoilage books to `FoodCost` (it is genuinely food you bought and did not sell) AND is
+    tracked separately so the player can see the number and act on it.
 
-  **Trap 1, and it wiped the pantry: the clock's tick is ABSOLUTE.** `Clock.Tick /
-  TicksPerDay` is a day index in the tens of thousands, while stock loaded before a run is
-  dated zero. The first tick of every run therefore binned everything as decades old —
-  measured at 394,000 of stock in the skip, then every dish 86'd. Any solution needs an
-  `Inventory.StartOfRun(day)` that re-dates what is already on the shelf: stock you hold when
-  the doors open is stock you have NOW.
+  **Four traps, all found the hard way and all with fixes:**
+  1. **The clock's tick is ABSOLUTE.** `Tick / TicksPerDay` is an index in the tens of
+     thousands while pre-loaded stock is dated zero, so the first tick binned the whole pantry
+     as decades old — 394,000 in the skip, then every dish 86'd. Needs `Inventory.StartOfRun`
+     to re-date what is on the shelf: stock you hold when the doors open is stock you have now.
+  2. **`Receive` must date from the pantry's own calendar**, or a delivery made in month three
+     arrives three months old and restocking is impossible.
+  3. **The assignment silently did not land**, because the real line is `Unit = unit ?? "unit"`
+     and the patch targeted `Unit = unit`. Shelf life loaded as 0 for every ingredient and
+     everything spoiled instantly. **Verify a new field is actually assigned before believing
+     any measurement taken through it.**
+  4. **PAR LEVELS ARE STRUCTURALLY WRONG FOR PERISHABLES, and this is the real finding.**
+     `SuggestedReorderQuantity` tops up to `ParMax` whenever stock dips below `ParMin`, so a
+     two-day fish is refilled to a full shelf every cycle, used a fraction, and binned. Not a
+     difficulty setting — a broken model. Measured: **spoilage was 94% of all food cost.**
+     The fix is to cap the reorder at what will be used before it turns, from a smoothed
+     `DailyUsage` per ingredient, which brought it to 85%. The rest was fixtures stocking all
+     thirteen ingredients for a menu that cooks six: coffee beans and eggs measured **0.0 a
+     day of usage** at a dinner-only service and rotted week after week. Don't stock what you
+     don't cook — which is a real lesson the game should teach rather than a fixture quirk.
 
-  **Trap 2: `Receive` must default to the pantry's current day, not zero**, or a delivery made
-  in month three arrives three months old and is binned on arrival — restocking becomes
-  impossible.
-
-  **Trap 3, unresolved and the reason to plan before rebuilding: blast radius.** Six tests
-  still failed after both traps were fixed, and they are fixtures that stock once and trade
-  for thirty nights. That is the mechanic working — but it means spoilage is not a local
-  change, it is a change to what every multi-day fixture has to do (restock, like a
-  restaurant). **Decide first whether spoilage belongs in `FoodCost` or in a ledger line of
-  its own.** It is genuinely cost of goods sold, but folding it in moves prime cost and breaks
-  the industry banding that several tests read.
+  **What is left is a number, not a mechanism:** with reorder capped and stock matched to the
+  menu, spoilage is still heavy enough to sink every site. Either shelf lives are too short for
+  a game whose player restocks on the Advisor's cadence, or margins have to widen to absorb
+  normal wastage. **That is Aaron's call and it is the one thing genuinely blocked on him.**
 
 - **Fridge / storage capacity.** Would be a cap on `Inventory` par levels. Cheap to add, but it only bites once ingredients are charged when *bought* and can *spoil* — without those two it is a constraint with no consequence. Revisit together with them.
 - **Chef skill by daypart.** Aaron flagged the tension himself: breakfast is *easier* to cook than dinner, so "you need a specialist" doesn't follow cleanly. Employees are M1/M2 anyway. If it ever lands, the honest version is probably that a great dinner kitchen finds breakfast a distraction, not that it lacks the skill.
