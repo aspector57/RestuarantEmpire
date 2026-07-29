@@ -56,8 +56,19 @@ namespace RestaurantEmpire.Core.Model
                 var toPar = ParMax - Quantity;
                 if (ShelfLifeDays <= 0 || DailyUsage <= 0m) return toPar;
 
-                // Half again over the run rate, so a busy night does not 86 a dish.
-                var usableBeforeItTurns = (DailyUsage * ShelfLifeDays * 1.5m) - Quantity;
+                // A FEW DAYS' WORTH, not a shelf life's worth.
+                //
+                // This ordered `usage x shelfLife x 1.5`, which for a ten-day tomato is
+                // fifteen days of stock — so the oldest thing on the shelf was always most of
+                // the way through its life and freshness never recovered. Measured: a
+                // premium-sourced restaurant capped at 0.609 standing against a 0.890 ceiling
+                // purely because everything it served was days old.
+                //
+                // Order little and often. Four days is enough cover for a busy night and
+                // keeps what reaches the pass inside the first half of its life, which is
+                // where it still counts as fresh.
+                var daysToHold = ShelfLifeDays < 4 ? ShelfLifeDays : 4;
+                var usableBeforeItTurns = (DailyUsage * daysToHold * 1.25m) - Quantity;
 
                 if (usableBeforeItTurns <= 0m) return 0m;
                 return usableBeforeItTurns < toPar ? usableBeforeItTurns : toPar;
@@ -139,6 +150,80 @@ namespace RestaurantEmpire.Core.Model
                 batch.ReceivedOnDay = day;
                 _batches[i] = batch;
             }
+        }
+
+        /// <summary>
+        /// How much of this is within <paramref name="days"/> of turning.
+        ///
+        /// Aaron: *"we should be able to see how much is about to turn bad, because you may
+        /// need to order more still."* Exactly — the old readout said "oldest: 6d" and that
+        /// tells you nothing about the size of the hole coming. You cannot plan around a hole
+        /// you cannot measure.
+        /// </summary>
+        internal decimal QuantityTurningWithin(int days, int today, int shelfLifeDays)
+        {
+            if (shelfLifeDays <= 0) return 0m;
+
+            var atRisk = 0m;
+            foreach (var batch in _batches)
+            {
+                var daysLeft = shelfLifeDays - (today - batch.ReceivedOnDay);
+                if (daysLeft <= days) atRisk += batch.Quantity;
+            }
+
+            return atRisk;
+        }
+
+        /// <summary>
+        /// How fresh what is about to be COOKED is, 1 down to 0. Consumption is oldest-first,
+        /// so this is the state of the oldest batch on the shelf — the thing the kitchen will
+        /// actually reach for.
+        ///
+        /// Full marks for the first half of its life, then a slide. Nothing that is still
+        /// legally food scores zero: the worst a guest gets is "that didn't taste fresh",
+        /// which is the point — a gradient, not a cliff.
+        /// </summary>
+        internal decimal Freshness(int today, int shelfLifeDays)
+        {
+            if (shelfLifeDays <= 0 || _batches.Count == 0) return 1m;
+
+            var oldest = 0;
+            foreach (var batch in _batches)
+            {
+                var age = today - batch.ReceivedOnDay;
+                if (age > oldest) oldest = age;
+            }
+
+            var throughLife = (decimal)oldest / shelfLifeDays;
+            if (throughLife <= 0.5m) return 1m;
+
+            // 1.0 at halfway, 0.55 the day it turns.
+            var fresh = 1m - ((throughLife - 0.5m) * 0.9m);
+            return fresh < 0.55m ? 0.55m : fresh;
+        }
+
+        /// <summary>Bin it deliberately, oldest first. Returns what was thrown out.</summary>
+        internal decimal DiscardOldest(decimal quantity)
+        {
+            var tossed = 0m;
+            var left = quantity;
+
+            for (var i = 0; i < _batches.Count && left > 0m; i++)
+            {
+                var batch = _batches[i];
+                var taken = batch.Quantity <= left ? batch.Quantity : left;
+
+                batch.Quantity -= taken;
+                left -= taken;
+                tossed += taken;
+                _batches[i] = batch;
+            }
+
+            _batches.RemoveAll(b => b.Quantity <= 0m);
+            Quantity -= tossed;
+            if (Quantity < 0m) Quantity = 0m;
+
+            return tossed;
         }
 
         internal decimal DiscardSpoiled(int today, int shelfLifeDays)
@@ -230,6 +315,38 @@ namespace RestaurantEmpire.Core.Model
             }
 
             return binned;
+        }
+
+        /// <summary>How much of this ingredient turns within the next few days.</summary>
+        public decimal TurningWithin(string ingredientId, int days, Definitions.DefinitionRegistry definitions)
+        {
+            IngredientStock stock;
+            if (!_stock.TryGetValue(ingredientId ?? string.Empty, out stock)) return 0m;
+
+            try { return stock.QuantityTurningWithin(days, Today, definitions.GetIngredient(ingredientId).ShelfLifeDays); }
+            catch (Definitions.DefinitionNotFoundException) { return 0m; }
+        }
+
+        /// <summary>How fresh the stock the kitchen will reach for is, 0 to 1.</summary>
+        public decimal FreshnessOf(string ingredientId, Definitions.DefinitionRegistry definitions)
+        {
+            IngredientStock stock;
+            if (!_stock.TryGetValue(ingredientId ?? string.Empty, out stock)) return 1m;
+
+            try { return stock.Freshness(Today, definitions.GetIngredient(ingredientId).ShelfLifeDays); }
+            catch (Definitions.DefinitionNotFoundException) { return 1m; }
+        }
+
+        /// <summary>
+        /// Throw something out on purpose, oldest first. Only a decision worth having because
+        /// tired stock now tastes tired — otherwise serving it would always beat binning it.
+        /// </summary>
+        public decimal Discard(string ingredientId, decimal quantity)
+        {
+            IngredientStock stock;
+            if (!_stock.TryGetValue(ingredientId ?? string.Empty, out stock)) return 0m;
+
+            return stock.DiscardOldest(quantity);
         }
 
         public void SetPar(string ingredientId, decimal parMin, decimal parMax)

@@ -615,7 +615,8 @@ namespace RestaurantEmpire.Core.Model
                 table.Party, order.Ticket, recipe.Name,
                 SatisfactionModel.PlateQuality(
                     _restaurant.Costing.IngredientQuality(order.RecipeId),
-                    _restaurant.Payroll.AverageSkill(StaffRole.Cook)),
+                    _restaurant.Payroll.AverageSkill(StaffRole.Cook),
+                    _restaurant.Costing.Freshness(order.RecipeId, _restaurant.Inventory)),
                 _restaurant.Costing.Markup(order.RecipeId),
                 _restaurant.DiningRoom.Comfort,
                 _restaurant.Reputation.Standing);

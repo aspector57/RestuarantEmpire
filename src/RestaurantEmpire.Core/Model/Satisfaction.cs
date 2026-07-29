@@ -103,10 +103,15 @@ namespace RestaurantEmpire.Core.Model
         /// way to spend a great deal of money on a mediocre dinner. An average cook (0.5) is
         /// exactly neutral, so this changes nothing for a payroll that has not been chosen.
         /// </summary>
-        public static decimal PlateQuality(decimal ingredientQuality, decimal kitchenSkill)
+        public static decimal PlateQuality(decimal ingredientQuality, decimal kitchenSkill,
+            decimal freshness = 1m)
         {
             var craft = 0.6m + (Clamp(kitchenSkill) * 0.8m);   // 0.6x at worst, 1.4x at best
-            return Clamp(ingredientQuality * craft);
+
+            // What you bought, worked by whoever is cooking, and how long it has been sitting.
+            // Freshness bottoms out at 0.55 rather than zero — the worst a guest gets from
+            // stock that is still legally food is "that didn't taste fresh".
+            return Clamp(ingredientQuality * craft * Clamp(freshness));
         }
 
         /// <summary>

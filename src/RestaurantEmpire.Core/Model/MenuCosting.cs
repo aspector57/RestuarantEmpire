@@ -102,6 +102,31 @@ namespace RestaurantEmpire.Core.Model
         /// cheaper supplier raises margin and lowers this in the same instant, and guests
         /// taste the difference. That is the tradeoff the whole sourcing system exists to create.
         /// </summary>
+        /// <summary>
+        /// How fresh this dish's ingredients are, 0 to 1 — the WEAKEST of them, because one
+        /// tired component is what a guest notices. Aaron: *"if it's not fresh... they can
+        /// kinda say it didn't taste super fresh."*
+        ///
+        /// This is what turns spoilage from a bin charge into a gradient. Before it, old stock
+        /// cost exactly one thing — the waste when it turned — so there was never a reason to
+        /// throw anything out early. Now serving tired stock is a real choice with a real
+        /// price, and binning it is the alternative rather than a pointless loss.
+        /// </summary>
+        public decimal Freshness(string recipeId, Inventory inventory)
+        {
+            var recipe = _definitions.GetRecipe(recipeId);
+            if (recipe.Ingredients.Count == 0 || inventory == null) return 1m;
+
+            var worst = 1m;
+            for (var i = 0; i < recipe.Ingredients.Count; i++)
+            {
+                var fresh = inventory.FreshnessOf(recipe.Ingredients[i].IngredientId, _definitions);
+                if (fresh < worst) worst = fresh;
+            }
+
+            return worst;
+        }
+
         public decimal IngredientQuality(string recipeId)
         {
             var recipe = _definitions.GetRecipe(recipeId);

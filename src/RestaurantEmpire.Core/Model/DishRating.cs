@@ -164,7 +164,8 @@ namespace RestaurantEmpire.Core.Model
                     recipe.Name,
                     SatisfactionModel.PlateQuality(
                         costing.IngredientQuality(recipe.Id),
-                        restaurant.Payroll.AverageSkill(StaffRole.Cook)),
+                        restaurant.Payroll.AverageSkill(StaffRole.Cook),
+                        costing.Freshness(recipe.Id, restaurant.Inventory)),
                     SatisfactionModel.ScoreSpeed(wait, NominalPatienceMinutes),
                     SatisfactionModel.ScoreValue(costing.Markup(recipe.Id), NominalPriceSensitivity,
                         costing.IngredientQuality(recipe.Id)),

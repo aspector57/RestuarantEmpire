@@ -41,8 +41,12 @@ namespace RestaurantEmpire.Core.Tests
 
             foreach (var id in definitions.IngredientIds)
             {
-                restaurant.Inventory.SetPar(id, 300m, 9000m);
-                restaurant.Inventory.Receive(id, 9000m);
+                // Modest, and restocked as it trades. Nine thousand units was a way of saying
+                // "stock is not what this test is about" — but a walk-in that deep is never
+                // fresh, freshness now reaches the plate, and these tests would have been
+                // measuring the age of the pantry rather than the standing of the restaurant.
+                restaurant.Inventory.SetPar(id, 30m, 400m);
+                restaurant.Inventory.Receive(id, 60m);
             }
 
             restaurant.BuyTables("t", "Tables", 4000m, 32);
@@ -319,7 +323,15 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(afterAMonth < 0.70m, "a month of good food should not make you famous");
 
             Trade(restaurant, 150);
-            Assert.True(restaurant.Reputation.Standing > 0.85m, "half a year of it should");
+            var afterHalfAYear = restaurant.Reputation.Standing;
+
+            // Asserted as a SHAPE rather than an absolute, because the absolute moves whenever
+            // the plate model gets more honest — freshness landing lowered a well-run premium
+            // kitchen's meals from near-perfect to 0.88, so standing now converges there
+            // instead of to the ceiling. The claim is "months, not weeks", and that holds.
+            Assert.True(afterHalfAYear > afterAMonth + 0.15m,
+                "half a year should move it a long way: " + afterAMonth + " to " + afterHalfAYear);
+            Assert.True(afterHalfAYear > 0.70m, "and should be well regarded by then");
         }
 
         [Fact]

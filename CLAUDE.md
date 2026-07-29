@@ -843,6 +843,38 @@ food-cost RATIO is measured on. It is simply no longer a cash movement.
 **The new failure mode is the interesting one, and it is the one that kills real restaurants:
 profitable on paper and short of cash, because it is all sitting in the walk-in.**
 
+### Freshness: a gradient, not a cliff (Aaron)
+
+> *"we should be able to see how much is about to turn bad, because you may need to order more
+> still... then you can decide to toss it... and maybe if it's not fresh people can kinda say
+> it didn't taste super fresh?"*
+
+Three things, and they chain:
+
+1. **`Inventory.TurningWithin(id, days)`** — how MUCH is about to go, not just how old the
+   oldest batch is. The previous readout said "oldest: 6d", which tells you nothing about the
+   size of the hole coming, and you cannot order around a hole you cannot measure.
+2. **Freshness reaches the plate.** `MenuCosting.Freshness` takes the WEAKEST ingredient in a
+   dish, because one tired component is what a guest notices, and it multiplies into
+   `PlateQuality` alongside ingredients and cooking. Full marks for the first half of an
+   ingredient's life, then a slide to 0.55 — **never zero, because the worst a guest gets from
+   food that is still food is "that didn't taste fresh."**
+3. **`Inventory.Discard` — throwing something out on purpose**, oldest first. This is only a
+   decision worth having BECAUSE of (2): before freshness, serving tired stock always beat
+   binning it, so nobody would ever have chosen to.
+
+**Held back deliberately: people getting sick.** Aaron raised it and it is the right instinct,
+but it needs machinery that does not exist — complaints, health inspection, closure — and it
+punishes in a way that reads as unfair without a warning system first. With freshness in, it
+becomes an **Event** built on top rather than a subsystem of its own. That is the M3+ version.
+
+**It also exposed my own reorder rule as wrong.** `SuggestedReorderQuantity` was buying
+`usage x shelfLife x 1.5`, which for a ten-day tomato is FIFTEEN DAYS of stock — so the oldest
+thing on the shelf was always most of the way through its life. Measured: a premium-sourced
+kitchen capped at 0.609 standing against a 0.890 ceiling purely because everything it served
+was days old. It now holds about four days' cover, which keeps what reaches the pass inside
+the first half of its life. **Order little and often.**
+
 ### Spoilage — SHIPPED, on Aaron's three refinements
 
 He asked for it plainly: *"spoilage should happen over time, so your food goes bad if you are

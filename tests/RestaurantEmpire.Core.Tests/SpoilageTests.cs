@@ -273,5 +273,90 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(hoarderSpent > thriftySpent * 10m,
                 "hoarding should tie up real money: " + hoarderSpent + " against " + thriftySpent);
         }
+
+        // ---- Seeing it coming, and what tired food tastes like (Aaron) ----
+
+        [Fact]
+        public void YouCanSeeHowMuchIsAboutToTurn()
+        {
+            // Aaron: "we should be able to see how much is about to turn bad, because you may
+            // need to order more still." The old readout gave the age of the oldest batch,
+            // which says nothing about the size of the hole that is coming.
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var company = new Company("a", "A", definitions, 1000m);
+            var restaurant = company.OpenRestaurant("r", "R", LocationType.BrickAndMortar);
+
+            restaurant.Inventory.StartOfRun(0);
+            restaurant.Inventory.Receive("sea-bass", 30m);   // 4-day life, lands day 0
+
+            restaurant.Inventory.AdvanceTo(2);
+            restaurant.Inventory.Receive("sea-bass", 50m);   // lands day 2
+
+            // On day 2, the first batch has two days left and the second has four.
+            Assert.Equal(30m, restaurant.Inventory.TurningWithin("sea-bass", 2, definitions));
+            Assert.Equal(80m, restaurant.Inventory.TurningWithin("sea-bass", 4, definitions));
+
+            // Flour is not going anywhere.
+            Assert.Equal(0m, restaurant.Inventory.TurningWithin("flour", 30, definitions));
+        }
+
+        [Fact]
+        public void TiredStockTastesTired_ButIsNeverInedible()
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var company = new Company("a", "A", definitions, 1000m);
+            var restaurant = company.OpenRestaurant("r", "R", LocationType.BrickAndMortar);
+
+            restaurant.Inventory.StartOfRun(0);
+            restaurant.Inventory.Receive("tomato", 100m);    // 10-day life
+
+            Assert.Equal(1m, restaurant.Inventory.FreshnessOf("tomato", definitions));
+
+            restaurant.Inventory.AdvanceTo(5);              // halfway: still fine
+            Assert.Equal(1m, restaurant.Inventory.FreshnessOf("tomato", definitions));
+
+            restaurant.Inventory.AdvanceTo(9);              // nearly gone: noticeably not fresh
+            var tired = restaurant.Inventory.FreshnessOf("tomato", definitions);
+
+            Assert.True(tired < 1m);
+            Assert.True(tired >= 0.55m, "the worst a guest gets is 'that didn't taste fresh'");
+        }
+
+        [Fact]
+        public void FreshnessReachesThePlate()
+        {
+            var fresh = SatisfactionModel.PlateQuality(0.6m, 0.5m, 1m);
+            var stale = SatisfactionModel.PlateQuality(0.6m, 0.5m, 0.6m);
+
+            Assert.True(stale < fresh);
+
+            // And it compounds with the other two, so a tired plate made badly from cheap
+            // stock is genuinely poor while any one of the three alone is survivable.
+            Assert.True(SatisfactionModel.PlateQuality(0.2m, 0.15m, 0.6m)
+                      < SatisfactionModel.PlateQuality(0.2m, 0.5m, 1m));
+        }
+
+        [Fact]
+        public void ThrowingSomethingOutIsADecisionYouCanMake()
+        {
+            // Only worth having because tired stock now tastes tired. Before freshness
+            // existed, serving it always beat binning it and nobody would ever have chosen to.
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var company = new Company("a", "A", definitions, 1000m);
+            var restaurant = company.OpenRestaurant("r", "R", LocationType.BrickAndMortar);
+
+            restaurant.Inventory.StartOfRun(0);
+            restaurant.Inventory.Receive("basil", 20m);
+            restaurant.Inventory.AdvanceTo(5);
+            restaurant.Inventory.Receive("basil", 20m);      // fresh, on top of tired
+
+            var tossed = restaurant.Inventory.Discard("basil", 20m);
+
+            Assert.Equal(20m, tossed);
+            Assert.Equal(20m, restaurant.Inventory.QuantityOf("basil"));
+
+            // And it threw out the OLD one, so what is left is the fresh delivery.
+            Assert.Equal(1m, restaurant.Inventory.FreshnessOf("basil", definitions));
+        }
     }
 }
