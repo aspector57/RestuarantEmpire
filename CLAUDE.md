@@ -1080,7 +1080,14 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
-- **The browser build (`pass.html`) is synced as of the pantry work.** It now carries
+- **The browser build (`pass.html`) is LEVEL WITH THE ENGINE as of storage capacity.** It
+  carries every system: awareness, staff with claimed-versus-actual skill, mistakes and comps
+  by dish complexity, category menu engineering, the pantry with dated batches and FIFO,
+  pay-on-delivery, freshness on the plate, the standing order, and storage caps with fridges
+  as floor-consuming equipment. The Pantry tab shows freshness as a percentage, **how much
+  turns within two days** (the thing you need in order to reorder before the hole appears), a
+  per-ingredient **toss** button, and a switch for the standing order.
+- **The browser build was previously synced as of the pantry work.** It now carries
   spoilage and pay-on-delivery too, which meant giving it an inventory at all — it had none,
   so ingredients were effectively infinite and free. There is a **Pantry** tab showing stock,
   what each thing keeps for, how old the oldest batch is (red when it is about to turn) and
