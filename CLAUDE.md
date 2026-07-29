@@ -978,7 +978,16 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
-- **The browser build (`pass.html`) is synced as of the staff work.** It now carries the
+- **The browser build (`pass.html`) is synced as of the pantry work.** It now carries
+  spoilage and pay-on-delivery too, which meant giving it an inventory at all — it had none,
+  so ingredients were effectively infinite and free. There is a **Pantry** tab showing stock,
+  what each thing keeps for, how old the oldest batch is (red when it is about to turn) and
+  the measured run rate, with two deliberately contrasting buttons: *order what we need* and
+  *fill the walk-in*. The books show what has been binned.
+- **Verifying a JS port without node: strip `//` comments before counting braces.** A naive
+  scanner treats the apostrophe in a comment like "tomorrow's" as opening a string and swallows
+  every brace after it, which reads as a syntax error that is not there. Cost a false alarm.
+- **The browser build was synced as of the staff work.** It now carries the
   awareness split, staff as people with claimed-versus-actual skill, mistakes and comps scaled
   by dish complexity, and category-based menu engineering. Two readouts were added to the pass
   so the new systems are visible while playing: **"heard of you"** (awareness) and
