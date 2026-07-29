@@ -869,15 +869,49 @@ the automatic order is already about right and par settings no longer change the
 tight, normal and deep pars produced identical results. It exists meaningfully as a COST. It
 does not yet exist as a DECISION.
 
-A hypothesis that turned out wrong, recorded so it is not retried: menu composition does not
-drive it in the obvious direction. A stable pizza-and-bread menu wasted MORE (26%) than a
-fish-and-truffle one (10%), because it sold less and stock turned over slower. Perishability
-matters less than throughput.
+**CORRECTION — that measurement was confounded and the conclusion was wrong.** It compared a
+TWO-dish menu against a THREE-dish one, and menu breadth is doing the work: a narrow card loses
+whole parties who find nothing they want (a suburban dinner has couples in it, and
+pizza-and-bread offers them nothing refined). Aaron spotted it — *"shouldn't pizza and bread
+sell faster?"* — and he was right to.
 
-**The missing piece is an UPSIDE to ordering deep** — bulk pricing, fewer deliveries, or cover
-against a supply shock. Without one, over-ordering is a mistake to avoid rather than a trade to
-weigh, and no amount of tuning makes a mistake into a decision. That is a design question for
-Aaron rather than a number to move.
+Controlled properly, three dishes either side sharing the caprese:
+
+| | Covers | Spoiled |
+|---|---:|---:|
+| Stable pair (pizza, focaccia) | 7,202 | **7%** |
+| Perishable pair (sea bass, risotto) | 7,436 | **11%** |
+
+**Perishability costs about half again in waste, and covers barely move.** So a menu built on
+things that keep IS cheaper to run — the opposite of what was recorded here before. Second
+confounded comparison this session; the first was measuring campaigns that never booked their
+takings. **Two instruments that disagree, or a comparison where more than one thing differs,
+is a bug report rather than a finding.**
+
+**The missing piece is an UPSIDE to ordering deep** — and Aaron answered it: *"you can order
+deeper in the region maybe than for a singular restaurant, like a chain uses a massive national
+supplier but a local restaurant uses local ones."*
+
+**That is the right answer, and it lands exactly where the Region tier was already waiting.**
+CLAUDE.md's sourcing rule already says the chain resolves Company → Region → Restaurant and
+that the Region tier is deliberately unbuilt because "sourcing at ten restaurants is the
+identical decision as at one, which is the flat-scaling anti-pattern". This is the thing that
+makes it a different decision:
+
+- **Local suppliers** — small drops, fresher on arrival, higher unit price. What a single
+  restaurant can actually buy.
+- **A national distributor** — cheaper per unit and fewer deliveries, but bulk drops mean stock
+  arrives with more of its life already spent, and the quality tier is lower. Viable only once
+  the volume is there to get through it.
+
+So ordering deep gains its upside precisely when you have the throughput to justify it, and
+**expansion buys a new KIND of decision rather than a bigger number** — which is what the
+anti-pattern list demands of scale. It also gives the M5 franchising addendum its supply-side
+teeth: a chain that switches to national sourcing is the same move as prestige erosion, seen
+from the pantry.
+
+**Deliberately NOT built: it is M4, and needs multi-location to mean anything.** A single
+restaurant offered a national contract has no decision to make.
 
 ### Freshness: a gradient, not a cliff (Aaron)
 
