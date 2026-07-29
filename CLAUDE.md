@@ -1035,14 +1035,43 @@ displayed "1.9x markup" when the actual markup is 46x, a 2% food cost. **The bro
 shows food cost % (the trade's own number) and calls the other figure "x the menu price".**
 The C# property should probably be renamed `PriceAgainstDesigned` — it is not markup.
 
-**2. RAISING PRICES IS STILL NEARLY FREE, and this is the balance finding.** Aaron walked
+**2. RAISING PRICES WAS NEARLY FREE — FIXED, PARTLY.** Aaron walked
 prices up in stages and stayed profitable at every step until the very top of the slider. The
 reason is structural: value is judged as `1/(price ÷ designed price)`, so doubling every price
 scores 0.5 against a 0.40 walk-away threshold — a hair above ruin. Meanwhile the covers you
 keep pay double. At the end state he had **$6.7m in cash, 58% prime cost, and 68–93 parties a
 day walking away on price**, and it was still the most profitable configuration he had run.
-**Losing most of your custom should not be the optimum.** Price resistance needs to bite far
-harder before the slider's top end, and that is a real balance job rather than a tweak.
+**Losing most of your custom should not be the optimum.** Measured before the fix:
+
+| Price | Net, one month | Parties balking |
+|---|---:|---:|
+| x1.0 | 7,315 | 0 |
+| x1.5 | 26,634 | **0** |
+| x2.0 | 43,545 | 194 |
+| x2.5 | **47,001** | 782 |
+| x3.0 | −12,244 | 1,903 |
+
+A free six-fold multiplier behind a slider, then a cliff. **Two changes:**
+
+- **`PriceToleranceExponent`** — value is `(1/markup)^2` rather than a plain reciprocal, so
+  resistance builds from about a third over the designed price instead of waiting for double.
+- **`WalkAwayChance` replaces the hard threshold.** A step function can only ever produce a
+  cliff: everyone tolerates the price until one more cent and then nobody comes. At an
+  exponent of 2.5 with the old threshold, a 1.4x menu thrived and a 1.6x menu served literally
+  nobody. It is now a chance that climbs as the deal worsens, so a dear menu bleeds custom —
+  and **the price-sensitive go first**, which is what makes archetypes matter at the door.
+  Drawn from its own RNG stream (`_judgement`), like mishaps, so it does not shift arrivals.
+
+After: a smooth curve with an interior optimum and no cliff — 7,315 at the designed price,
+34,321 at double, 27,491 at two and a half.
+
+**WHAT IS STILL WRONG, and it is the deeper half.** The optimum sits near 2x the designed
+price and pays about 4.7x the profit of pricing as designed. So the slider still hands out free
+money, just less of it and with a real ceiling. The root cause is that value at 1x scores
+around 1.0 against a 0.40 walk-away, so there is a wide dead zone where raising prices costs
+nothing at all. **Closing it means the designed price sitting near the edge of what people will
+pay** — which is true of real menus — and that is a calibration with wide blast radius, not a
+constant to nudge at the end of a session.
 
 **3. Jargon with no explanation.** *"I have no idea what prime cost means, or plow horse."*
 Fair, and a straight violation of the design's own legibility principle — the browser build now

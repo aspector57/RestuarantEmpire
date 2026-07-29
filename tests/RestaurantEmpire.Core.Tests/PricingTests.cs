@@ -265,8 +265,12 @@ namespace RestaurantEmpire.Core.Tests
             var fairNight = Dinner.Run(fair, 25, 4242);
             var modestNight = Dinner.Run(modest, 25, 4242);
 
-            Assert.Equal(0, modestNight.PartiesPutOffByThePrices);
+            // Resistance is no longer a wall you either hit or do not — it is a chance that
+            // climbs with the price, so half again over the designed price costs you a few
+            // parties rather than none. What has to stay true is that it is WORTH doing.
             Assert.True(modestNight.Revenue > fairNight.Revenue);
+            Assert.True(modestNight.PartiesPutOffByThePrices < modestNight.CoversServed / 4,
+                "a modest markup should cost a few covers, not the room");
         }
     }
 }

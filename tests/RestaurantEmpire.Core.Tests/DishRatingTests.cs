@@ -75,8 +75,11 @@ namespace RestaurantEmpire.Core.Tests
             // Budget stock is not a sin. A cheap dish made of cheap things is honest, and
             // plenty of people want exactly that — so the SAME ingredients are fine at a fair
             // price and offensive at a steep one. It is the mismatch that gets punished.
-            var honest = SatisfactionModel.ScoreValue(1.8m, 1m, 0.2m);
-            var gouging = SatisfactionModel.ScoreValue(5.5m, 1m, 0.2m);
+            // Priced as designed against priced at three times it. 1.8x used to read as
+            // "honest" and no longer does — resistance now builds from about a third above
+            // the designed price rather than waiting for double.
+            var honest = SatisfactionModel.ScoreValue(1m, 1m, 0.2m);
+            var gouging = SatisfactionModel.ScoreValue(3m, 1m, 0.2m);
 
             Assert.True(honest > gouging);
             Assert.True(honest > SatisfactionModel.WalkAwayValueThreshold);

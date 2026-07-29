@@ -135,7 +135,8 @@ namespace RestaurantEmpire.Core.Model
             if (priceSensitivity <= 0m) priceSensitivity = 1m;
             if (markup <= 0m) return 1m;   // comped, and nobody complains about free
 
-            var worth = 1m / markup;
+            // Raised to a power, so resistance builds rather than waiting for a cliff.
+            var worth = (decimal)System.Math.Pow(1.0 / (double)markup, PriceToleranceExponent);
 
             // WHAT ARRIVES IS PART OF WHAT YOU PAID FOR. Value is what you get over what you
             // give, and until now only the second half was modeled — so switching every
@@ -171,6 +172,40 @@ namespace RestaurantEmpire.Core.Model
         /// and only real gouging should empty the room.
         /// </summary>
         public const decimal WalkAwayValueThreshold = 0.40m;
+
+        /// <summary>
+        /// How sharply people react to a price above what the dish is worth.
+        ///
+        /// This was 1 — a plain reciprocal — and it made over-charging the dominant strategy.
+        /// Measured across a month: profit rose from 7,315 at the designed prices to 47,001 at
+        /// two and a half times them, with NOBODY put off until double. A free six-fold
+        /// multiplier sitting behind a slider is not a decision, and Aaron found it in about a
+        /// minute: *"raised prices again, drastically this time. Still making a ton of money."*
+        ///
+        /// At 2.5 the reaction starts around a third above the designed price and steepens,
+        /// so there is real headroom for a confident operator and a real wall behind it.
+        /// </summary>
+        public const double PriceToleranceExponent = 2.0;
+
+        /// <summary>
+        /// How likely a party is to read the menu and leave, given how good a deal it looks.
+        ///
+        /// A hard threshold could only ever produce a CLIFF: everybody tolerates the price
+        /// until one more cent, and then the entire street stops coming. Measured at an
+        /// exponent of 2.5, a 1.4x menu was thriving and a 1.6x menu served literally nobody.
+        /// Real demand does not work like that and neither should this.
+        ///
+        /// Now it is a chance that climbs as the deal worsens, so raising prices loses you a
+        /// growing SHARE of the room rather than all of it at once — and the price-sensitive
+        /// go first, which is what makes archetypes matter at the door.
+        /// </summary>
+        public static decimal WalkAwayChance(decimal value)
+        {
+            if (value >= WalkAwayValueThreshold) return 0m;
+
+            var shortfall = (WalkAwayValueThreshold - value) / WalkAwayValueThreshold;
+            return shortfall > 1m ? 1m : shortfall;
+        }
 
         public static SatisfactionResult Evaluate(
             CustomerParty party, Ticket ticket, string dishName,

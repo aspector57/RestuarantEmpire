@@ -67,6 +67,13 @@ namespace RestaurantEmpire.Core.Model
         /// second stream keeps who walks in and what they order exactly as they were.
         /// </summary>
         private readonly DeterministicRandom _mishaps;
+
+        /// <summary>
+        /// A third stream, for a guest's own judgement at the door. Kept apart from arrivals
+        /// for the same reason mishaps are: a draw added to the main sequence shifts every
+        /// arrival after it and rewrites the outcome of every seeded test for no reason.
+        /// </summary>
+        private readonly DeterministicRandom _judgement;
         private readonly KitchenPass _pass;
 
         private readonly List<Table> _tables = new List<Table>();
@@ -98,6 +105,7 @@ namespace RestaurantEmpire.Core.Model
             _definitions = restaurant.Company.Definitions;
             _rng = new DeterministicRandom(seed);
             _mishaps = new DeterministicRandom(seed ^ 0x5EED1E);
+            _judgement = new DeterministicRandom(seed ^ 0x1DEA5);
 
             _lastSpoilageDay = (int)(clock.Tick / GameClock.TicksPerDay);
             restaurant.Inventory.StartOfRun(_lastSpoilageDay);
@@ -509,7 +517,10 @@ namespace RestaurantEmpire.Core.Model
             // And they can read the prices. Nobody has to eat an overpriced dinner to work
             // out it is overpriced — which is what makes gouging cost you trade rather than
             // being free money.
-            if (totalValue / wanted.Count < SatisfactionModel.WalkAwayValueThreshold)
+            // A chance rather than a wall, so a dear menu bleeds custom instead of emptying
+            // the room the moment it crosses a line.
+            var looksWorthIt = totalValue / wanted.Count;
+            if (_judgement.Chance((double)SatisfactionModel.WalkAwayChance(looksWorthIt)))
             {
                 _partiesPutOffByThePrices++;
                 _diagnostics.Add("A party of " + party.Size + " read the prices and left.");
