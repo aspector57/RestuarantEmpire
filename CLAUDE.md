@@ -1024,6 +1024,50 @@ The bar for adding any of these: does it create a decision that is fun to make? 
 
 ---
 
+### Aaron's playtest, 2026-07-29 — what it found, and what is still open
+
+**1. `Markup` IS MISNAMED AND IT MISLEADS.** Aaron: *"if I have a House Focaccia that with
+premium vendors costs me $1.72 and I list it for $14, it only shows a 1.8x mark up, is that
+right?"* No. `MenuCosting.Markup` is price against the price the dish SHIPPED at ($14 ÷ $8),
+which is a real thing the value model needs — but shown beside the ingredient cost it invites
+the obvious reading and is wrong by a factor of twenty. A flat white at $7.40 on 16c of coffee
+displayed "1.9x markup" when the actual markup is 46x, a 2% food cost. **The browser build now
+shows food cost % (the trade's own number) and calls the other figure "x the menu price".**
+The C# property should probably be renamed `PriceAgainstDesigned` — it is not markup.
+
+**2. RAISING PRICES IS STILL NEARLY FREE, and this is the balance finding.** Aaron walked
+prices up in stages and stayed profitable at every step until the very top of the slider. The
+reason is structural: value is judged as `1/(price ÷ designed price)`, so doubling every price
+scores 0.5 against a 0.40 walk-away threshold — a hair above ruin. Meanwhile the covers you
+keep pay double. At the end state he had **$6.7m in cash, 58% prime cost, and 68–93 parties a
+day walking away on price**, and it was still the most profitable configuration he had run.
+**Losing most of your custom should not be the optimum.** Price resistance needs to bite far
+harder before the slider's top end, and that is a real balance job rather than a tweak.
+
+**3. Jargon with no explanation.** *"I have no idea what prime cost means, or plow horse."*
+Fair, and a straight violation of the design's own legibility principle — the browser build now
+carries a plain-language legend for the four quadrants, food cost % and prime cost.
+
+**4. Firing was a queue, not a choice.** *"When I let a cook go, I can't select which one."*
+Now you pick the person, which matters a great deal once they have different wages and skills.
+
+**5. Storage was capacity from thin air.** *"It's giving us storage without even having either
+of these."* Right — base capacity is now zero and the fit-out includes an under-counter fridge
+and dry shelving that you own. And his idea that **better cold keeps things longer** is in: a
+walk-in extends shelf life 40%, which gives the upgrade path a second reason to exist beyond
+square footage.
+
+**STILL OPEN, all Aaron's, none built:**
+- **Per-product ordering vs the blanket standing order.** He is right that "always order"
+  removes the strategy. The browser build now has a per-ingredient **order** button alongside
+  the standing-order switch, but the real answer is probably that the standing order should be
+  something you configure per line rather than a single toggle.
+- **Staffing a service rather than a day.** *"If you just want a coffee and pastry counter in
+  the morning, you don't need your full staff."* Correct, and currently impossible — payroll is
+  a day-rate. Needs shifts.
+- **Far more recipes, and a recipe builder.** Content, and a real feature. The data-driven
+  loader already supports the first half.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
