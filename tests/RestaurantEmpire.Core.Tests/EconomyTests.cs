@@ -124,12 +124,16 @@ namespace RestaurantEmpire.Core.Tests
             var books = company.Economy.Summarize(0, 0, restaurant.Id);
 
             Assert.Equal(night.Revenue, books.Revenue);
-            Assert.Equal(night.FoodCost, books.FoodCost);
-            Assert.Equal(cashBefore + night.Revenue - night.FoodCost, company.Economy.CashOnHand);
 
-            // A real trading night should be comfortably profitable on food alone,
-            // before any labor is booked against it.
-            Assert.True(books.Revenue > books.FoodCost);
+            // FOOD IS NOT CHARGED HERE ANY MORE. It was paid for when it was delivered
+            // (Restaurant.OrderStock), so the night's takings are all that moves the cash —
+            // charging again when the dish is cooked would take the money twice.
+            Assert.Equal(cashBefore + night.Revenue, company.Economy.CashOnHand);
+
+            // The night still reports what the food was worth, which is what the food-cost
+            // ratio is measured on, and a real trading night still clears it comfortably.
+            Assert.True(night.FoodCost > 0m);
+            Assert.True(night.Revenue > night.FoodCost);
         }
 
         [Fact]
@@ -165,11 +169,14 @@ namespace RestaurantEmpire.Core.Tests
             var budgetNight = Dinner.Run(budget, 12, 99);
             budgetCompany.Economy.RecordService(budget, budgetNight, 0);
 
-            var premiumBooks = premiumCompany.Economy.Summarize(0, 0, premium.Id);
-            var budgetBooks = budgetCompany.Economy.Summarize(0, 0, budget.Id);
+            // Measured from what the night actually consumed rather than from the ledger,
+            // since ingredients are now paid for on delivery and a single service does not
+            // line up one-to-one with the deliveries that stocked it.
+            var premiumRatio = premiumNight.FoodCost / premiumNight.Revenue;
+            var budgetRatio = budgetNight.FoodCost / budgetNight.Revenue;
 
             // Cheaper ingredients read better on the books...
-            Assert.True(budgetBooks.FoodCostRatio < premiumBooks.FoodCostRatio);
+            Assert.True(budgetRatio < premiumRatio);
 
             // ...while the guests were measurably less happy. That is the whole tradeoff,
             // now visible on both sides of the same decision.

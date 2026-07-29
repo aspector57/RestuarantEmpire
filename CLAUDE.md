@@ -811,8 +811,8 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 
 | The cost | Status |
 |---|---|
-| **More stock to buy, and more capital tied up in it** | **Gap.** Ingredients are charged when *used*, never when *bought*, so a deep pantry costs nothing to hold. Fixing this means purchase-vs-consumption accounting. |
-| **Spoilage on that bigger pantry** | **Gap.** Listed in M0 scope, deliberately cut from the built slice. Nothing rots, so over-ordering is free. |
+| **More stock to buy, and more capital tied up in it** | **Built.** `Restaurant.OrderStock` charges the money on DELIVERY, not when the dish is cooked. Aaron: *"you should pay when you buy it and then make money when you sell a dish right?"* Right — and it did not, so a walk-in was free to fill. |
+| **Spoilage on that bigger pantry** | **Built.** Meats, produce and dairy perish; the store cupboard keeps. Order to need and food cost lands at 32% of revenue; order ten times over and 92% of it goes in the bin. |
 | **More labor to cover more hours** | **Scheduled — M1.** Economy tracks labor; nothing generates it until Employees. |
 | **Equipment each service needs** (an espresso machine for breakfast) | **Built.** `Restaurant.BuyStation` charges `CapitalExpenditure`; stations already gate dishes, so a breakfast recipe naming a `coffee` station cannot be cooked until the machine is bought. |
 | **Decor and furniture** | **Built.** `Restaurant.Buy`/`BuyTables` charge the books, and `SeatingCapacity` is now *derived* from furniture rather than declared — a bigger room is something you pay for. Comfort feeds satisfaction at the smallest of the four weights, per the design's insistence that decor nudges rather than decides. |
@@ -822,6 +822,26 @@ The honest way to model 24/7 is **several windows with their own peaks** (breakf
 ### Deferred deliberately — "we don't need to over-engineer this, the point is to have fun" (Aaron)
 
 Ideas raised and consciously NOT built, with the reasoning, so they are choices rather than oversights:
+
+### You pay on delivery, and earn when you sell (Aaron)
+
+> *"you should pay when you buy it and then make money when you sell a dish right?"*
+
+Right, and the game did not do it. Ingredients were charged at the moment they were COOKED, so
+filling a walk-in cost nothing until the food was sold — a pantry was free to hold, which is
+what made par levels a slider rather than a decision.
+
+`Restaurant.OrderStock` now takes the money on delivery. **The food-cost entry was moved, not
+duplicated** — `Economy.RecordService` no longer books it, because charging on delivery AND on
+the plate would take the money twice and quietly halve every restaurant's margin. There is a
+test for exactly that (`StockIsNotPaidForTwice`), since it is the kind of error that looks like
+a balance problem for weeks.
+
+`ServiceResult.FoodCost` still reports what a service consumed and binned — it is what the
+food-cost RATIO is measured on. It is simply no longer a cash movement.
+
+**The new failure mode is the interesting one, and it is the one that kills real restaurants:
+profitable on paper and short of cash, because it is all sitting in the walk-in.**
 
 ### Spoilage — SHIPPED, on Aaron's three refinements
 

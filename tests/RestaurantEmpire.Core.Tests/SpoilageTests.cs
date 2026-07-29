@@ -216,5 +216,62 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(month.WastedFoodCost > 0m);
             Assert.Contains(month.Diagnostics, d => d.Contains("gone off"));
         }
+
+        // ---- You pay when it arrives, not when it is cooked (Aaron) ----
+
+        [Fact]
+        public void BuyingStockTakesTheMoneyNow()
+        {
+            // Aaron: "you should pay when you buy it and then make money when you sell a dish
+            // right?" Right, and it did not: ingredients were charged at the moment they were
+            // COOKED, so a walk-in full of food cost nothing to fill and a pantry was free to
+            // hold. That is what made par levels a slider rather than a decision.
+            var restaurant = Build(out var company, opening: 20m);
+            var before = company.Economy.CashOnHand;
+
+            var spent = restaurant.OrderStock("sea-bass", 50m);
+
+            Assert.True(spent > 0m);
+            Assert.Equal(before - spent, company.Economy.CashOnHand);
+            Assert.True(restaurant.Inventory.QuantityOf("sea-bass") >= 50m);
+        }
+
+        [Fact]
+        public void StockIsNotPaidForTwice()
+        {
+            // The trap this had to avoid: charging on delivery AND on the plate would take the
+            // money twice and quietly halve every restaurant's margin.
+            var restaurant = Build(out var company, opening: 20m);
+            restaurant.OrderStock("sea-bass", 200m);
+
+            var afterBuying = company.Economy.CashOnHand;
+            var night = Dinner.Run(restaurant, 25, 99);
+            company.Economy.RecordService(restaurant, night, 0);
+
+            Assert.True(night.FoodCost > 0m, "the night should have eaten something");
+            // Takings in, wages out — and the food already paid for on delivery.
+            Assert.Equal(afterBuying + night.Revenue - night.LaborCost, company.Economy.CashOnHand);
+        }
+
+        [Fact]
+        public void AFullPantryCostsCashUpFront()
+        {
+            // The new failure mode, and the interesting one: you can be profitable on paper
+            // and still not have the money, because it is all sitting in the walk-in.
+            var thrifty = Build(out var thriftyCo, opening: 20m);
+            var hoarder = Build(out var hoarderCo, opening: 20m);
+
+            var thriftyBefore = thriftyCo.Economy.CashOnHand;
+            var hoarderBefore = hoarderCo.Economy.CashOnHand;
+
+            foreach (var id in OnTheMenu(thrifty)) thrifty.OrderStock(id, 30m);
+            foreach (var id in OnTheMenu(hoarder)) hoarder.OrderStock(id, 900m);
+
+            var thriftySpent = thriftyBefore - thriftyCo.Economy.CashOnHand;
+            var hoarderSpent = hoarderBefore - hoarderCo.Economy.CashOnHand;
+
+            Assert.True(hoarderSpent > thriftySpent * 10m,
+                "hoarding should tie up real money: " + hoarderSpent + " against " + thriftySpent);
+        }
     }
 }

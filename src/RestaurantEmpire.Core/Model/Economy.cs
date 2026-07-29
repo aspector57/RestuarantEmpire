@@ -234,17 +234,11 @@ namespace RestaurantEmpire.Core.Model
                     result.CoversServed + " covers served", restaurant.Id);
             }
 
-            if (result.FoodCost > 0m)
-            {
-                var note = "Ingredients for " + result.Tickets.Count + " tickets";
-                if (result.WastedFoodCost > 0m)
-                {
-                    note += " (including " + result.WastedFoodCost.ToString("0.00",
-                        System.Globalization.CultureInfo.InvariantCulture) + " cooked for walkouts)";
-                }
-
-                Record(tick, LedgerCategory.FoodCost, result.FoodCost, note, restaurant.Id);
-            }
+            // FOOD IS NOT BOOKED HERE. Ingredients are paid for when they are DELIVERED
+            // (Restaurant.OrderStock), so charging again when the dish is cooked would take
+            // the money twice. `result.FoodCost` remains the value of what a service consumed
+            // and binned, which is what the food-cost RATIO is measured on — it is simply no
+            // longer a cash movement.
 
             if (result.LaborCost > 0m)
             {

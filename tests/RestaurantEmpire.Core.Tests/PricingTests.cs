@@ -166,6 +166,11 @@ namespace RestaurantEmpire.Core.Tests
             // Labor is a realistic share of the mid-market night's takings, and the SAME
             // absolute figure is booked against both — so this stays a comparison of pricing
             // rather than of a hardcoded number that goes stale whenever demand is retuned.
+            // Food is paid on delivery now, so book what each night consumed explicitly to
+            // keep this a comparison of PRICING rather than of when the invoices landed.
+            cheapCo.Economy.Record(0, LedgerCategory.FoodCost, asIs.FoodCost, "Ingredients", cheapPrices.Id);
+            repricedCo.Economy.Record(0, LedgerCategory.FoodCost, charged.FoodCost, "Ingredients", repriced.Id);
+
             var labor = decimal.Round(asIs.Revenue * 0.20m, 2);
             cheapCo.Economy.Record(0, LedgerCategory.LaborCost, labor, "Brigade", cheapPrices.Id);
             repricedCo.Economy.Record(0, LedgerCategory.LaborCost, labor, "Brigade", repriced.Id);

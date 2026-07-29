@@ -295,6 +295,44 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>Convenience for the common case: buy seating.</summary>
+        /// <summary>
+        /// Buy ingredients. **The money leaves now**, which is the whole point.
+        ///
+        /// Aaron: *"you should pay when you buy it and then make money when you sell a dish
+        /// right?"* Right — and until this existed the game charged for ingredients at the
+        /// moment they were COOKED, so filling a walk-in cost nothing until the food was sold.
+        /// A pantry was free to hold, which made par levels a slider rather than a decision
+        /// and made it impossible to be profitable on paper and still short of rent.
+        ///
+        /// Returns what it cost.
+        /// </summary>
+        public decimal OrderStock(string ingredientId, decimal quantity, long tick = 0)
+        {
+            if (quantity <= 0m) return 0m;
+
+            var cost = quantity * SupplierPolicy.UnitPriceFor(ingredientId);
+
+            Company.Economy.Record(tick, LedgerCategory.FoodCost, cost,
+                "Ingredients — " + ingredientId, Id);
+
+            Inventory.Receive(ingredientId, quantity);
+            return cost;
+        }
+
+        /// <summary>Top every ingredient back into its par band, and pay for the lot.</summary>
+        public decimal OrderStockToPar(long tick = 0)
+        {
+            var spent = 0m;
+
+            foreach (var stock in new List<IngredientStock>(Inventory.Items))
+            {
+                if (!stock.IsBelowPar) continue;
+                spent += OrderStock(stock.IngredientId, stock.SuggestedReorderQuantity, tick);
+            }
+
+            return spent;
+        }
+
         public Fitting BuyTables(string id, string name, decimal cost, int seats, decimal comfort = 0.5m, long tick = 0)
         {
             return Buy(new Fitting(id, name, cost, seats, comfort), tick);
