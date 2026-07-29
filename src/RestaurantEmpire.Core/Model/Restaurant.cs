@@ -319,6 +319,22 @@ namespace RestaurantEmpire.Core.Model
             return cost;
         }
 
+        /// <summary>
+        /// Whether the kitchen orders for itself, topping up to par each day.
+        ///
+        /// ON BY DEFAULT, and that is the point. Aaron: *"you don't want to constantly be
+        /// ordering because things are spoiling... it shouldn't be a huge daily thing you need
+        /// to always be monitoring, then you are basically playing a stocking game."* Right —
+        /// and as first built it was exactly that, because perishables need topping up every
+        /// few days and nothing did it for you.
+        ///
+        /// **The decision is the PAR POLICY, not the daily act.** You set how deep you want to
+        /// run, once, and revisit it when the menu or the trade changes. Spoilage then
+        /// punishes a standing order that is too deep — which is a judgement about how you run
+        /// the place — rather than punishing you for looking away for a week.
+        /// </summary>
+        public bool StandingOrder { get; set; } = true;
+
         /// <summary>Top every ingredient back into its par band, and pay for the lot.</summary>
         public decimal OrderStockToPar(long tick = 0)
         {
@@ -327,7 +343,18 @@ namespace RestaurantEmpire.Core.Model
             foreach (var stock in new List<IngredientStock>(Inventory.Items))
             {
                 if (!stock.IsBelowPar) continue;
-                spent += OrderStock(stock.IngredientId, stock.SuggestedReorderQuantity, tick);
+
+                var wanted = stock.SuggestedReorderQuantity;
+                if (wanted <= 0m) continue;
+
+                // Never order food you cannot pay for. A restaurant with no money stops
+                // getting deliveries, which is a truer failure than an overdraft that grows
+                // quietly in the background.
+                var affordable = Company.Economy.CashOnHand / SupplierPolicy.UnitPriceFor(stock.IngredientId);
+                if (affordable <= 0m) continue;
+                if (wanted > affordable) wanted = affordable;
+
+                spent += OrderStock(stock.IngredientId, wanted, tick);
             }
 
             return spent;

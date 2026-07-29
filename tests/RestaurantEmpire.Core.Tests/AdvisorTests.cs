@@ -113,6 +113,11 @@ namespace RestaurantEmpire.Core.Tests
         {
             // If the right answer is nearly always the same, it does not deserve a question.
             var restaurant = Build(out _);
+
+            // Standing order off, because restocking is only a chore when nothing is doing it
+            // for you — with one running, "you are low on tomatoes" is a notification about
+            // something already handled, and the Advisor deliberately keeps quiet about it.
+            restaurant.StandingOrder = false;
             restaurant.Inventory.TryConsume("tomato", 950m);   // now below par
 
             var chores = new Advisor(restaurant).Review().Where(s => s.Tier == AdvisorTier.Chore).ToList();

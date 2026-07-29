@@ -843,6 +843,42 @@ food-cost RATIO is measured on. It is simply no longer a cash movement.
 **The new failure mode is the interesting one, and it is the one that kills real restaurants:
 profitable on paper and short of cash, because it is all sitting in the walk-in.**
 
+### Ordering is a POLICY, not a chore (Aaron) — and what that leaves unresolved
+
+> *"you don't want to constantly be ordering because things are spoiling... it shouldn't be a
+> huge daily thing you need to always be monitoring, then you are basically playing a stocking
+> game if it is too much. It should not be the main focus of the game but should exist in a
+> meaningful way at the same time."*
+
+A fair hit, and true of what had been built: perishables need topping up every few days and
+nothing did it for you. **`Restaurant.StandingOrder` is on by default** and tops up to par each
+morning, paying as it goes and never ordering food it cannot afford — a restaurant with no
+money stops getting deliveries, which is a truer failure than a quiet overdraft.
+
+The Advisor changed with it. **Restock chores are suppressed while a standing order is
+running**, because "you are low on tomatoes" is a notification about something already handled.
+What it says instead is `overordering`: *"we're throwing away too much of what we buy"*, with
+the share and the reason. Advise on the policy, not the chore.
+
+Measured, sixty days with **the player doing nothing at all**: 12% of the food bill binned,
+nothing 86'd, satisfaction 0.73. The stocking game is gone.
+
+**WHAT IS UNRESOLVED, and it is worth being straight about.** Spoilage is now a background cost
+(7–26% of food depending on how the place trades) that the player has **no lever on**, because
+the automatic order is already about right and par settings no longer change the outcome —
+tight, normal and deep pars produced identical results. It exists meaningfully as a COST. It
+does not yet exist as a DECISION.
+
+A hypothesis that turned out wrong, recorded so it is not retried: menu composition does not
+drive it in the obvious direction. A stable pizza-and-bread menu wasted MORE (26%) than a
+fish-and-truffle one (10%), because it sold less and stock turned over slower. Perishability
+matters less than throughput.
+
+**The missing piece is an UPSIDE to ordering deep** — bulk pricing, fewer deliveries, or cover
+against a supply shock. Without one, over-ordering is a mistake to avoid rather than a trade to
+weigh, and no amount of tuning makes a mistake into a decision. That is a design question for
+Aaron rather than a number to move.
+
 ### Freshness: a gradient, not a cliff (Aaron)
 
 > *"we should be able to see how much is about to turn bad, because you may need to order more

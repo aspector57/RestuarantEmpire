@@ -242,6 +242,11 @@ namespace RestaurantEmpire.Core.Tests
             // The trap this had to avoid: charging on delivery AND on the plate would take the
             // money twice and quietly halve every restaurant's margin.
             var restaurant = Build(out var company, opening: 20m);
+
+            // Standing order off, so the only money moving is the delivery we make here and
+            // the night's takings. This test is about not being charged twice for the same
+            // food, not about how the kitchen restocks itself.
+            restaurant.StandingOrder = false;
             restaurant.OrderStock("sea-bass", 200m);
 
             var afterBuying = company.Economy.CashOnHand;

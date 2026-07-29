@@ -188,6 +188,32 @@ namespace RestaurantEmpire.Core.Model
 
         private void AddChores(List<Suggestion> found, ServiceResult trading)
         {
+            // ORDERING IS A POLICY, SO ADVISE ON THE POLICY.
+            //
+            // With a standing order running, "you are low on tomatoes" is not advice, it is a
+            // notification about something already being handled — and Aaron's objection
+            // stands: if the game makes you watch stock every day it becomes a stocking game.
+            // What is worth saying is that the standing order is set WRONG, which is a
+            // judgement the player made and can change.
+            if (trading != null && trading.WastedFoodCost > 0m && trading.FoodCost > 0m)
+            {
+                var binnedShare = trading.WastedFoodCost / trading.FoodCost;
+                if (binnedShare > 0.35m)
+                {
+                    found.Add(new Suggestion(
+                        "overordering", AdvisorTier.Chore,
+                        "We're throwing away too much of what we buy.",
+                        decimal.Round(binnedShare * 100m) + "% of the food bill went in the bin. " +
+                        "The standing order is deeper than this kitchen gets through — order " +
+                        "less, more often.",
+                        subjectId: "par"));
+                }
+            }
+
+            // Restocking is only worth mentioning when nothing is doing it for you. Scoped to
+            // this loop rather than returning early — an early return here also skipped every
+            // staffing chore below, which three tests caught immediately.
+            if (!_restaurant.StandingOrder)
             foreach (var stock in _restaurant.Inventory.BelowPar)
             {
                 found.Add(new Suggestion(

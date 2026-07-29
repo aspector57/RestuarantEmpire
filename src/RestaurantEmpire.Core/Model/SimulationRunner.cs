@@ -214,6 +214,10 @@ namespace RestaurantEmpire.Core.Model
                 _lastSpoilageDay = today;
                 _restaurant.Inventory.AdvanceTo(today);
                 BinWhatWentOff(today);
+
+                // The standing order goes in before service. Ordering is a policy you set,
+                // not a chore you perform — see Restaurant.StandingOrder.
+                if (_restaurant.StandingOrder) _restaurant.OrderStockToPar(tick);
             }
 
             Interrupt interrupt = null;
