@@ -363,5 +363,73 @@ namespace RestaurantEmpire.Core.Tests
             // And it threw out the OLD one, so what is left is the fresh delivery.
             Assert.Equal(1m, restaurant.Inventory.FreshnessOf("basil", definitions));
         }
+
+        // ---- You cannot buy what you have nowhere to put ----
+
+        [Fact]
+        public void OrderingIsCappedByWhatYouCanStore()
+        {
+            var restaurant = Build(out var company, opening: 20m);
+            restaurant.StandingOrder = false;
+
+            var room = restaurant.RoomInStorageFor("sea-bass");
+            Assert.True(room > 0m);
+
+            // Ask for far more than the walk-in holds; get what fits, and pay for that.
+            var cashBefore = company.Economy.CashOnHand;
+            var spent = restaurant.OrderStock("sea-bass", room * 5m);
+
+            Assert.True(restaurant.ColdStorageUsed <= restaurant.ColdStorageCapacity);
+            Assert.Equal(cashBefore - spent, company.Economy.CashOnHand);
+            Assert.Equal(0m, restaurant.RoomInStorageFor("sea-bass"));
+
+            // And a second order for the same thing buys nothing at all.
+            Assert.Equal(0m, restaurant.OrderStock("sea-bass", 100m));
+        }
+
+        [Fact]
+        public void ChilledAndDryAreSeparateSpaces()
+        {
+            // Filling the walk-in with fish must not stop you buying flour.
+            var restaurant = Build(out _, opening: 20m);
+            restaurant.StandingOrder = false;
+
+            restaurant.OrderStock("sea-bass", restaurant.RoomInStorageFor("sea-bass"));
+
+            Assert.Equal(0m, restaurant.RoomInStorageFor("tomato"));      // chilled: full
+            Assert.True(restaurant.RoomInStorageFor("flour") > 0m);        // dry: untouched
+        }
+
+        [Fact]
+        public void BuyingStorageBuysRoom_AndCostsFloor()
+        {
+            // Storage is EQUIPMENT, so more of it competes with the kitchen and the dining
+            // room for the same square feet. That is what makes "order deep" a decision with
+            // a visible price rather than only a thing spoilage punishes afterwards.
+            var restaurant = Build(out var company, opening: 20m);
+            var definitions = company.Definitions;
+
+            var before = restaurant.ColdStorageCapacity;
+            var floorBefore = restaurant.FreeFloorArea;
+
+            var walkIn = definitions.GetEquipment("cold-walkin");
+            restaurant.BuyEquipment(walkIn, 1);
+
+            Assert.True(restaurant.ColdStorageCapacity > before);
+            Assert.True(restaurant.FreeFloorArea < floorBefore, "a cold room takes floor");
+            Assert.Equal(before + walkIn.Capacity, restaurant.ColdStorageCapacity);
+        }
+
+        [Fact]
+        public void AKitchenThatNeverOverOrdersNeverNoticesTheCap()
+        {
+            // The constraint has to be invisible when you are running sensibly, or it is just
+            // another thing to monitor — which is the trap Aaron flagged about stock generally.
+            var restaurant = Build(out _, opening: 20m);
+            var month = Trade(restaurant, 30);
+
+            Assert.Equal(0, month.PartiesLostToMenu);
+            Assert.True(restaurant.ColdStorageUsed < restaurant.ColdStorageCapacity);
+        }
     }
 }

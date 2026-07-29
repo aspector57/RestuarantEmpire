@@ -46,7 +46,7 @@ namespace RestaurantEmpire.Core.Tests
         /// game was unwinnable. It is not. Snapshots are cumulative, so book the deltas.
         /// </summary>
         private static ServiceResult BookMonth(Company company, Restaurant r, SimulationRunner runner,
-            ServiceResult last, long tick, decimal rent)
+            ServiceResult? last, long tick, decimal rent)
         {
             var now = runner.Snapshot();
             var revenue = now.Revenue - (last == null ? 0m : last.Revenue);
@@ -242,7 +242,7 @@ namespace RestaurantEmpire.Core.Tests
 
                 var clock = new GameClock();
                 var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
-                ServiceResult booked = null;
+                ServiceResult? booked = null;
                 for (var month = 1; month <= 12; month++)
                 {
                     runner.AdvanceDays(30);
@@ -317,7 +317,7 @@ namespace RestaurantEmpire.Core.Tests
                     var clock = new GameClock();
                     var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
                     decimal m3 = 0m, m6 = 0m;
-                    ServiceResult booked = null;
+                    ServiceResult? booked = null;
                     for (var month = 1; month <= 12; month++)
                     {
                         runner.AdvanceDays(30);
@@ -365,7 +365,7 @@ namespace RestaurantEmpire.Core.Tests
             var clock = new GameClock();
             var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
             m3 = 0m; m6 = 0m;
-            ServiceResult booked = null;
+            ServiceResult? booked = null;
 
             for (var month = 1; month <= 12; month++)
             {
@@ -451,7 +451,7 @@ namespace RestaurantEmpire.Core.Tests
             var runner = new SimulationRunner(r, clock, 4242, InterruptPolicy.None());
 
             m3 = 0m; m6 = 0m;
-            ServiceResult booked = null;
+            ServiceResult? booked = null;
 
             for (var month = 1; month <= months; month++)
             {

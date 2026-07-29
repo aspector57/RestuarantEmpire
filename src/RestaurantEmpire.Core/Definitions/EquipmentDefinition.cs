@@ -15,7 +15,7 @@ namespace RestaurantEmpire.Core.Definitions
     {
         public EquipmentDefinition(
             string id, string stationId, string name,
-            decimal cost, decimal speedMultiplier, decimal footprint, decimal quality = 0.5m)
+            decimal cost, decimal speedMultiplier, decimal footprint, decimal quality = 0.5m, decimal capacity = 0m)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Equipment id is required.", nameof(id));
             if (string.IsNullOrWhiteSpace(stationId)) throw new ArgumentException("Equipment must name a station.", nameof(stationId));
@@ -30,6 +30,7 @@ namespace RestaurantEmpire.Core.Definitions
             SpeedMultiplier = speedMultiplier;
             Footprint = footprint;
             Quality = quality;
+            Capacity = capacity < 0m ? 0m : capacity;
         }
 
         public string Id { get; }
@@ -50,6 +51,16 @@ namespace RestaurantEmpire.Core.Definitions
 
         /// <summary>0 to 1. Reserved for the dish-quality contribution equipment will make later.</summary>
         public decimal Quality { get; }
+
+        /// <summary>
+        /// Units of stock this holds. Zero for anything that cooks rather than stores.
+        ///
+        /// Storage is EQUIPMENT on purpose, so it competes for the same floor as the kitchen
+        /// and the dining room. That is what turns "order deep" from a thing only spoilage
+        /// punishes into a decision with a price you can see: a bigger walk-in is either
+        /// capital, or covers you no longer have room for.
+        /// </summary>
+        public decimal Capacity { get; }
 
         /// <summary>Throughput per square meter — the number that decides whether upgrading beats expanding.</summary>
         public decimal SpeedPerSquareFoot { get { return SpeedMultiplier / Footprint; } }

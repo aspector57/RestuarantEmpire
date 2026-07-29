@@ -236,7 +236,7 @@ namespace RestaurantEmpire.Core.Content
                 try
                 {
                     result.Add(new EquipmentDefinition(dto.Id, dto.Station, dto.Name,
-                        dto.Cost, dto.Speed, dto.Footprint, dto.Quality));
+                        dto.Cost, dto.Speed, dto.Footprint, dto.Quality, dto.Capacity));
                 }
                 catch (ArgumentException ex)
                 {
@@ -288,6 +288,7 @@ namespace RestaurantEmpire.Core.Content
             public decimal Cost { get; set; }
             public decimal Speed { get; set; }
             public decimal Footprint { get; set; }
+            public decimal Capacity { get; set; }
             public decimal Quality { get; set; }
         }
 

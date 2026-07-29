@@ -18,7 +18,8 @@
       "cost": 1600,
       "speed": 0.75,
       "footprint": 54,
-      "quality": 0.4
+      "quality": 0.4,
+      "capacity": 0
     },
     {
       "id": "oven-commercial",
@@ -27,7 +28,8 @@
       "cost": 3400,
       "speed": 1.0,
       "footprint": 43,
-      "quality": 0.6
+      "quality": 0.6,
+      "capacity": 0
     },
     {
       "id": "oven-hearth",
@@ -36,7 +38,8 @@
       "cost": 9000,
       "speed": 1.6,
       "footprint": 34,
-      "quality": 0.9
+      "quality": 0.9,
+      "capacity": 0
     },
     {
       "id": "saute-basic",
@@ -45,7 +48,8 @@
       "cost": 1400,
       "speed": 0.8,
       "footprint": 43,
-      "quality": 0.4
+      "quality": 0.4,
+      "capacity": 0
     },
     {
       "id": "saute-commercial",
@@ -54,7 +58,8 @@
       "cost": 3000,
       "speed": 1.0,
       "footprint": 38,
-      "quality": 0.6
+      "quality": 0.6,
+      "capacity": 0
     },
     {
       "id": "saute-induction",
@@ -63,7 +68,8 @@
       "cost": 8200,
       "speed": 1.55,
       "footprint": 30,
-      "quality": 0.9
+      "quality": 0.9,
+      "capacity": 0
     },
     {
       "id": "gm-basic",
@@ -72,7 +78,8 @@
       "cost": 700,
       "speed": 0.85,
       "footprint": 32,
-      "quality": 0.4
+      "quality": 0.4,
+      "capacity": 0
     },
     {
       "id": "gm-refrigerated",
@@ -81,7 +88,8 @@
       "cost": 2100,
       "speed": 1.0,
       "footprint": 28,
-      "quality": 0.6
+      "quality": 0.6,
+      "capacity": 0
     },
     {
       "id": "gm-pass",
@@ -90,7 +98,8 @@
       "cost": 5400,
       "speed": 1.45,
       "footprint": 24,
-      "quality": 0.9
+      "quality": 0.9,
+      "capacity": 0
     },
     {
       "id": "coffee-filter",
@@ -99,7 +108,8 @@
       "cost": 900,
       "speed": 0.8,
       "footprint": 15,
-      "quality": 0.3
+      "quality": 0.3,
+      "capacity": 0
     },
     {
       "id": "coffee-espresso",
@@ -108,7 +118,8 @@
       "cost": 4200,
       "speed": 1.0,
       "footprint": 19,
-      "quality": 0.7
+      "quality": 0.7,
+      "capacity": 0
     },
     {
       "id": "coffee-marzocco",
@@ -117,7 +128,8 @@
       "cost": 11000,
       "speed": 1.5,
       "footprint": 24,
-      "quality": 1.0
+      "quality": 1.0,
+      "capacity": 0
     },
     {
       "id": "grill-flat",
@@ -126,7 +138,8 @@
       "cost": 1500,
       "speed": 0.85,
       "footprint": 37,
-      "quality": 0.5
+      "quality": 0.5,
+      "capacity": 0
     },
     {
       "id": "grill-chargrill",
@@ -135,7 +148,58 @@
       "cost": 3600,
       "speed": 1.1,
       "footprint": 32,
-      "quality": 0.8
+      "quality": 0.8,
+      "capacity": 0
+    },
+    {
+      "id": "cold-domestic",
+      "station": "cold-storage",
+      "name": "Domestic Fridge",
+      "cost": 600,
+      "speed": 1.0,
+      "footprint": 12,
+      "quality": 0.4,
+      "capacity": 250
+    },
+    {
+      "id": "cold-underbar",
+      "station": "cold-storage",
+      "name": "Under-counter Fridge",
+      "cost": 1400,
+      "speed": 1.0,
+      "footprint": 16,
+      "quality": 0.6,
+      "capacity": 600
+    },
+    {
+      "id": "cold-walkin",
+      "station": "cold-storage",
+      "name": "Walk-in Cold Room",
+      "cost": 6800,
+      "speed": 1.0,
+      "footprint": 90,
+      "quality": 0.9,
+      "capacity": 3000
+    },
+    {
+      "id": "dry-shelving",
+      "station": "dry-storage",
+      "name": "Dry Shelving",
+      "cost": 300,
+      "speed": 1.0,
+      "footprint": 10,
+      "quality": 0.5,
+      "capacity": 900
+    },
+    {
+      "id": "dry-stockroom",
+      "station": "dry-storage",
+      "name": "Stockroom Racking",
+      "cost": 1200,
+      "speed": 1.0,
+      "footprint": 34,
+      "quality": 0.7,
+      "capacity": 4000
     }
   ]
 }

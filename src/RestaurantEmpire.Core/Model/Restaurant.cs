@@ -310,6 +310,14 @@ namespace RestaurantEmpire.Core.Model
         {
             if (quantity <= 0m) return 0m;
 
+            // YOU CANNOT BUY WHAT YOU CANNOT PUT ANYWHERE. Storage is the thing that finally
+            // makes "order deep" cost something visible rather than only being punished by
+            // spoilage after the fact — and because storage is equipment, buying more of it
+            // competes for the same floor as the kitchen and the dining room.
+            var room = RoomInStorageFor(ingredientId);
+            if (room <= 0m) return 0m;
+            if (quantity > room) quantity = room;
+
             var cost = quantity * SupplierPolicy.UnitPriceFor(ingredientId);
 
             Company.Economy.Record(tick, LedgerCategory.FoodCost, cost,
@@ -334,6 +342,60 @@ namespace RestaurantEmpire.Core.Model
         /// the place — rather than punishing you for looking away for a week.
         /// </summary>
         public bool StandingOrder { get; set; } = true;
+
+        /// <summary>
+        /// What a restaurant can hold before it owns any storage at all — a couple of
+        /// under-counter fridges and a shelf, the sort of thing that comes with the unit.
+        /// Enough to trade on, nowhere near enough to buy in bulk.
+        /// </summary>
+        /// Sized from what a working restaurant actually holds: a 32-cover dinner service
+        /// carries roughly 250 units of chilled stock across its perishables and rather more
+        /// dry. Generous enough that a normal kitchen never thinks about it, tight enough that
+        /// buying in bulk means buying somewhere to put it.
+        public const decimal BaseColdStorage = 1000m;
+        public const decimal BaseDryStorage = 3000m;
+
+        /// <summary>Units of perishable stock this restaurant can keep. Chilled space.</summary>
+        public decimal ColdStorageCapacity { get { return BaseColdStorage + CapacityOf("cold-storage"); } }
+
+        /// <summary>Units of dry goods. Cheaper per unit of space, and nothing in it rots.</summary>
+        public decimal DryStorageCapacity { get { return BaseDryStorage + CapacityOf("dry-storage"); } }
+
+        private decimal CapacityOf(string stationId)
+        {
+            // Kitchen.Get THROWS when nothing is installed rather than returning null, which
+            // is worth knowing: assuming null here took out a dozen tests at once.
+            KitchenStation station = null;
+            foreach (var installed in Kitchen.Stations)
+            {
+                if (installed.Id != stationId) continue;
+                station = installed;
+                break;
+            }
+
+            if (station == null) return 0m;
+
+            try { return Company.Definitions.GetEquipment(station.EquipmentId).Capacity * station.ConcurrentCapacity; }
+            catch (Definitions.DefinitionNotFoundException) { return 0m; }
+        }
+
+        /// <summary>How much chilled and dry space is already spoken for.</summary>
+        public decimal ColdStorageUsed { get { return Inventory.HeldOfKind(Company.Definitions, true); } }
+        public decimal DryStorageUsed { get { return Inventory.HeldOfKind(Company.Definitions, false); } }
+
+        /// <summary>Space left for this ingredient, in its own kind of storage.</summary>
+        public decimal RoomInStorageFor(string ingredientId)
+        {
+            var perishable = true;
+            try { perishable = Company.Definitions.GetIngredient(ingredientId).Perishable; }
+            catch (Definitions.DefinitionNotFoundException) { }
+
+            var left = perishable
+                ? ColdStorageCapacity - ColdStorageUsed
+                : DryStorageCapacity - DryStorageUsed;
+
+            return left < 0m ? 0m : left;
+        }
 
         /// <summary>Top every ingredient back into its par band, and pay for the lot.</summary>
         public decimal OrderStockToPar(long tick = 0)

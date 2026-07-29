@@ -401,6 +401,25 @@ namespace RestaurantEmpire.Core.Model
             return true;
         }
 
+        /// <summary>Total units held of the perishable (chilled) or keeping (dry) kind.</summary>
+        public decimal HeldOfKind(Definitions.DefinitionRegistry definitions, bool perishable)
+        {
+            if (definitions == null) return 0m;
+
+            var total = 0m;
+            foreach (var stock in _stock.Values)
+            {
+                try
+                {
+                    if (definitions.GetIngredient(stock.IngredientId).Perishable == perishable)
+                        total += stock.Quantity;
+                }
+                catch (Definitions.DefinitionNotFoundException) { }
+            }
+
+            return total;
+        }
+
         public decimal QuantityOf(string ingredientId)
         {
             IngredientStock stock;
