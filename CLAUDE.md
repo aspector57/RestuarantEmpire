@@ -1132,6 +1132,60 @@ definitions**, which is queued rather than built at his suggestion.
 - **Far more recipes, and a recipe builder.** Content, and a real feature. The data-driven
   loader already supports the first half.
 
+### The parallel implementation (Howard's branch) — what is worth taking
+
+Aaron co-owns a second implementation of this same design: `HSpector1/Restaurant`, branch
+`foundation/m0-headless-service-lab`. ~2,000 lines, .NET, same "deterministic engine-agnostic
+core" framing, reached M0 independently. It is a control group, and two of its decisions are
+straightforwardly better than ours.
+
+**1. PRICE IS ANCHORED TO WHAT THE CUSTOMER CAN AFFORD, NOT TO A DESIGNED PRICE.** This is the
+answer to our biggest open problem. Each segment carries a `BudgetPerCoverCents`; the model
+takes 60% of it as what a main should cost, and conversion falls the moment your price exceeds
+that, scaled by the segment's own `PriceSensitivityBp`:
+
+```
+budgetMain = segment.BudgetPerCover * 0.6
+overBp     = max(0, price/budgetMain - 1)
+priceFactor= clamp(1 - overBp * segment.PriceSensitivity, 0.08, 1.0)
+```
+
+`SuggestedPriceCents` exists in his fixtures but is **only a starting value in the CLI** — it
+never enters the demand calculation. Ours makes it the anchor (`Markup = price / designed
+price`), which is exactly why we have a dead zone: a dish priced as designed scores ~1.0
+against a 0.40 walk-away, so the first chunk of any price rise is free. **Anchoring to budget
+removes the dead zone by construction** — there is no "fair" price to be safely at, only a
+customer who can or cannot afford you. It also makes the same dish correctly priced differently
+for a lunch crowd and a food enthusiast, which our archetypes want and cannot express.
+
+**2. RNG STREAMS ARE PER-ENTITY, NOT PER-DOMAIN.** `RngStreams.For(stream, entityKey)` returns a
+fresh SplitMix64 seeded from `Mix(Mix(rootSeed, streamSalt), entityKey)`. So a roll added to one
+party cannot perturb any other party, ever. We have three global streams (`_rng`, `_mishaps`,
+`_judgement`) and reached for the second and third precisely because adding a draw shifted
+everything downstream — **his design solves the problem we kept patching around.** His ADR-003
+names the exact failure we hit twice this session.
+
+**Also worth stealing, in rough order:**
+- **Menu complexity as an explicit throughput tax** (`Tuning.ComplexityBp`): breadth beyond four
+  items adds ticket work and mistake chance. We measured breadth winning unconditionally and
+  had no counterweight; he modelled one deliberately.
+- **A pre-service forecast computed from the same model as the service**, then compared to
+  actual. That is a management-game mechanic in its own right — you plan, then find out how
+  wrong you were — and it is a strong argument for keeping demand logic in one shared place.
+- **Tuning constants in one named file**, shared by simulator and forecaster so they cannot
+  drift. Ours are scattered across the classes that use them.
+- **Integer fixed-point (basis points) rather than `decimal`.** Both are deterministic on .NET;
+  integers are portable anywhere and cheaper. Not worth retrofitting, worth knowing.
+
+**Where ours is further along, so this is not a wholesale swap:** reputation with awareness and
+a ceiling, spoilage/freshness/FIFO with pay-on-delivery and storage, staff who learn with
+scouting error, menu engineering by category, the Advisor, save/load, and a browser build that
+a human has actually played five times. His content is hardcoded fixtures; ours is data-driven
+JSON per Architecture Rule 2.
+
+**The honest summary: he built a better ECONOMIC MODEL, we built more GAME.** The budget anchor
+and per-entity streams are the two things to take.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
