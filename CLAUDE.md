@@ -1114,6 +1114,11 @@ and dry shelving that you own. And his idea that **better cold keeps things long
 walk-in extends shelf life 40%, which gives the upgrade path a second reason to exist beyond
 square footage.
 
+**Hover definitions are in** — every term in the pass readout and every menu-matrix tag
+carries its meaning on hover, from a single `GLOSSARY` object so a tooltip and the printed
+legend can never drift apart. Aaron also asked for **a pause/settings screen holding the
+definitions**, which is queued rather than built at his suggestion.
+
 **STILL OPEN, all Aaron's, none built:**
 - **Per-product ordering vs the blanket standing order.** He is right that "always order"
   removes the strategy. The browser build now has a per-ingredient **order** button alongside
@@ -1122,6 +1127,8 @@ square footage.
 - **Staffing a service rather than a day.** *"If you just want a coffee and pastry counter in
   the morning, you don't need your full staff."* Correct, and currently impossible — payroll is
   a day-rate. Needs shifts.
+- **A settings or pause screen with the glossary in it**, rather than definitions only
+  appearing where the term does.
 - **Far more recipes, and a recipe builder.** Content, and a real feature. The data-driven
   loader already supports the first half.
 
