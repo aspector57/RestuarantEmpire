@@ -913,6 +913,34 @@ from the pantry.
 **Deliberately NOT built: it is M4, and needs multi-location to mean anything.** A single
 restaurant offered a national contract has no decision to make.
 
+### A scale whose top cannot be reached is a wrong scale (Aaron)
+
+> *"it says on this supplier your standing can never pass 89/100 — this is the best supplier
+> possible so would I never be able to reach 100?"*
+
+No, and that was a real defect. The ceiling was `0.45 competence + ingredients x 0.40 + room x
+0.08`, which tops out at **93 even with the best of everything** — so a restaurant doing
+everything available to it was told it was capped, and given no way to learn why. The three
+now sum to exactly 1.0 (0.42 / 0.50 / 0.08), and **a perfect standing needs the best sourcing
+AND a perfect room, both**.
+
+**And measuring it turned up something more useful: THE CEILING ALMOST NEVER BINDS.** Standing
+converges toward what the meals actually score, and that sits well below the cap at every tier:
+
+| Supplier | Standing settles at | Ceiling | Meal quality |
+|---|---:|---:|---:|
+| Budget | 0.452 | 0.560 | 0.518 |
+| Valley | 0.630 | 0.760 | 0.718 |
+| Premium | 0.750 | 0.960 | 0.878 |
+
+So **what holds a restaurant back is the food, not the cap** — the ceiling is a backstop for a
+kitchen executing far better than it sources, which is rarer than it sounds. It was only ever
+marginally binding, even before this change; two tests were asserting `AtCeiling` and passing
+by a whisker. They now assert what is true, and the one that needs the cap to bind forces the
+condition rather than hoping trade reaches it.
+
+The browser build says this plainly now instead of quoting a number that rarely matters.
+
 ### Freshness: a gradient, not a cliff (Aaron)
 
 > *"we should be able to see how much is about to turn bad, because you may need to order more

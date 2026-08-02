@@ -85,11 +85,19 @@ namespace RestaurantEmpire.Core.Model
         /// pricing it honestly, keeping the room decent. Aaron's framing: *"you can be
         /// moderately successful but not like the best in the world."* This is where
         /// "moderately successful" sits.
+        ///
+        /// These three add to EXACTLY 1.0 at their maximums, and that is deliberate. They did
+        /// not: competence 0.45 plus ingredients 0.40 plus room 0.08 topped out at 93, so a
+        /// restaurant doing everything available to it was told it could never pass 89 and
+        /// given no way to find out why. Aaron: *"this is the best supplier possible so would
+        /// I never be able to reach 100?"* No, and a scale whose top cannot be reached is
+        /// simply a wrong scale. **Perfection now requires the best sourcing AND a perfect
+        /// room** — both, which is the point.
         /// </summary>
-        public const decimal CompetenceCeiling = 0.45m;
+        public const decimal CompetenceCeiling = 0.42m;
 
         /// <summary>How much of the remaining headroom good ingredients unlock.</summary>
-        public const decimal AmbitionFromIngredients = 0.40m;
+        public const decimal AmbitionFromIngredients = 0.50m;
 
         /// <summary>
         /// And how much the room unlocks — deliberately EQUAL to its weight in a single meal.

@@ -99,7 +99,16 @@ namespace RestaurantEmpire.Core.Tests
             // ceiling exists for the case above it, where competent execution would otherwise
             // carry a restaurant somewhere its ingredients do not deserve.
             Assert.True(cheap.Reputation.Standing < 0.65m, "budget food should never be well thought of");
-            Assert.True(fine.Reputation.AtCeiling, "premium execution should run into what it is attempting");
+
+            // NOT asserting either hits its ceiling, because measurement says neither does —
+            // and that is the honest finding. What holds a restaurant back is the FOOD, not
+            // the cap: standing converges toward what its meals actually score, and that sits
+            // below the ceiling at every tier (budget 0.45 against a 0.56 cap, premium 0.75
+            // against 0.96). The ceiling is a backstop for a kitchen executing far better than
+            // it sources, which is rarer than it sounds.
+            Assert.True(cheap.ReputationCeiling < fine.ReputationCeiling);
+            Assert.True(cheap.Reputation.Standing <= cheap.ReputationCeiling + 0.01m);
+            Assert.True(fine.Reputation.Standing <= fine.ReputationCeiling + 0.01m);
         }
 
         [Fact]
@@ -112,8 +121,14 @@ namespace RestaurantEmpire.Core.Tests
             // it is genuinely being held back by what it sources. Budget never reaches its
             // own cap — the food is simply mediocre — so a plateau message there would be
             // blaming the ceiling for something the plates are doing.
+            // Forced against the cap rather than waiting for trade to reach it: a kitchen
+            // cooking far better than it sources. That is the case the ceiling exists for, and
+            // ordinary trading does not reach it — the food caps you first.
             var midTier = Build(out _, "valley-produce");
-            Trade(midTier, 360);
+            Trade(midTier, 90);
+
+            midTier.Reputation.Restore(midTier.ReputationCeiling, Reputation.MealsToBecomeKnown);
+            midTier.Reputation.RecordMeal(1m, midTier.ReputationCeiling);
 
             Assert.True(midTier.Reputation.AtCeiling);
             Assert.Contains("ingredients", midTier.Reputation.Verdict);
@@ -348,6 +363,24 @@ namespace RestaurantEmpire.Core.Tests
 
             for (var i = 0; i < Reputation.MealsToBecomeKnown; i++) rep.RecordMeal(0.7m);
             Assert.Equal(1m, rep.Awareness);
+        }
+
+        [Fact]
+        public void APerfectScoreIsReachable_ButNeedsTheBestOfEverything()
+        {
+            // Aaron: "this is the best supplier possible so would I never be able to reach
+            // 100?" He could not — competence 0.45 plus ingredients 0.40 plus room 0.08 topped
+            // out at 93, and the game gave no way to find that out. A scale whose top cannot
+            // be reached is a wrong scale.
+            Assert.Equal(1m, Reputation.CeilingFor(1m, 1m));
+
+            // And it needs BOTH. The best sourcing in a plain room does not get there.
+            Assert.True(Reputation.CeilingFor(1m, 0.5m) < 1m);
+            Assert.True(Reputation.CeilingFor(0.6m, 1m) < 1m);
+
+            // The ladder still runs the right way.
+            Assert.True(Reputation.CeilingFor(0.2m, 0.55m) < Reputation.CeilingFor(0.6m, 0.55m));
+            Assert.True(Reputation.CeilingFor(0.6m, 0.55m) < Reputation.CeilingFor(1m, 0.55m));
         }
     }
 }
