@@ -46,11 +46,13 @@ function walkAwayChance(value){
 const COMFY_WAIT = 0.40;             // ComfortableWaitShare
 const QUOTE_OPTIMISM = 0.95;         // SimulationRunner.QuotedWaitOptimism
 const PLATES_PER_COOK = 2;           // KitchenPass.PlatesPerCook
+const LICENCE_FEE = 6500;            // LiquorLicense.ApplicationFee — steep against an opening bankroll
+const LICENCE_RENEWAL = 340;         // paid monthly whether you sell a drop
 
 // Said the way a cook would say it, not by id.
 const STATION_NAMES = {
   "oven":"oven", "saute":"range", "garde-manger":"cold section",
-  "grill":"grill", "coffee":"coffee machine", "pastry":"pastry section"
+  "grill":"grill", "coffee":"coffee machine", "pastry":"pastry section", "bar":"bar"
 };
 
 const REP = {
@@ -77,23 +79,26 @@ const INGREDIENTS = {
   flour:"00 Flour", tomato:"Tomatoes", mozzarella:"Mozzarella", basil:"Fresh Basil",
   "olive-oil":"Olive Oil", "arborio-rice":"Arborio Rice", parmesan:"Parmesan",
   truffle:"Black Truffle", "coffee-beans":"Coffee Beans", eggs:"Eggs", butter:"Butter",
-  "sea-bass":"Sea Bass", lemon:"Lemon"
+  "sea-bass":"Sea Bass", lemon:"Lemon",
+  "house-red":"House Red Wine", "house-white":"House White Wine", "fine-red":"Cellar Red",
+  "draught-beer":"Draught Beer", gin:"Gin", vermouth:"Vermouth", citrus:"Citrus and Garnish"
 };
 
 // Days before it turns; ZERO means it keeps. Mirrors data/ingredients.json.
-const SHELF = { flour:0, "olive-oil":0, "arborio-rice":0, "coffee-beans":0, parmesan:0,
+const SHELF = { "house-red":0, "house-white":0, "fine-red":0, "draught-beer":0, gin:0, vermouth:0, citrus:12,
+  flour:0, "olive-oil":0, "arborio-rice":0, "coffee-beans":0, parmesan:0,
                 "sea-bass":4, basil:7, truffle:7, tomato:10, mozzarella:14, eggs:21, lemon:21, butter:30 };
 
 const SUPPLIERS = [
   { id:"budget-wholesale", name:"Budget Wholesale Foods", tier:1, prices:{
     flour:1.2,tomato:2.0,mozzarella:6.0,basil:1.0,"olive-oil":6.0,"arborio-rice":3.0,
-    parmesan:12.0,truffle:1.8,"coffee-beans":9.0,eggs:2.4,butter:5.0,"sea-bass":11.0,lemon:1.6 } },
+    parmesan:12.0,truffle:1.8,"coffee-beans":9.0,eggs:2.4,butter:5.0,"sea-bass":11.0,lemon:1.6,"house-red":11.0,"house-white":10.0,"fine-red":26.0,"draught-beer":3.2,gin:18.0,vermouth:11.0,citrus:2.4 } },
   { id:"valley-produce", name:"Valley Produce Co.", tier:3, prices:{
     flour:1.8,tomato:3.0,mozzarella:9.0,basil:1.6,"olive-oil":11.0,"arborio-rice":4.5,
-    parmesan:18.0,truffle:2.6,"coffee-beans":15.0,eggs:3.6,butter:8.0,"sea-bass":18.0,lemon:2.4 } },
+    parmesan:18.0,truffle:2.6,"coffee-beans":15.0,eggs:3.6,butter:8.0,"sea-bass":18.0,lemon:2.4,"house-red":16.0,"house-white":15.0,"fine-red":42.0,"draught-beer":4.4,gin:26.0,vermouth:16.0,citrus:3.4 } },
   { id:"premium-harvest", name:"Premium Harvest Partners", tier:5, prices:{
     flour:2.6,tomato:5.0,mozzarella:14.0,basil:2.8,"olive-oil":22.0,"arborio-rice":7.0,
-    parmesan:28.0,truffle:6.5,"coffee-beans":26.0,eggs:5.4,butter:13.0,"sea-bass":29.0,lemon:3.8 } }
+    parmesan:28.0,truffle:6.5,"coffee-beans":26.0,eggs:5.4,butter:13.0,"sea-bass":29.0,lemon:3.8,"house-red":24.0,"house-white":23.0,"fine-red":78.0,"draught-beer":6.0,gin:38.0,vermouth:24.0,citrus:4.8 } }
 ];
 
 const DAYPART_ORDER = { breakfast:0, lunch:1, dinner:2 };
@@ -106,6 +111,18 @@ function menuOrder(a,b){
 }
 
 const RECIPES = [
+  { id:"house-wine", cat:"drink", name:"House Wine, by the Glass", station:"bar", prep:1,
+    dayparts:["lunch","dinner","latenight"], tags:["wine","classic"], base:11.0, licence:true,
+    ing:{"house-red":0.17} },
+  { id:"cellar-wine", cat:"drink", name:"Something from the Cellar", station:"bar", prep:2,
+    dayparts:["dinner","latenight"], tags:["wine","luxury","refined"], base:26.0, licence:true,
+    ing:{"fine-red":0.17} },
+  { id:"draught-pint", cat:"drink", name:"Pint of Draught", station:"bar", prep:1,
+    dayparts:["lunch","dinner","latenight"], tags:["beer","classic","sharing"], base:8.0, licence:true,
+    ing:{"draught-beer":0.57} },
+  { id:"negroni", cat:"drink", name:"Negroni", station:"bar", prep:3,
+    dayparts:["dinner","latenight"], tags:["cocktail","luxury","refined"], base:16.0, licence:true,
+    ing:{gin:0.03, vermouth:0.03, citrus:0.01} },
   { id:"caprese-salad", cat:"small plate", name:"Caprese Salad", station:"garde-manger", prep:4,
     dayparts:["lunch","dinner"], tags:["salad","vegetarian","light","refined"], base:11,
     ing:{tomato:.25, mozzarella:.18, basil:.04, "olive-oil":.02} },
@@ -130,6 +147,9 @@ const RECIPES = [
 ];
 
 const EQUIPMENT = [
+  {id:"bar-speedrail",station:"bar",name:"Speed Rail and Fridge",cost:1100,speed:0.8,foot:26},
+  {id:"bar-back",station:"bar",name:"Back Bar with Taps",cost:3800,speed:1.0,foot:40},
+  {id:"bar-cocktail",station:"bar",name:"Full Cocktail Bar",cost:9500,speed:1.5,foot:52},
   {id:"oven-secondhand",station:"oven",name:"Second-hand Deck Oven",cost:1600,speed:0.75,foot:54},
   {id:"oven-commercial",station:"oven",name:"Commercial Deck Oven",cost:3400,speed:1.0,foot:43},
   {id:"oven-hearth",station:"oven",name:"Stone Hearth Oven",cost:9000,speed:1.6,foot:34},
@@ -330,6 +350,7 @@ function newGame(site, seed){
     seats: 0, fittings: [], seatSpend: 0,
     cooks: [], servers: [],
     windows: [{name:"Dinner", from:18, to:23}],
+    licence: false,          // permission to sell alcohol; bought, then renewed monthly
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
     log: [], recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -696,12 +717,37 @@ function kitchenCapacity(){
 function isOpenAt(h){
   return G.windows.some(w => w.to > w.from ? (h>=w.from && h<w.to) : (h>=w.from || h<w.to));
 }
+// Food only. Drinks are chosen separately and IN ADDITION — a drinks list that competed for
+// the same order would cannibalise the kitchen rather than lift the check.
 function menuFor(dp){
   return RECIPES.filter(r =>
-    G.onMenu.has(r.id) &&
+    G.onMenu.has(r.id) && r.cat !== "drink" &&
     (r.dayparts.length===0 || r.dayparts.includes(dp)) &&
     stationUnits(r.station) > 0 &&
     canCook(r));
+}
+
+function drinksFor(dp){
+  return RECIPES.filter(r =>
+    G.onMenu.has(r.id) && r.cat === "drink" &&
+    (!r.licence || G.licence) &&
+    (r.dayparts.length===0 || r.dayparts.includes(dp)) &&
+    stationUnits(r.station) > 0 &&
+    canCook(r));
+}
+
+/* Who drinks, and when. Not a flat rate — a bar crowd at one in the morning is a different
+   business from a family at Sunday lunch, which is what makes hours and concept pull on
+   each other. */
+function drinkChance(arch, dp){
+  const base = arch==="RomanticCouple" ? 0.70
+             : arch==="Influencer"     ? 0.65
+             : arch==="BusinessLuncher"? 0.30
+             : arch==="Family"         ? 0.25 : 0.45;
+  if(dp==="latenight") return Math.min(0.95, base + 0.25);
+  if(dp==="dinner")    return base;
+  if(dp==="breakfast") return base * 0.15;
+  return base * 0.6;
 }
 
 /* =========================================================================
@@ -962,7 +1008,11 @@ function runDay(){
 
     if(seatsBusy.length + size > seatCap){ d.noTable++; continue; }   // no table
 
-    const options = menuFor(dp);
+    // PEOPLE COME OUT JUST TO DRINK, and at one in the morning that is most of them. A bar
+    // that cannot seat someone who only wants a drink is not a bar — without this a late
+    // crowd still counted as "found nothing they wanted" and the whole point was missed.
+    let options = menuFor(dp);
+    if(!options.length) options = drinksFor(dp);
     if(!options.length){ d.lostMenu++; continue; }
 
     // what the kitchen would quote
@@ -1046,6 +1096,23 @@ function runDay(){
       G.sold[pick.id] = (G.sold[pick.id]||0) + 1;
       G.lostStreak = 0;
 
+      // AND SOMETHING TO DRINK WITH IT — additive, never instead. A glass of wine runs about
+      // a 25% cost against the kitchen's 30-40%, which is how the trade makes an expensive
+      // concept pay: the wine programme blends the food cost down.
+      if(pick.cat !== "drink"){
+        const bar = drinksFor(dp);
+        if(bar.length && G.rand() < drinkChance(arch, dp)){
+          const drink = bar[Math.floor(G.rand()*bar.length)];
+          if(canCook(drink)){
+            for(const k in drink.ing) consume(k, drink.ing[k]);
+            d.food += plateCost(drink);
+            d.revenue += G.prices[drink.id];
+            d.drinks = (d.drinks||0) + 1;
+            G.sold[drink.id] = (G.sold[drink.id]||0) + 1;
+          }
+        }
+      }
+
       const s = clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick))*W.food
               + scoreSpeed(wait, patience)*W.speed
               + scoreValue(markup(pick), sens, q, G.rep.standing)*W.value
@@ -1084,6 +1151,14 @@ function runDay(){
     G.cash -= G.site.rent;
     G.ledger.rent += G.site.rent;
     say("money", `Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
+
+    // A licence is not a one-off. A quiet restaurant holding one is bleeding, which is what
+    // stops it being a cost you take once and forget.
+    if(G.licence){
+      G.cash -= LICENCE_RENEWAL;
+      G.ledger.rent += LICENCE_RENEWAL;
+      say("money", `Liquor licence renewed — $${LICENCE_RENEWAL} out.`);
+    }
   }
 
   G.recent.push({ covers:d.covers, walkouts:d.walkouts });
@@ -1436,7 +1511,18 @@ function panelMenu(){
       pl.innerHTML = `<span class="num" style="min-width:74px">$${G.prices[r.id].toFixed(2)}</span>
         <input type="range" min="${(r.base*0.5).toFixed(1)}" max="${(r.base*4).toFixed(1)}" step="0.5" value="${G.prices[r.id]}" aria-label="Price of ${r.name}">
         <span class="num" style="color:var(--muted);font-size:12px">costs $${cost.toFixed(2)} · <span title="${GLOSSARY.foodcost}">food cost</span> ${((cost/Math.max(0.01,G.prices[r.id]))*100).toFixed(0)}% · ${(G.prices[r.id]/r.base).toFixed(1)}<span title="${GLOSSARY.menuprice}">× the menu price</span> · ${(G.sold[r.id]||0)} sold${suggestFor(r)}</span>`;
-      pl.querySelector("input").oninput = ev=>{ G.prices[r.id] = parseFloat(ev.target.value); render(); };
+      pl.querySelector("input").oninput = ev=>{ G.prices[r.id] = parseFloat(ev.target.value); G.suggest = null; render(); };
+
+      // One click for this dish, for when the card position is right but one item is not.
+      const s2 = G.suggest || (G.suggest = suggestedPosition());
+      const want = Math.round(r.base * s2.position * 100)/100;
+      if(Math.abs(want - G.prices[r.id]) / Math.max(0.01, G.prices[r.id]) >= 0.08){
+        const use = document.createElement("button");
+        use.className = "btn tiny";
+        use.textContent = "use $" + want.toFixed(2);
+        use.onclick = ()=>{ G.prices[r.id] = want; G.suggest = null; render(); };
+        pl.appendChild(use);
+      }
       d.appendChild(pl);
     }
 
@@ -1448,6 +1534,80 @@ function panelMenu(){
     d.appendChild(toggle);
     c.appendChild(d);
   }
+
+  // ---- Pricing the whole card at once ----
+  //
+  // Aaron: "we should build in like a button on the menu for use suggested price, because if
+  // we are going to make a robust drink menu and food menu that would be a lot to price."
+  //
+  // Right, and pricing sixty dishes by hand is the "micromanagement tax on good decisions"
+  // anti-pattern exactly. But a one-click OPTIMAL button would solve the menu for the player,
+  // which Binding Principle 5 forbids. The resolution is that the real decision is WHERE THE
+  // CARD SITS, not sixty individual numbers — so the button sets the position and the player
+  // still chooses to deviate dish by dish, which is what menu engineering actually is.
+  const sug = G.suggest || (G.suggest = suggestedPosition());
+  const pc = card("Pricing the card",
+    "The decision here is where the whole card sits against what these dishes are designed to sell for — not sixty separate numbers. Set it in one go, then deviate on the dishes where you have a reason to.");
+  const prow = document.createElement("div");
+  prow.className = "priceline";
+  prow.style.gridTemplateColumns = "1fr auto auto";
+  prow.innerHTML = `<span style="font-size:13px;line-height:1.5">
+      Sitting at <b>${sug.now.toFixed(2)}×</b> designed. Best guess for this crowd is
+      <b>${sug.position.toFixed(2)}×</b>${sug.gain > 0.01 ? ` — about ${Math.round(sug.gain*100)}% better` : " — roughly where you are"}.
+    </span>`;
+
+  const applyAll = document.createElement("button");
+  applyAll.className = "btn";
+  applyAll.textContent = "Price everything at " + sug.position.toFixed(2) + "×";
+  applyAll.onclick = ()=>{
+    for(const r of RECIPES) if(G.onMenu.has(r.id)) G.prices[r.id] = Math.round(r.base * sug.position * 100)/100;
+    say("", `Whole card repriced to ${sug.position.toFixed(2)}× designed.`);
+    G.suggest = null; render();
+  };
+  prow.appendChild(applyAll);
+
+  const reset = document.createElement("button");
+  reset.className = "btn";
+  reset.textContent = "Back to designed";
+  reset.onclick = ()=>{
+    for(const r of RECIPES) if(G.onMenu.has(r.id)) G.prices[r.id] = r.base;
+    say("", "Card reset to designed prices.");
+    G.suggest = null; render();
+  };
+  prow.appendChild(reset);
+  pc.appendChild(prow);
+  wrap.appendChild(pc);
+
+  // ---- The liquor licence ----
+  const lc = card("The bar",
+    "Nobody orders sea bass at one in the morning — they order a drink. A licence is what makes a late service worth opening, and drinks carry a better margin than the kitchen, which is how an expensive restaurant survives.");
+  const lrow = document.createElement("div");
+  lrow.className = "priceline";
+  lrow.style.gridTemplateColumns = "1fr auto";
+  lrow.innerHTML = `<span style="font-size:13px;line-height:1.5">${
+    G.licence
+      ? `Licensed. <span style="color:var(--muted)">$${LICENCE_RENEWAL} a month whether you sell a drop.</span>`
+      : `No licence — nothing alcoholic can be sold. <span style="color:var(--muted)">$${LICENCE_FEE.toLocaleString()} to apply, then $${LICENCE_RENEWAL} a month.</span>`
+  }</span>`;
+
+  if(!G.licence){
+    const buy = document.createElement("button");
+    buy.className = "btn";
+    const canAfford = G.cash >= LICENCE_FEE;
+    buy.textContent = canAfford ? "Apply for a licence" : "can't afford";
+    buy.disabled = !canAfford;
+    buy.onclick = ()=>{
+      if(G.cash < LICENCE_FEE) return;
+      G.cash -= LICENCE_FEE;
+      G.ledger.capex += LICENCE_FEE;
+      G.licence = true;
+      say("money", `Liquor licence granted — $${LICENCE_FEE.toLocaleString()} out. You can sell alcohol now.`);
+      render();
+    };
+    lrow.appendChild(buy);
+  }
+  lc.appendChild(lrow);
+  wrap.appendChild(lc);
 
   const s = card("Sourcing", "One assignment, felt everywhere. Switching moves every dish's cost and every rating at once — and it moves the ceiling on how well regarded you can ever be.");
   const seg = document.createElement("div");
@@ -1966,35 +2126,62 @@ $("#untilBtn").addEventListener("click", ()=>{ G.interrupt = null; advance(120, 
 
 buildSetup();
 
-/*
- * Does the browser build's forecast match the night the browser build actually runs?
- *
- * The C# equivalent (`ForecastTests`) lands within 12% of the C# service. This is the same
- * question asked of the port, and the two answers differing is the point of asking.
- *
- *     python3 tools/headless.py tools/probe-forecast.js
- */
-
 function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
-var suburban = SITES.filter(function(s){return s.id==="suburban-high-street";})[0]||SITES[SITES.length-1];
-function build(seats,cooks,units,seed){
-  G=newGame(suburban,seed); G.cash=400000; G.seats=seats;
-  G.fittings=[{id:"t",name:"T",seats:seats,comfort:0.5}]; G.seatSpend=seats*15;
+var night = SITES.filter(function(s){return s.id==="nightlife-quarter";})[0];
+
+function build(menu, licensed, windows, seed){
+  G = newGame(night, seed);
+  G.cash = 400000; G.seats = 36;
+  G.fittings=[{id:"t",name:"T",seats:36,comfort:0.5}]; G.seatSpend=540;
+  G.onMenu = new Set(menu);
+  G.licence = licensed;
+  G.windows = windows;
   for(var i=0;i<3;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
-  for(var i=0;i<cooks;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
+  for(var i=0;i<4;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
   var need={}; RECIPES.forEach(function(r){ if(G.onMenu.has(r.id)) need[r.station]=true; });
-  for(var st in need){ var m=EQUIPMENT.filter(function(e){return e.station===st;})[0]; if(!m) continue;
-    G.stations[st]=[]; for(var u=0;u<units;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:m.capacity||0}); }
-  RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:400,day:G.day}]; });
+  for(var st in need){
+    var m=EQUIPMENT.filter(function(e){return e.station===st;})[0]; if(!m) continue;
+    G.stations[st]=[]; for(var u=0;u<3;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:0});
+  }
+  // Somewhere to PUT the stock, or the standing order silently refuses every delivery and
+  // the restaurant quietly starves. Cost a false finding once already.
+  G.stations["cold-storage"] = [{id:"cold-walkin", speed:1, foot:90, capacity:3000}];
+  G.stations["dry-storage"]  = [{id:"dry-racking", speed:1, foot:34, capacity:4000}];
+  RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:300,day:G.day}]; });
 }
-var shapes=[[40,4,3,"balanced"],[12,5,4,"tiny room"],[60,2,1,"short kitchen"],[30,3,2,"modest"]];
-var errs=[];
-for(var s=0;s<shapes.length;s++) for(var seed=0;seed<3;seed++){
-  build(shapes[s][0],shapes[s][1],shapes[s][2],4242+seed*977);
-  var f=forecastDay(), d=runDay(), a=autopsy(f,d); errs.push(a.err);
-  if(seed===0) console.log(pad(shapes[s][3],15)+"forecast "+pad(Math.round(f.covers),5)+" actual "+pad(d.covers,5)+
-    "("+Math.round(a.err*100)+"% out, bound by "+f.constraint+")");
+function run(days){
+  var tot={covers:0,revenue:0,food:0,lostMenu:0,drinks:0};
+  for(var i=0;i<days;i++){ var d=runDay();
+    tot.covers+=d.covers; tot.revenue+=d.revenue; tot.food+=d.food;
+    tot.lostMenu+=d.lostMenu; tot.drinks+=(d.drinks||0); }
+  return tot;
 }
-errs.sort(function(a,b){return a-b;});
+
+var dinner=[{name:"Dinner",from:18,to:23}];
+var dinnerLate=[{name:"Dinner",from:18,to:23},{name:"Late",from:23,to:2}];
+var food=["sea-bass","caprese-salad"];
+var withBar=["sea-bass","caprese-salad","house-wine","negroni","draught-pint"];
+
+console.log(pad("setup",22)+pad("covers",8)+pad("revenue",10)+pad("$/cover",9)+pad("food%",7)+pad("drinks",8)+"found nothing");
+build(food,false,dinner,4242); var a=run(30);
+console.log(pad("dinner, no bar",22)+pad(a.covers,8)+pad("$"+Math.round(a.revenue),10)+pad("$"+(a.revenue/a.covers).toFixed(2),9)+pad(Math.round(a.food/a.revenue*100)+"%",7)+pad(a.drinks,8)+a.lostMenu);
+build(withBar,true,dinner,4242); var b=run(30);
+console.log(pad("dinner, licensed",22)+pad(b.covers,8)+pad("$"+Math.round(b.revenue),10)+pad("$"+(b.revenue/b.covers).toFixed(2),9)+pad(Math.round(b.food/b.revenue*100)+"%",7)+pad(b.drinks,8)+b.lostMenu);
+build(food,false,dinnerLate,4242); var c=run(30);
+console.log(pad("dinner+late, no bar",22)+pad(c.covers,8)+pad("$"+Math.round(c.revenue),10)+pad("$"+(c.revenue/c.covers).toFixed(2),9)+pad(Math.round(c.food/c.revenue*100)+"%",7)+pad(c.drinks,8)+c.lostMenu);
+build(withBar,true,dinnerLate,4242); var e=run(30);
+console.log(pad("dinner+late, licensed",22)+pad(e.covers,8)+pad("$"+Math.round(e.revenue),10)+pad("$"+(e.revenue/e.covers).toFixed(2),9)+pad(Math.round(e.food/e.revenue*100)+"%",7)+pad(e.drinks,8)+e.lostMenu);
+
+build(withBar,false,dinner,4242); var f=run(10);
 console.log("");
-console.log("median "+Math.round(errs[Math.floor(errs.length/2)]*100)+"%   worst "+Math.round(errs[errs.length-1]*100)+"%");
+console.log("unlicensed with a drinks list: "+(G.sold["house-wine"]||0)+" wine, "+(G.sold["negroni"]||0)+" negroni sold (must be 0)");
+
+console.log("");
+console.log("--- is the food-only case running out of stock? ---");
+build(food,false,dinner,4242);
+for(var day=0; day<30; day++){
+  var d = runDay();
+  if(day===0 || day===4 || day===29)
+    console.log("  day "+pad(day+1,4)+" covers "+pad(d.covers,5)+" foundNothing "+pad(d.lostMenu,5)+
+                " sea-bass stock "+stockOf("sea-bass").toFixed(1)+"  mozzarella "+stockOf("mozzarella").toFixed(1));
+}

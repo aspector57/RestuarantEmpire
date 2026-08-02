@@ -45,6 +45,8 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("LICENCE_FEE", (double)LiquorLicense.ApplicationFee, "what a liquor licence costs to get");
+            yield return ("LICENCE_RENEWAL", (double)LiquorLicense.MonthlyRenewal, "and to keep, monthly");
         }
 
         private static string BrowserBuildPath()

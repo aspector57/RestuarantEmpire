@@ -1617,8 +1617,35 @@ change. It now asserts the invariant: nothing silently dropped, every ingredient
 every supplier can quote every ingredient. **A test that fails when you do the thing it is
 meant to permit is a bad test, not a passing content change.**
 
-**Still open:** the browser build has none of this yet, and course/cuisine structure — the
-thing that makes hundreds of dishes a decision rather than a longer list — is not started.
+**Ported to the browser build**, and the two agree: spend per cover $13.45 -> $20.60 and food
+cost 31% -> 27% there, against $13.43 -> $22.39 and 37% -> 28% in the engine. Same direction,
+same magnitude, from two separate implementations.
+
+**A false finding was caught by the headless probe, and the cause is worth remembering.** The
+first run showed spend per cover FALLING with drinks (12.91 -> 12.25), the opposite of the
+engine. The probe had never bought storage — `COLD_BASE` and `DRY_BASE` are 0 — so the standing
+order silently refused every delivery and the food-only restaurant starved: sea bass hit zero
+on day five, everything by day thirty. **A fixture with no fridge does not measure a menu, it
+measures a famine.** Two instruments disagreeing is a bug report, and this time the bug was in
+the instrument.
+
+### Pricing the whole card in one go (Aaron)
+
+> *"we should build in like a button on the menu for use suggested price, because if we are
+> going to make a robust drink menu and food menu that would be a lot to price."*
+
+Right, and pricing sixty dishes by hand is the **micromanagement tax on good decisions**
+anti-pattern precisely. But a one-click OPTIMAL button would solve the menu for the player,
+which Binding Principle 5 forbids.
+
+**The resolution is that the real decision is WHERE THE CARD SITS, not sixty separate numbers.**
+So: *"Price everything at 1.10x"* and *"Back to designed"* set the position in one action, and a
+per-dish *"use $15.40"* appears only where a dish is more than 8% off it. The player still
+deviates dish by dish where they have a reason — **which is what menu engineering actually is.**
+The boring part is automated; the interesting part is not.
+
+**Still open:** course/cuisine structure — the thing that makes hundreds of dishes a decision
+rather than a longer list — is not started.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
 
