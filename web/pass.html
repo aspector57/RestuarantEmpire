@@ -1039,9 +1039,14 @@ function seatsAndTables(seats){
 }
 
 function servableSeats(){ return Math.min(G.seats, Math.floor(G.servers.length * SEATS_PER_SERVER * (0.7+avgSkill(G.servers)*0.6))); }
+/* A FRIDGE IS NOT A COOKING STATION. This counted every station including cold and dry
+   storage, so Aaron's one oven and one prep bench read as "Kitchen units 4". Same bug as
+   balanceNote's, fixed there and missed here — which is the third time a partial fix has
+   shipped this session. When a wrong helper is found, grep for every caller. */
+const STORAGE_STATIONS = { "cold-storage":1, "dry-storage":1 };
 function kitchenCapacity(){
   let units = 0;
-  for(const s in G.stations) units += G.stations[s].length;
+  for(const s in G.stations) if(!STORAGE_STATIONS[s]) units += G.stations[s].length;
   return { units, cookCapacity: plateCapacity() };
 }
 
@@ -1058,6 +1063,18 @@ function menuFor(dp){
     (r.dayparts.length===0 || r.dayparts.includes(dp)) &&
     stationUnits(r.station) > 0 &&
     canCook(r));
+}
+
+/* WHAT THE CARD IS, ignoring whether the pantry happens to be full right now. `menuFor` filters
+   on `canCook`, which is right for service and wrong for a capacity question: being out of
+   tomatoes this morning does not change what your kitchen is capable of, and it made the Build
+   tab announce "no kitchen at all" mid-restock. Capacity is structural; stock is a separate
+   problem with a separate readout. */
+function cardFor(dp){
+  return RECIPES.filter(r =>
+    G.onMenu.has(r.id) && r.cat !== "drink" &&
+    (r.dayparts.length===0 || r.dayparts.includes(dp)) &&
+    stationUnits(r.station) > 0);
 }
 
 function drinksFor(dp){
@@ -1123,7 +1140,7 @@ const DWELL = 45;
  * interrupt is the one with a button on it.
  */
 function passLimit(dp){
-  const on = menuFor(dp || "dinner");
+  const on = cardFor(dp || "dinner");
   if(!on.length) return null;
 
   const cl = complexityLoad();
@@ -1150,7 +1167,7 @@ function passLimit(dp){
 }
 
 function kitchenThroughput(minutes, dp){
-  const on = menuFor(dp);
+  const on = cardFor(dp);
   if(!on.length) return 0;
   const cl = complexityLoad();
   const byStation = {};
@@ -1600,13 +1617,20 @@ function advise(){
       body:`${G.servers.length} servers can hold ${seatsHeld} covers and there are ${G.seats} seats. One fewer would not be noticed.` });
 
   // --- 2. Runway. Know before you spend. ---
-  if(runway < 2 && monthlyBurn() > 0)
+  // NOT BEFORE IT HAS OPENED. With no trading history the burn falls back to gross outgoings,
+  // so every new game began with a death warning before serving a single cover — and the brake
+  // that rides on it stripped the buy buttons off the advice a new restaurant most needs.
+  // You cannot be running out of money at a rate nobody has measured yet.
+  const traded = G.recent.length >= 5;
+  if(traded && runway < 2 && monthlyBurn() > 0)
     out.push({ rank:2, id:"runway", head:"There is less than two months of money left.",
       body:`${money(G.cash)} against about ${money(monthlyBurn())} a month going out. Anything that adds a wage is a bad idea until this turns.` });
 
   // --- 3. The bottleneck, named. This is the one that pays. ---
+  // Does not wait for trading. On day one the forecast can already see the pass is short, and
+  // that is exactly when the player can still do something cheap about it.
   const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
-  if(lim && d){
+  if(lim){
     const perHour = lim.allows * PRACTICAL_CAPACITY;
     const roomPerHour = servableSeats() * (60/DWELL);
     if(perHour < roomPerHour * 0.8 && lim.kind === "brigade"){
@@ -1674,7 +1698,7 @@ function advise(){
   //
   // Now the cause is always stated. What the brake removes is the ASK: no buy button, and the
   // advice is reframed as something to fix without spending.
-  const broke = runway < 2;
+  const broke = G.recent.length >= 5 && runway < 2;
   if(broke){
     for(const a of out){
       if(a.buy){ a.buy = null; a.body += ` There is not enough money to buy your way out of this — the cheaper move is to take the slowest dishes off the card until the pass can keep up.`; }
@@ -2525,7 +2549,8 @@ function panelBuild(){
     <tr><td>Seats</td><td class="num">${seatsAndTables(G.seats)}</td></tr>
     <tr><td>Of those, servable</td><td class="num">${servableSeats()} with ${G.servers.length} server${G.servers.length===1?"":"s"}</td></tr>
     <tr><td>The room</td><td class="num">${(comfortOf()*5).toFixed(1)}/5 · caps any dish at ${bestPossibleStars().toFixed(1)} stars</td></tr>
-    <tr><td>Kitchen units</td><td class="num">${kitchenCapacity().units} · ${G.cooks.length} cook${G.cooks.length===1?"":"s"} work ${kitchenCapacity().cookCapacity} plates at once</td></tr>
+    <tr><td>Cooking stations</td><td class="num">${kitchenCapacity().units} (storage not counted)</td></tr>
+    <tr><td>The brigade</td><td class="num">${G.cooks.length} cook${G.cooks.length===1?"":"s"} working ${kitchenCapacity().cookCapacity} plate${kitchenCapacity().cookCapacity===1?"":"s"} at once</td></tr>
     <tr><td>Balance</td><td class="num">${balanceNote()}</td></tr>
     <tr><td>Site ceiling</td><td class="num">${G.site.maxArea}  sq ft · extending costs $${G.site.landPer}/ sq ft</td></tr>
   </tbody></table>`;

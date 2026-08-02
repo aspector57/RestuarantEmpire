@@ -1912,6 +1912,38 @@ Either a second cook or one faster oven fixes it; a third second-hand oven never
 model is defensible and the intuition was half right** — the room was not the problem, but even
 that small room needed more than he had. Kept as `tools/probe-onecook.js`.
 
+### Day one told every new restaurant it was dying — four more readout bugs
+
+Aaron's fresh save, **zero covers served**, before opening:
+
+**1. "There is less than two months of money left."** With no trading history `monthlyBurn()`
+falls back to gross outgoings, so **every game began with a death warning before a single cover
+was served** — and the brake riding on it stripped the buy buttons off the advice a new
+restaurant most needs. You cannot be running out of money at a rate nobody has measured. The
+alarm now waits for five days of trading.
+
+**2. "Kitchen units 4"** on one oven and one prep bench — it was counting the fridge and the
+shelving. **This is the storage-counting bug fixed in `balanceNote` and missed here**, which is
+the third partial fix to ship this session. **When a wrong helper is found, grep every caller
+before calling it done.** Now reads *"Cooking stations 2 (storage not counted)"*, with the
+brigade on its own line and the grammar repaired (*"1 cook work 2 plates"*).
+
+**3. The Advisor was silent about the kitchen on day one** because its capacity advice was gated
+on trading history — while the Build tab said the oven was the bottleneck. The forecast never
+needed that data, so neither should this. **The cheapest moment to fix an under-built kitchen is
+before it has cost you anything.**
+
+**4. Capacity readouts were stock-dependent.** `passLimit` filtered through `menuFor`, which
+checks `canCook` — right for service, wrong for capacity. Being out of tomatoes this morning
+does not change what the kitchen is capable of, and mid-restock the Build tab would announce
+*"no kitchen at all"*. `cardFor()` answers the structural question; stock is a separate problem
+with its own readout.
+
+**Four sessions running, the simulation has been right and the READOUTS have been wrong.** Every
+defect Aaron has hit recently is a display or advice bug, not a model bug. That is worth taking
+as a standing hint about where to look first — and `tools/probe-dayzero.js` now pins the opening
+state, which nothing had ever checked.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
