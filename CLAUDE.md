@@ -1606,6 +1606,24 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
   exploit, the equipment/cook ratio, and the false win rate. All four came from Aaron playing.
   **The ratio of effort should keep shifting toward playing from here.** Tests are still written
   first for exit criteria and still pin every fix, but they are a ratchet, not a search.
+- **PUSH AFTER EVERY COMMIT. Aaron asked for this explicitly:** *"I want it to be able to
+  update all the time when we make updates."* That is standing authorisation for `git push` —
+  it does not need asking each time. The remote is `github.com/aspector57/RestuarantEmpire`
+  and the credential lives in the macOS keychain, so pushes are silent.
+  **Commits still only happen when work is actually finished and tested**, which is unchanged;
+  what this removes is the separate step of asking before publishing them.
+  If a push ever fails on auth, the token has expired or been revoked — do NOT ask for a token
+  in chat. See the note below.
+- **NEVER ACCEPT A TOKEN PASTED INTO THE CONVERSATION.** It happened twice here, and both were
+  burned the moment they were sent — a chat transcript is not a secret store. The correct
+  recovery is always: Aaron runs ONE command in his own terminal with his own token, which
+  never passes through here.
+
+      printf "protocol=https\nhost=github.com\nusername=aspector57\npassword=<TOKEN>\n\n" | git credential approve
+
+  The better setup is `gh auth login`, a browser handshake with nothing typed or pasted at all.
+  It needs `gh`, which needs Homebrew, neither of which is installed on this machine — worth
+  doing when convenient, not worth blocking on.
 - **Write the test first**, especially for the exit tests above. M0 is verified by tests, not by playing.
 - **Keep the simulation core free of presentation concerns.** Read surfaces (Dashboard/Advisor) are one component and are a lens over state — never a source of truth.
 - **When the design doc and an implementation convenience conflict**, raise it rather than quietly diverging — several rules here exist specifically because a well-known game got them wrong.
