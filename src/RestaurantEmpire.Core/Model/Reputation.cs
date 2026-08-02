@@ -40,17 +40,17 @@ namespace RestaurantEmpire.Core.Model
         /// overnight — and it is slow enough that a reputation feels like something you own
         /// rather than a meter that tracks last night.
         /// </summary>
-        public const decimal GoodNewsRate = 0.00008m;
+        public const decimal GoodNewsRate = Tuning.GoodNewsRate;
 
         /// <summary>
         /// How fast complaints accumulate. Bad news travels roughly two and a half times
         /// faster than good, which is both true to life and what gives cutting corners a cost
         /// that outlasts the saving.
         /// </summary>
-        public const decimal BadNewsRate = 0.0002m;
+        public const decimal BadNewsRate = Tuning.BadNewsRate;
 
         /// <summary>Trade at rock bottom, as a share of the street's normal traffic.</summary>
-        public const decimal WorstTrafficMultiplier = 0.60m;
+        public const decimal WorstTrafficMultiplier = Tuning.WorstTrafficMultiplier;
 
         /// <summary>
         /// What share of the street a restaurant NOBODY HAS HEARD OF gets on its first night.
@@ -63,7 +63,7 @@ namespace RestaurantEmpire.Core.Model
         /// They are not the same thing at all. A place people actively avoid should do worse
         /// than a place nobody has noticed, and a new restaurant's first job is to be found.
         /// </summary>
-        public const decimal UnknownTrafficShare = 0.35m;
+        public const decimal UnknownTrafficShare = Tuning.UnknownTrafficShare;
 
         /// <summary>
         /// Meals served before a restaurant is simply KNOWN. After this, footfall is decided
@@ -74,11 +74,11 @@ namespace RestaurantEmpire.Core.Model
         /// five weeks. A working restaurant here serves roughly 2,600 covers a month, so a
         /// genuine season of being the new place nobody has tried is about this many.
         /// </summary>
-        public const int MealsToBecomeKnown = 12000;
+        public const int MealsToBecomeKnown = Tuning.MealsToBecomeKnown;
 
         /// <summary>Trade at the top. Bounded, because a reputation cannot conjure a queue
         /// out of an empty street — the neighborhood still decides who walks past.</summary>
-        public const decimal BestTrafficMultiplier = 1.40m;
+        public const decimal BestTrafficMultiplier = Tuning.BestTrafficMultiplier;
 
         /// <summary>
         /// The standing any restaurant can reach on competence alone — turning food out fast,
@@ -94,10 +94,10 @@ namespace RestaurantEmpire.Core.Model
         /// simply a wrong scale. **Perfection now requires the best sourcing AND a perfect
         /// room** — both, which is the point.
         /// </summary>
-        public const decimal CompetenceCeiling = 0.42m;
+        public const decimal CompetenceCeiling = Tuning.CompetenceCeiling;
 
         /// <summary>How much of the remaining headroom good ingredients unlock.</summary>
-        public const decimal AmbitionFromIngredients = 0.50m;
+        public const decimal AmbitionFromIngredients = Tuning.AmbitionFromIngredients;
 
         /// <summary>
         /// And how much the room unlocks — deliberately EQUAL to its weight in a single meal.

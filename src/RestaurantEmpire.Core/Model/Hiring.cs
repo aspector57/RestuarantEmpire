@@ -77,18 +77,18 @@ namespace RestaurantEmpire.Core.Model
     public static class HiringPool
     {
         /// <summary>Wage at the bottom of the market, before anything is claimed.</summary>
-        public const decimal CookFloorWage = 12m;
-        public const decimal ServerFloorWage = 9m;
+        public const decimal CookFloorWage = Tuning.CookFloorWage;
+        public const decimal ServerFloorWage = Tuning.ServerFloorWage;
 
         /// <summary>What a perfect CV adds to the floor wage.</summary>
-        public const decimal CookSkillPremium = 16m;
-        public const decimal ServerSkillPremium = 9m;
+        public const decimal CookSkillPremium = Tuning.CookSkillPremium;
+        public const decimal ServerSkillPremium = Tuning.ServerSkillPremium;
 
         /// <summary>
         /// How far the truth can sit from the claim, either way. Wide enough that a dear hire
         /// can disappoint and a cheap one can be a find, which is the whole risk.
         /// </summary>
-        public const decimal ScoutingError = 0.22m;
+        public const decimal ScoutingError = Tuning.ScoutingError;
 
         private static readonly string[] FirstNames =
         {

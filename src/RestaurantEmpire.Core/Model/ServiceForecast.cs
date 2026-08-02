@@ -33,7 +33,7 @@ namespace RestaurantEmpire.Core.Model
         /// Party sizes are 1/2/3/4/5-7 at 15/45/20/15/5 percent, which averages to this.
         /// Kept here rather than recomputed so the forecast and `RollPartySize` cannot drift.
         /// </summary>
-        public const decimal AveragePartySize = 2.55m;
+        public const decimal AveragePartySize = Tuning.AveragePartySize;
 
         /// <summary>
         /// The share of a kitchen's theoretical throughput a real service actually gets.
@@ -44,7 +44,7 @@ namespace RestaurantEmpire.Core.Model
         /// property of queues rather than a fudge factor: without it the forecast promises
         /// covers that only a perfectly smoothed arrival stream could deliver.
         /// </summary>
-        public const decimal PracticalCapacity = 0.75m;
+        public const decimal PracticalCapacity = Tuning.PracticalCapacity;
 
         private ServiceForecast(
             decimal covers, decimal revenue, decimal foodCost, decimal laborCost,

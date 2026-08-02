@@ -1,29 +1,316 @@
+<title>The Pass — Restaurant Empire</title>
 
-var __noop = function(){ return __el; };
-var __el = new Proxy({}, {
-  get: function(o, k){
-    if(k === "style" || k === "classList" || k === "dataset") return __el;
-    if(k === "innerHTML" || k === "textContent" || k === "value" || k === "className") return "";
-    if(k === "hidden" || k === "checked" || k === "disabled") return false;
-    if(k === "length") return 0;
-    if(k === Symbol.iterator) return [][Symbol.iterator].bind([]);
-    return __noop;
-  },
-  set: function(){ return true; }
-});
-var document = { querySelector:__noop, querySelectorAll:function(){ return []; },
-  getElementById:__noop, createElement:__noop, addEventListener:__noop, body:__el,
-  documentElement:__el };
-var window = { addEventListener:__noop,
-  matchMedia:function(){ return { matches:false, addEventListener:__noop }; },
-  localStorage:{ getItem:function(){ return null; }, setItem:__noop } };
-var localStorage = window.localStorage;
-var requestAnimationFrame = __noop;
-var console = { log: function(){
-  var a = []; for (var i = 0; i < arguments.length; i++) a.push(String(arguments[i]));
-  print(a.join(" "));
-} };
+<style>
+:root{
+  --ground:#12161b; --surface:#181e26; --raised:#1f2731; --line:#2b3541;
+  --ink:#e9e5dd; --muted:#98a3b0; --faint:#6c7784;
+  --heat:#ff8c42; --heat-dim:#b35f28;
+  --good:#6fbf8f; --warn:#e8c05a; --bad:#e0625a;
+  --paper:#1c232c;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#e8e4db; --surface:#f6f3ec; --raised:#fffdf8; --line:#d3ccbe;
+    --ink:#1d2229; --muted:#5c6672; --faint:#8b95a1;
+    --heat:#c2571a; --heat-dim:#e08a4d;
+    --good:#3f8f61; --warn:#a67c14; --bad:#b8352c;
+    --paper:#fffdf8;
+  }
+}
+:root[data-theme="light"]{
+  --ground:#e8e4db; --surface:#f6f3ec; --raised:#fffdf8; --line:#d3ccbe;
+  --ink:#1d2229; --muted:#5c6672; --faint:#8b95a1;
+  --heat:#c2571a; --heat-dim:#e08a4d;
+  --good:#3f8f61; --warn:#a67c14; --bad:#b8352c;
+  --paper:#fffdf8;
+}
+:root[data-theme="dark"]{
+  --ground:#12161b; --surface:#181e26; --raised:#1f2731; --line:#2b3541;
+  --ink:#e9e5dd; --muted:#98a3b0; --faint:#6c7784;
+  --heat:#ff8c42; --heat-dim:#b35f28;
+  --good:#6fbf8f; --warn:#e8c05a; --bad:#e0625a;
+  --paper:#1c232c;
+}
 
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0; text-wrap:balance; font-weight:600}
+button{font:inherit; color:inherit; cursor:pointer}
+.num{font-variant-numeric:tabular-nums; font-family:var(--mono)}
+.eyebrow{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--faint);
+}
+
+/* ---------- shell ---------- */
+.wrap{max-width:1240px; margin:0 auto; padding:20px 18px 64px}
+
+.masthead{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 16px;
+  padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:18px;
+}
+.masthead h1{font-family:var(--serif); font-size:26px; letter-spacing:-.01em}
+.masthead .sub{color:var(--muted); font-size:13px}
+.masthead .spacer{flex:1}
+
+/* ---------- setup ---------- */
+.setup{max-width:760px; margin:0 auto}
+.setup .lede{color:var(--muted); margin:14px 0 22px; font-size:15.5px}
+.sites{display:grid; gap:12px}
+.site{
+  display:grid; grid-template-columns:1fr auto; gap:4px 18px; align-items:center;
+  text-align:left; background:var(--surface); border:1px solid var(--line);
+  border-left:3px solid var(--heat-dim); border-radius:3px; padding:14px 16px;
+  transition:border-color .15s, background .15s;
+}
+.site:hover,.site:focus-visible{border-left-color:var(--heat); background:var(--raised)}
+.site h3{font-family:var(--serif); font-size:18px}
+.site p{margin:2px 0 0; color:var(--muted); font-size:13.5px; max-width:56ch}
+.site .fig{text-align:right; font-family:var(--mono); font-size:12.5px; color:var(--muted); line-height:1.7}
+.site .fig b{display:block; color:var(--ink); font-size:15px; font-weight:600}
+
+/* ---------- console ---------- */
+.console{display:grid; grid-template-columns:300px 1fr; gap:18px; align-items:start}
+@media (max-width:880px){ .console{grid-template-columns:1fr} }
+
+.pass{
+  background:var(--surface); border:1px solid var(--line); border-radius:3px;
+  padding:16px; position:sticky; top:16px; display:grid; gap:14px;
+}
+@media (max-width:880px){ .pass{position:static} }
+
+.clock{display:grid; gap:2px}
+.clock .date{font-family:var(--mono); font-size:19px; letter-spacing:-.01em}
+.clock .state{font-size:12.5px; color:var(--muted)}
+.clock .state.open{color:var(--good)}
+
+.readout{display:grid; gap:9px; padding:12px 0; border-block:1px solid var(--line)}
+.row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.row .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
+.row .v{font-family:var(--mono); font-size:15px; font-variant-numeric:tabular-nums}
+.v.good{color:var(--good)} .v.bad{color:var(--bad)} .v.warn{color:var(--warn)}
+
+.meter{height:5px; background:var(--line); border-radius:3px; overflow:hidden; position:relative}
+.meter i{display:block; height:100%; background:var(--heat); transition:width .5s ease}
+.meter .cap{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--ink); opacity:.75}
+.repnote{font-size:12px; color:var(--muted); line-height:1.4}
+.forecast{margin-bottom:12px}
+.fchead{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px}
+.fcbound{font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:2px;
+         border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+.fcbound.seats{color:var(--warn); border-color:var(--warn)}
+.fcbound.kitchen{color:var(--bad); border-color:var(--bad)}
+.fcbound.demand{color:var(--good); border-color:var(--good)}
+.fcreads{font-size:14px; line-height:1.5; margin-bottom:11px}
+.fcbars{display:grid; gap:5px; font-size:11px; color:var(--muted)}
+.fcbar{display:grid; grid-template-columns:64px 1fr 52px; gap:9px; align-items:center}
+.fcbar .t{background:var(--line); height:5px; border-radius:3px; overflow:hidden}
+.fcbar .t i{display:block; height:100%; background:var(--muted); border-radius:3px}
+.fcbar.binds .t i{background:var(--warn)}
+.fcbar .n{text-align:right; font-variant-numeric:tabular-nums}
+.fcafter{margin-top:12px; padding-top:11px; border-top:1px solid var(--line)}
+.fcahead{font-size:13px; margin-bottom:6px}
+.fclist{margin:0; padding-left:17px; font-size:12px; color:var(--muted); line-height:1.55}
+.sugg{color:var(--warn); border-bottom:1px dotted currentColor; cursor:help}
+.repnote.falling{color:var(--bad)}
+
+.controls{display:grid; gap:7px}
+.controls .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px}
+.btn{
+  background:var(--raised); border:1px solid var(--line); border-radius:2px;
+  padding:8px 6px; font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+  transition:border-color .12s, color .12s;
+}
+.btn:hover,.btn:focus-visible{border-color:var(--heat); color:var(--heat)}
+.btn[disabled]{opacity:.4; cursor:not-allowed}
+.btn.wide{width:100%; padding:9px}
+.btn.primary{background:var(--heat); border-color:var(--heat); color:#12161b; font-weight:600}
+:root[data-theme="light"] .btn.primary{color:#fffdf8}
+@media (prefers-color-scheme: light){ .btn.primary{color:#fffdf8} }
+
+/* ---------- main ---------- */
+.main{display:grid; gap:16px; min-width:0}
+.tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.tab{
+  background:none; border:0; border-bottom:2px solid transparent; padding:8px 13px;
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint);
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--heat); border-bottom-color:var(--heat)}
+
+.panel{display:grid; gap:12px; min-width:0}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:3px; padding:15px 16px}
+.card h3{font-family:var(--serif); font-size:17px; margin-bottom:3px}
+.card .note{color:var(--muted); font-size:13px; margin:0 0 12px; max-width:66ch}
+
+/* dupe rail */
+.rail{display:grid; gap:5px; max-height:520px; overflow-y:auto; padding-right:4px}
+.ticket{
+  background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--faint);
+  border-radius:2px; padding:8px 11px; font-family:var(--mono); font-size:12.5px;
+  display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:baseline;
+  animation:print .25s ease-out;
+}
+@keyframes print{from{opacity:0; transform:translateY(-4px)}to{opacity:1; transform:none}}
+@media (prefers-reduced-motion:reduce){ .ticket{animation:none} }
+.ticket time{color:var(--faint); font-size:11.5px}
+.ticket.good{border-left-color:var(--good)}
+.ticket.warn{border-left-color:var(--warn)}
+.ticket.bad{border-left-color:var(--bad)}
+.ticket.money{border-left-color:var(--heat)}
+
+/* interrupt */
+.interrupt{
+  background:var(--raised); border:1px solid var(--heat); border-left:4px solid var(--heat);
+  border-radius:3px; padding:16px 18px; display:grid; gap:10px;
+}
+.interrupt h3{font-family:var(--serif); font-size:18px; color:var(--heat)}
+.interrupt p{margin:0; font-size:14px; color:var(--ink); max-width:70ch}
+.interrupt .why{color:var(--muted); font-size:13.5px}
+.interrupt .acts{display:flex; gap:8px; flex-wrap:wrap; margin-top:2px}
+
+/* dish rows */
+.dish{display:grid; gap:9px; padding:13px 0; border-bottom:1px solid var(--line)}
+.dish:last-child{border-bottom:0; padding-bottom:0}
+.dish .head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap}
+.dish .name{font-family:var(--serif); font-size:16.5px}
+.dish .verdict{font-size:13px; color:var(--muted)}
+.stars{font-family:var(--mono); letter-spacing:.16em; color:var(--heat); font-size:14px; white-space:nowrap}
+.stars .off{color:var(--faint)}
+.bars{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px}
+.bar{display:grid; gap:3px}
+.bar .lab{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.bar .track{height:4px; background:var(--line); border-radius:2px; overflow:hidden}
+.bar .track i{display:block; height:100%; background:var(--muted); transition:width .4s}
+.bar.weak .track i{background:var(--bad)}
+.priceline{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.priceline input[type=range]{flex:1; min-width:130px; accent-color:var(--heat)}
+.tag{
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  padding:2px 7px; border:1px solid var(--line); border-radius:2px; color:var(--muted);
+}
+.tag.star{color:var(--good); border-color:var(--good)}
+.tag.puzzle{color:var(--warn); border-color:var(--warn)}
+.tag.dog{color:var(--bad); border-color:var(--bad)}
+
+/* shop */
+.shop{display:grid; gap:8px}
+.item{
+  display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center;
+  padding:10px 12px; background:var(--paper); border:1px solid var(--line); border-radius:2px;
+}
+.item .meta{font-family:var(--mono); font-size:11.5px; color:var(--muted)}
+.item .nm{font-size:14px}
+@media (max-width:560px){ .item{grid-template-columns:1fr auto} .item .meta{grid-column:1/-1} }
+
+table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px}
+th,td{text-align:right; padding:6px 8px; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--faint); font-weight:500}
+td.num{font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+
+.hint{font-size:12.5px; color:var(--faint); font-style:italic}
+[title]{cursor:help}
+.k[title], .tag[title], .verdict[title]{border-bottom:1px dotted var(--faint)}
+.seg{display:flex; gap:6px; flex-wrap:wrap}
+.seg .btn.on{border-color:var(--heat); color:var(--heat)}
+</style>
+
+<div class="wrap">
+
+<div class="masthead">
+  <h1 id="brand">The Pass</h1>
+  <span class="sub" id="brandsub">a restaurant, from the kitchen side</span>
+  <span class="spacer"></span>
+  <span class="eyebrow" id="seedline"></span>
+</div>
+
+<div id="setup" class="setup">
+  <p class="lede">
+    You have <b>$30,000</b> and a decision to make. Every site takes key money before you have
+    sold a thing, so the pitch you choose decides how much you have left to trade with — and
+    the busiest streets leave you the least room to grow.
+  </p>
+  <div class="sites" id="sites"></div>
+  <p class="hint" style="margin-top:18px">
+    Nothing here is winnable by accident. A new restaurant loses money until it is big enough
+    not to — the question is whether you can get there before the cash runs out.
+  </p>
+</div>
+
+<div id="game" class="console" hidden>
+  <aside class="pass">
+    <div class="clock">
+      <div class="date num" id="clock">—</div>
+      <div class="state" id="state">—</div>
+    </div>
+
+    <div class="readout">
+      <div class="row"><span class="k" title="Money in the bank. Ingredients leave it on delivery, wages and rent as they fall due.">Cash</span><span class="v" id="cash">—</span></div>
+      <div class="row"><span class="k" data-gloss="covers">Covers today</span><span class="v" id="covers">—</span></div>
+      <div class="row">
+        <span class="k" data-gloss="prime">Prime cost</span><span class="v" id="prime">—</span></div>
+      <div class="row"><span class="k" data-gloss="standing">Standing</span><span class="v" id="standing">—</span></div>
+      <div class="meter"><i id="repbar"></i><span class="cap" id="repcap"></span></div>
+      <div class="repnote" id="repnote">—</div>
+      <div class="row"><span class="k" data-gloss="awareness">Heard of you</span><span class="v" id="known">—</span></div>
+      <div class="row"><span class="k" data-gloss="brigade">Kitchen</span><span class="v" id="brigade">—</span></div>
+      <div class="row"><span class="k" data-gloss="menufit">Card suits the street</span><span class="v" id="menufit">—</span></div>
+    </div>
+
+    <div class="controls">
+      <span class="eyebrow">Advance</span>
+      <div class="grid">
+        <button class="btn" data-adv="1">1d</button>
+        <button class="btn" data-adv="7">1w</button>
+        <button class="btn" data-adv="30">1m</button>
+        <button class="btn" data-adv="90">3m</button>
+      </div>
+      <button class="btn wide" id="untilBtn">Run until something happens</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div id="interruptSlot"></div>
+
+    <div class="card forecast" id="forecastCard">
+      <div class="fchead">
+        <span class="k" data-gloss="forecast">Tonight, before it happens</span>
+        <span class="fcbound" id="fcbound">—</span>
+      </div>
+      <div class="fcreads" id="fcreads">—</div>
+      <div class="fcbars" id="fcbars"></div>
+      <div class="fcafter" id="fcafter" hidden>
+        <div class="fcahead" id="fcahead">—</div>
+        <ul class="fclist" id="fclist"></ul>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="service" aria-selected="true">Service</button>
+      <button class="tab" role="tab" data-tab="menu" aria-selected="false">Menu</button>
+      <button class="tab" role="tab" data-tab="pantry" aria-selected="false">Pantry</button>
+      <button class="tab" role="tab" data-tab="build" aria-selected="false">Build</button>
+      <button class="tab" role="tab" data-tab="team" aria-selected="false">Team</button>
+      <button class="tab" role="tab" data-tab="books" aria-selected="false">Books</button>
+    </div>
+
+    <div class="panel" id="panel"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
 "use strict";
 
 /* =========================================================================
@@ -1965,36 +2252,4 @@ document.addEventListener("click", ev=>{
 $("#untilBtn").addEventListener("click", ()=>{ G.interrupt = null; advance(120, true); });
 
 buildSetup();
-
-/*
- * Does the browser build's forecast match the night the browser build actually runs?
- *
- * The C# equivalent (`ForecastTests`) lands within 12% of the C# service. This is the same
- * question asked of the port, and the two answers differing is the point of asking.
- *
- *     python3 tools/headless.py tools/probe-forecast.js
- */
-
-function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
-var suburban = SITES.filter(function(s){return s.id==="suburban-high-street";})[0]||SITES[SITES.length-1];
-function build(seats,cooks,units,seed){
-  G=newGame(suburban,seed); G.cash=400000; G.seats=seats;
-  G.fittings=[{id:"t",name:"T",seats:seats,comfort:0.5}]; G.seatSpend=seats*15;
-  for(var i=0;i<3;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
-  for(var i=0;i<cooks;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
-  var need={}; RECIPES.forEach(function(r){ if(G.onMenu.has(r.id)) need[r.station]=true; });
-  for(var st in need){ var m=EQUIPMENT.filter(function(e){return e.station===st;})[0]; if(!m) continue;
-    G.stations[st]=[]; for(var u=0;u<units;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:m.capacity||0}); }
-  RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:400,day:G.day}]; });
-}
-var shapes=[[40,4,3,"balanced"],[12,5,4,"tiny room"],[60,2,1,"short kitchen"],[30,3,2,"modest"]];
-var errs=[];
-for(var s=0;s<shapes.length;s++) for(var seed=0;seed<3;seed++){
-  build(shapes[s][0],shapes[s][1],shapes[s][2],4242+seed*977);
-  var f=forecastDay(), d=runDay(), a=autopsy(f,d); errs.push(a.err);
-  if(seed===0) console.log(pad(shapes[s][3],15)+"forecast "+pad(Math.round(f.covers),5)+" actual "+pad(d.covers,5)+
-    "("+Math.round(a.err*100)+"% out, bound by "+f.constraint+")");
-}
-errs.sort(function(a,b){return a-b;});
-console.log("");
-console.log("median "+Math.round(errs[Math.floor(errs.length/2)]*100)+"%   worst "+Math.round(errs[errs.length-1]*100)+"%");
+</script>

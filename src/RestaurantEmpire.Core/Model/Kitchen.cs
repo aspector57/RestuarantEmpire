@@ -255,7 +255,7 @@ namespace RestaurantEmpire.Core.Model
     public sealed class KitchenPass
     {
         /// <summary>How many plates one cook can have going at once. A line, not a pan.</summary>
-        public const int PlatesPerCook = 2;
+        public const int PlatesPerCook = Tuning.PlatesPerCook;
 
 
         private readonly Kitchen _kitchen;

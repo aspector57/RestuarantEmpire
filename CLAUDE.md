@@ -1457,6 +1457,38 @@ revenue against a kitchen that could only ever send 8 covers an hour is the real
 did not need, told the room was his limit when it was not, and given no way to see that one
 cheap oven was capping the whole restaurant.
 
+### Tuning lives in one file, and a TEST is what keeps the two builds equal
+
+`Tuning.cs` is the single named home for every number that decides how the game feels. The
+classes that used to own them now reference it, so there is one C# copy rather than a dozen.
+
+**Two independent sources landed on this.** The parallel implementation keeps a `Tuning` file
+shared by its simulator and forecaster so the two cannot disagree; and Aaron brought back a
+suggestion making the same point about configuration living in one place.
+
+**But centralising the C# side is only half of it, and the smaller half.** The browser build
+holds a second copy of every one of these numbers in JavaScript, and a constant that lives in
+one place and is copied by hand into another is still two constants. `TuningDriftTests` reads
+`web/pass.html` and fails when the two disagree — nine shared constants, plus the satisfaction
+weights, plus the reputation ceiling shares summing to one. **Verified by breaking one on
+purpose**: changing `PRACTICAL_CAPACITY` to 0.80 in the browser build fails the suite with
+*"browser says 0.8, engine says 0.75"*.
+
+That closes the loop the port has fallen through twice — invented equipment speeds, and
+`Markup` ported by NAME rather than by definition.
+
+**`web/pass.html` now lives IN THE REPOSITORY**, moved out of the session scratchpad. It had to,
+for two reasons that turned out to be the same reason: a test cannot read a file that is not
+there, and neither can another laptop. `tools/headless.py` finds it automatically.
+
+**These stay `const` rather than loading from JSON, deliberately.** Architecture Rule 2 is about
+CONTENT — recipes, furniture, equipment, events — which must be addable by writing a data file.
+Tuning is not content: changing `PriceToleranceExponent` is a design decision that wants a
+commit and a measurement, not a config edit.
+
+**When porting a constant to the browser build, add it to `Shared()` in the drift test.** A
+number that is duplicated and unguarded is the exact shape of every port bug so far.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

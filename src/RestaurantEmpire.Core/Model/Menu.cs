@@ -74,13 +74,13 @@ namespace RestaurantEmpire.Core.Model
         public int Count { get { return _recipeIds.Count; } }
 
         /// <summary>Dishes a kitchen carries without strain.</summary>
-        public const int FreeMenuSize = 4;
+        public const int FreeMenuSize = Tuning.FreeMenuSize;
 
         /// <summary>What each dish past that adds to ticket work and to mistakes.</summary>
-        public const decimal ComplexityPerExtraDish = 0.09m;
+        public const decimal ComplexityPerExtraDish = Tuning.ComplexityPerExtraDish;
 
         /// <summary>However wide the card, a kitchen does not seize up entirely.</summary>
-        public const decimal MaxComplexityLoad = 1.65m;
+        public const decimal MaxComplexityLoad = Tuning.MaxComplexityLoad;
 
         /// <summary>
         /// What a wide card costs the kitchen — a multiplier on ticket work and on how often a

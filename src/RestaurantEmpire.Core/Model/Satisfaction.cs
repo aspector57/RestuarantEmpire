@@ -75,9 +75,9 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public static class SatisfactionModel
     {
-        public const decimal FoodQualityWeight = 0.42m;
-        public const decimal ServiceSpeedWeight = 0.33m;
-        public const decimal ValueWeight = 0.17m;
+        public const decimal FoodQualityWeight = Tuning.FoodQualityWeight;
+        public const decimal ServiceSpeedWeight = Tuning.ServiceSpeedWeight;
+        public const decimal ValueWeight = Tuning.ValueWeight;
 
         /// <summary>
         /// Deliberately the smallest of the four. The design is explicit that furniture is a
@@ -86,13 +86,13 @@ namespace RestaurantEmpire.Core.Model
         /// experience. Food and service decide whether a night was good; the room only
         /// colors it.
         /// </summary>
-        public const decimal AmbianceWeight = 0.08m;
+        public const decimal AmbianceWeight = Tuning.AmbianceWeight;
 
         /// <summary>Food cost ratio treated as fair value for money — the midpoint of the real 28-35% band.</summary>
         public const decimal FairFoodCostRatio = 0.33m;
 
         /// <summary>Guests are fully happy with the wait up to this share of their patience.</summary>
-        public const decimal ComfortableWaitShare = 0.40m;
+        public const decimal ComfortableWaitShare = Tuning.ComfortableWaitShare;
 
         /// <summary>
         /// What actually arrives on the plate: what you bought, worked by whoever is cooking.
@@ -171,7 +171,7 @@ namespace RestaurantEmpire.Core.Model
         /// elsewhere. Deliberately forgiving — a modest markup should cost you nothing,
         /// and only real gouging should empty the room.
         /// </summary>
-        public const decimal WalkAwayValueThreshold = 0.40m;
+        public const decimal WalkAwayValueThreshold = Tuning.WalkAwayValueThreshold;
 
         /// <summary>
         /// How sharply people react to a price above what the dish is worth.
@@ -185,7 +185,7 @@ namespace RestaurantEmpire.Core.Model
         /// At 2.5 the reaction starts around a third above the designed price and steepens,
         /// so there is real headroom for a confident operator and a real wall behind it.
         /// </summary>
-        public const double PriceToleranceExponent = 2.0;
+        public const double PriceToleranceExponent = Tuning.PriceToleranceExponent;
 
         /// <summary>
         /// How likely a party is to read the menu and leave, given how good a deal it looks.

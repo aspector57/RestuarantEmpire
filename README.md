@@ -6,7 +6,38 @@ You are a chef who opens one restaurant on a tight budget and builds it into an 
 - **Design rationale:** [`docs/design.md`](docs/design.md) — ten planning phases. Read the section you need, not the whole thing.
 - **Working rules for this repo:** [`CLAUDE.md`](CLAUDE.md) — architecture rules, scope discipline, current milestone.
 
+## Working on this from another machine
+
+The whole project is in git and self-contained — the only requirement is the .NET SDK.
+
+```bash
+# once, on this laptop — replace with your own repo
+gh repo create restaurant-empire --private --source=. --push
+
+# then on the other laptop
+git clone https://github.com/<you>/restaurant-empire.git
+cd restaurant-empire
+dotnet test          # 249 tests; if these pass, the machine is set up
+```
+
+`bin/` and `obj/` are gitignored and regenerate on first build, so nothing else is needed.
+
+**With Claude Code**, from the cloned directory:
+
+| Where | How |
+|---|---|
+| Terminal (any OS) | `claude` in the repo root |
+| VS Code / JetBrains | the Claude Code extension, repo open |
+| Desktop app | Mac and Windows |
+| Browser | [claude.ai/code](https://claude.ai/code) — needs the repo pushed to GitHub |
+
+`CLAUDE.md` loads automatically wherever it runs, so the architecture rules, the current
+milestone and every measurement recorded so far come with you. **That file is the handoff** —
+it is why a session on another laptop does not start from nothing.
+
 ## Running it
+
+
 
 Requires the [.NET SDK](https://dotnet.microsoft.com/download) (10.x).
 

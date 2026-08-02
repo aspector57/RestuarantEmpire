@@ -929,7 +929,7 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>Minutes a party lingers after their last plate lands.</summary>
-        public const int DwellMinutes = 35;
+        public const int DwellMinutes = Tuning.DwellMinutes;
 
         /// <summary>
         /// How honest the quoted wait is, as a percentage of the real one. Hosts under-quote
@@ -941,7 +941,7 @@ namespace RestaurantEmpire.Core.Model
         /// slammed restaurant stops seating people — you lose the trade at the door, which
         /// costs you the revenue but not the food.
         /// </summary>
-        public const int QuotedWaitOptimism = 95;
+        public const int QuotedWaitOptimism = Tuning.QuotedWaitOptimism;
 
         // ---- Live state for guests in the room ----
 
