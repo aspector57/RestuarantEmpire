@@ -1671,6 +1671,30 @@ function busiestStation(){
 }
 const round2 = v => Math.round(v*100)/100;
 
+/* What used equipment fetches. Low enough that over-buying genuinely hurts, high enough that
+   it is a way out rather than a formality. */
+const RESALE_RATE = 0.45;
+
+function sellEquip(e){
+  const units = G.stations[e.station] || [];
+  const i = units.findIndex(u => u.id === e.id);
+  if(i < 0) return;
+
+  // Refuse to sell the last unit of a station the menu still needs — that is not a recovery,
+  // it is 86'ing half the card by accident.
+  const stillCooked = RECIPES.some(r => G.onMenu.has(r.id) && r.station === e.station);
+  if(units.length === 1 && stillCooked){
+    say("warn", `That is the only ${STATION_NAMES[e.station] || e.station} and the menu still needs it. Take those dishes off first.`);
+    return;
+  }
+
+  units.splice(i, 1);
+  const back = Math.round(e.cost * RESALE_RATE);
+  G.cash += back;
+  G.ledger.capex -= back;
+  say("money", `Sold a ${e.name} — $${back.toLocaleString()} back, ${e.foot} sq ft free. You paid $${e.cost.toLocaleString()}.`);
+}
+
 function buyEquip(e){
   if(G.cash < e.cost || freeArea() < e.foot) return;
   G.cash -= e.cost; G.ledger.capex += e.cost;
@@ -2496,6 +2520,26 @@ function panelBuild(){
     if(noRoom) b.title = `Only ${freeArea().toFixed(0)} sq ft free. Sell some tables or extend the building.`;
     b.onclick = ()=>{ buyEquip(e); render(); };
     row.appendChild(b);
+
+    // SELLING IT BACK — the lever that was missing, and the reason a bad early decision could
+    // not be recovered from. Aaron: *"I ended up making a bad decision early and couldn't
+    // really bounce back."* Every capital purchase was one-way: cash went in and never came
+    // out, so buying three ovens you did not need was permanent. Furniture could already be
+    // cleared; equipment could not, which is precisely the mistake players actually make.
+    //
+    // It comes back at RESALE_RATE, and the loss is the whole point. Getting it all back would
+    // make every purchase risk-free and delete the decision; getting nothing back makes one
+    // early error terminal. A haircut turns a mistake into a cost you can trade out of, which
+    // is "hard but doable" rather than "decided in the first ten minutes".
+    if(modelUnits(e.id) > 0){
+      const back = Math.round(e.cost * RESALE_RATE);
+      const sellBtn = document.createElement("button");
+      sellBtn.className = "btn tiny";
+      sellBtn.textContent = `Sell one — $${back.toLocaleString()}`;
+      sellBtn.title = `Secondhand kit fetches about ${Math.round(RESALE_RATE*100)}% of what you paid. The rest is what the mistake cost you.`;
+      sellBtn.onclick = ()=>{ sellEquip(e); render(); };
+      row.appendChild(sellBtn);
+    }
     shop.appendChild(row);
   }
   k.appendChild(shop);

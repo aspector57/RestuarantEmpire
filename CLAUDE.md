@@ -1761,6 +1761,38 @@ named cause") in its cheapest working form.
 Deliberately not built: a full charting view. A sparkline on the row you are already looking at
 answers the question where it is asked; a separate analytics tab would be somewhere else to go.
 
+### "I made a bad decision early and couldn't really bounce back" (Aaron)
+
+Two things he has said pull against each other, and this is where they met:
+
+> *"the math needs to be realistic but we want to be able to win. It shouldn't be easy but it
+> should definitely be doable."*
+> *"you should be able to win with any concept anywhere if you run the restaurant properly."*
+
+**The cause was concrete: EQUIPMENT COULD NEVER BE SOLD.** Every capital purchase was one-way —
+cash went in and never came out. Furniture could already be cleared (`Clear 10 covers — recover
+$480`), but equipment could not, and **buying too much kitchen is precisely the mistake players
+actually make.** Aaron's own first playtest was *"I bought a ton of ovens and kept getting
+backed up."* Four ovens at $1,600 was $6,400 gone forever, in a game that opens with 18-27k.
+
+`sellEquip` returns **45%**, and the loss is the entire point:
+
+    bought 4 ovens ($6,400)  ->  sold 3 back ($2,160)  ->  the mistake cost $4,240
+
+Getting it all back would make every purchase risk-free and delete the decision. Getting nothing
+back makes one early error terminal, and a game decided in its first ten minutes is not a
+management game. **A haircut turns a mistake into a cost you can trade out of**, which is
+exactly "hard but doable".
+
+One guard: it refuses to sell the last unit of a station the menu still needs, naming why —
+that is not a recovery, it is 86'ing half the card by accident.
+
+**What this does NOT do, and should not be mistaken for a balance fix:** it adds a LEVER, not
+easier numbers. Whether the early game is now recoverable is a measurement nobody has taken.
+The honest next step is a probe that deliberately makes a bad opening decision and asks whether
+the run can be saved — the same shape as `CanFineDiningWinItsOwnMarketIfRunProperly`, which
+dissolved a "finding" that turned out to be an operating mistake.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
