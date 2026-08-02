@@ -1944,6 +1944,38 @@ defect Aaron has hit recently is a display or advice bug, not a model bug. That 
 as a standing hint about where to look first — and `tools/probe-dayzero.js` now pins the opening
 state, which nothing had ever checked.
 
+### The same cook described as doing 19 covers an hour in one place and 14 in another
+
+> *"Is a cover a seat? bc if so, they should be able to serve 12 seats with 2 people right?"*
+
+**A cover is a seat is one person, and the question was nearly right.** But two readouts on his
+screen disagreed about the same cook: the interrupt said **19 covers an hour**, the Build tab
+said **14**. `passLimit()` returns theoretical throughput and each caller was expected to apply
+`PRACTICAL_CAPACITY` itself. One did, one forgot.
+
+**If two readers can disagree by forgetting a multiplier, the multiplier belongs behind the
+door.** `allows` is now the figure to quote, haircut already applied; `raw` is kept for anything
+that genuinely wants the theoretical number. This is the fourth instance this session of one
+question having two answers, and the fix is always the same: **make the shared thing return the
+answer, not the ingredients for it.**
+
+**Both now also state what they are comparing against**, because "14 covers an hour" means
+nothing without the room beside it: *"1 cook moves about 14 covers an hour, and 12 seats turn
+about 16 an hour."*
+
+**The measured answer to his question**, 20 days each:
+
+| brigade | cook does/hr | room turns/hr | covers/day | walkouts/day |
+|---|---:|---:|---:|---:|
+| **1 cook** | **14** | 16 | 37.6 | **13.8** |
+| **2 cooks** | **20** | 16 | **57.0** | **2.0** |
+| 3 cooks | 20 | 16 | 57.6 | 1.6 |
+
+Twelve seats with a 45-minute sitting turn ~16 covers an hour; one cook does 14. **A small gap
+producing most of the walkouts, because arrivals clump and the queue never clears.** Two cooks
+closes it; a third is wasted because the ovens become the limit — so there is a real right
+answer, and it is legible. Kept as `tools/probe-onecook-vs-room.js`.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

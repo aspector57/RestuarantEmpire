@@ -1161,9 +1161,16 @@ function passLimit(dp){
   const avgPrep = on.reduce((a,r)=>a + r.prep*cl, 0) / on.length;
   const byBrigade = avgPrep > 0 ? (60/avgPrep) * plateCapacity() : 0;
 
+  // `allows` is what a reader should QUOTE — theoretical throughput with the queueing haircut
+  // already applied, because guests arrive in clumps and a pass never runs flat out. The
+  // interrupt was printing the raw figure while the Build tab printed the adjusted one, so the
+  // same cook was described as doing 19 covers an hour in one place and 14 in another. If two
+  // readers can disagree by forgetting a multiplier, the multiplier belongs behind the door.
   return byBrigade < tightest
-    ? { kind:"brigade", allows: byBrigade, cooks: G.cooks.length, skill: avgSkill(G.cooks) }
-    : { kind:"station", allows: tightest, station: worstStation, units: worstUnits, dishes: worstDishes };
+    ? { kind:"brigade", allows: byBrigade * PRACTICAL_CAPACITY, raw: byBrigade,
+        cooks: G.cooks.length, skill: avgSkill(G.cooks) }
+    : { kind:"station", allows: tightest * PRACTICAL_CAPACITY, raw: tightest,
+        station: worstStation, units: worstUnits, dishes: worstDishes };
 }
 
 function kitchenThroughput(minutes, dp){
@@ -1631,7 +1638,7 @@ function advise(){
   // that is exactly when the player can still do something cheap about it.
   const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
   if(lim){
-    const perHour = lim.allows * PRACTICAL_CAPACITY;
+    const perHour = lim.allows;
     const roomPerHour = servableSeats() * (60/DWELL);
     if(perHour < roomPerHour * 0.8 && lim.kind === "brigade"){
       // Costs a wage, so the runway brake will silence the ASK — but never the diagnosis.
@@ -1745,7 +1752,7 @@ function checkInterrupts(d){
     // another oven here is how a restaurant spends its last $7,000 on kit it cannot staff.
     if(lim && lim.kind === "brigade"){
       return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
-        body:`It is not the equipment — it is the people. ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 can move about ${Math.round(lim.allows)} covers an hour between them, and the stations are sitting idle waiting for hands.`,
+        body:`It is not the equipment — it is the people. ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 move about ${Math.round(lim.allows)} covers an hour between them, and ${G.seats} seats turn about ${Math.round(servableSeats()*(60/DWELL))} an hour. The stations are sitting idle waiting for hands.`,
         why:`Another oven would change nothing. A cook, or a better one, is the only thing that lifts this.`,
         acts:[{ label:"Go to hiring", fn:()=>{ TAB="team"; } }] };
     }
@@ -1754,7 +1761,7 @@ function checkInterrupts(d){
     const cheapest = EQUIPMENT.filter(e=>e.station===busiest).sort((a,b)=>a.cost-b.cost)[0];
     const name = STATION_NAMES[busiest] || busiest;
     return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
-      body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour.`,
+      body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour against ${Math.round(servableSeats()*(60/DWELL))} the room turns.`,
       why:cheapest ? `Another ${cheapest.name} costs $${cheapest.cost.toLocaleString()}. You have ${money(G.cash)}, and ${freeArea().toFixed(1)} sq ft of floor free.` : "",
       acts: cheapest && G.cash>=cheapest.cost && freeArea()>=cheapest.foot
         ? [{ label:`Buy a ${cheapest.name} — $${cheapest.cost.toLocaleString()}`, fn:()=>buyEquip(cheapest) },
@@ -2418,7 +2425,7 @@ function balanceNote(){
   if(!lim) return "no kitchen at all";
 
   const room = Math.round(servableSeats() * (60/DWELL));
-  const allows = Math.round(lim.allows * PRACTICAL_CAPACITY);
+  const allows = Math.round(lim.allows);
 
   if(allows < room * 0.8){
     return lim.kind === "brigade"
