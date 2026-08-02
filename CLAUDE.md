@@ -1418,6 +1418,14 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
   balk at every price, because a healthy 30% food cost is a 3x price/cost ratio and the port
   read that as gouging. **When porting, copy the definition, not the name** — and re-derive
   every constant from the C# rather than from memory. The C# core is the source of truth.
+- **THE FAST PLAY LOOP IS THE POINT OF THE BROWSER BUILD, and Aaron said so explicitly after
+  seeing the parallel implementation's harness:** *"I like that I can quickly play through, get
+  results and feedback given to me, and then I can give that feedback to you."* His judgement
+  was that Howard's game is the more flawed of the two and the loop around it is still the
+  better instrument. **So the thing to protect is time-to-feedback, not fidelity** — a build he
+  can run five configurations through in ten minutes finds more than a more accurate one he
+  plays once. Nothing to build for it yet (he was clear it is not a request), but it is the
+  standard to judge harness work against.
 - **Tests protect what is already right; playing is what finds what is wrong.** 182 tests found
   none of the four defects that actually mattered — the walkout death spiral, the price-gouging
   exploit, the equipment/cook ratio, and the false win rate. All four came from Aaron playing.
