@@ -1317,6 +1317,46 @@ was not the prediction, and the nightlife quarter is still won by the generalist
 **This is now the gate that matters more than the sweep.** A restaurant game where one build
 wins everywhere is a spreadsheet with a theme.
 
+### Forecast, commit, autopsy — the loop moved inside the game
+
+Every number in this game was discovered by advancing time and reading what happened. The
+player never committed to a belief, so they were never *wrong* in a way that taught them
+anything — which is the difference between operating a restaurant and watching one.
+
+`ServiceForecast.ForDay` works out the night ahead from the same properties the simulation
+reads (traffic, reputation, menu draw, the price gate, seats, stations, plate capacity), taking
+the expected value of every roll rather than rolling. `ServiceAutopsy` compares it to what
+happened and names the largest cause in words. **It is a projection, not a prediction, and the
+gap is the point** — a forecast that were always right would have nothing to say.
+
+**Measured across four restaurant shapes and three seeds: median cover error 12%, worst 35%.**
+
+Two errors on the way there, both instructive:
+
+1. **Summing capacity across the whole night.** The first version predicted 202 covers against
+   75 served, because it believed a pass with 378 plates of nightly throughput could absorb a
+   dinner rush. **A restaurant cannot bank a quiet six o'clock and spend it at eight.** Worked
+   hour by hour instead, so the peak is where the ceiling bites.
+2. **Counting cooks and not stations.** Still 190 against 75. Three oven units cooking two of
+   the three dishes on the card is a far harder limit than four cooks — a station is a physical
+   object with a queue in front of it, and the pass moves at the speed of whichever queue is
+   longest. Modelling the tightest station brought it to 87 against 75. **This is the same
+   mistake Aaron made playing** ("I bought a ton of ovens and kept getting backed up"), which is
+   a good sign the forecast is now modelling the thing that actually hurts.
+
+`PracticalCapacity = 0.75` is the queueing haircut, and it is a real property rather than a
+fudge: guests arrive in clumps, so waits build long before utilisation reaches 100%.
+
+**`Constraint` is the most useful field on it** — "demand", "seats" or "kitchen". The three have
+entirely opposite fixes and buying the wrong one is the classic way to lose here. The autopsy
+stays silent when the night went to plan, held to the same standard as the Advisor: one that
+always has an opinion stops being read.
+
+**Not built yet: the player never SEES it.** This is engine-side only — no browser build, no
+harness command. Until it is surfaced, the loop exists in the model and not in the game, which
+is exactly the "populated but read on only one side" shape this project keeps hitting. Wiring
+it into `pass.html` is the next step and should not be deferred.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
