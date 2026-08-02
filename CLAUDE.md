@@ -1401,6 +1401,62 @@ divergence to fix at the source rather than absorb into a fudge factor.
 gap by tuning the forecast. Close it by finding where `runDay` and `ServiceSimulation` actually
 disagree — which is now a measurable question for the first time.
 
+### Aaron's playtest, day 175 — three real defects, two of them in the forecast I had just shipped
+
+He ran a quick sim on Suburban High Street and pasted the whole state. **12 seats, 175 days,
+$5,434 cash, net -$6,966, prime cost 82% with LABOR at 56% of revenue**, and 17-28 parties a
+night leaving over the wait. The forecast card and the autopsy directly contradicted each other
+on screen, which is how all three were found.
+
+**1. THE CONSTRAINT VERDICT BLAMED THE WRONG THING, AND ITS OWN BARS SAID SO.** His screen read
+`seats-bound` — *"the dining room is the limit"* — directly above bars showing **pass 40 against
+seats 80**, and directly above an autopsy saying *"17 parties saw the wait and went elsewhere —
+the pass could not keep up."* Three readouts, one screen, two of them wrong.
+
+The cause was the attribution logic applying the ceilings **in sequence**: seats were subtracted
+first, so `lostKitchen` could never exceed `(seats - kitchen)` while `lostSeats` grew without
+limit as footfall rose. **Past a certain demand the verdict always flipped to seats.** Reproduced
+headlessly — at demand 70 it said kitchen, at demand 98 it said seats, with identical ceilings.
+Now attributed to whichever ceiling is genuinely lowest, and it holds across the whole range.
+
+**2. THE BUILD TAB GAVE FLATLY WRONG ADVICE: *"7 stations for 12 seats — kitchen is idle, buy
+tables"*.** Wrong twice. Two of the seven were a fridge and a shelf — `kitchenCapacity().units`
+counted storage as kitchen. And **stations are not fungible**: he had one second-hand deck oven
+(0.75x speed) cooking two of the four dinner dishes, which allows about **8 covers an hour
+against 16 the room could turn**. The kitchen was not idle; it was the bottleneck.
+
+`bottleneck(daypart)` now finds the tightest station by covers-per-hour, weighted by the share
+of the card it has to cook, and says so by name: *"the oven is the bottleneck — 1 unit cooking 2
+of the card allows about 8 covers an hour, against 16 the room could turn. Another oven unit, or
+a faster one, buys more than tables or cooks do."*
+
+**Counting stations was the wrong unit all along.** A station is only as useful as the share of
+the menu it is responsible for, which is the same insight that fixed the forecast's kitchen
+ceiling one commit earlier — and it had not been carried across to the advice.
+
+**3. Suggested pricing (Aaron's request).** Fifteen parties a night were deciding against him on
+price before setting off and nothing on screen connected those two facts.
+
+**Food-cost percentage could not answer it**, and that is the interesting part: his coffee ran a
+4% food cost and his sea bass 20%, and **the trade's healthy 28-35% band is BLENDED across a
+whole card**, not per dish. Applying it per dish would have told him to sell focaccia at $3.
+
+`suggestedPosition()` sweeps the one thing a restaurant actually sets — where the whole card
+sits against what the dishes are designed to sell for — and takes the peak, using the same
+`wouldConsider` the service uses. **Scored on CONTRIBUTION, not takings.** Scoring takings put
+the peak at exactly 1.00x every single time, because ingredients are paid per cover and the
+price that maximises revenue is not the price that maximises what you keep.
+
+Reported as a position with its reasoning rather than a price to copy, and it stays silent when
+the current price is within 8% — per Binding Principle 5, and because a suggestion attached to
+every dish every time is wallpaper.
+
+**What his run says about balance, left as a finding rather than acted on:** labor at 56% of
+revenue against a kitchen that could only ever send 8 covers an hour is the real story, and
+**every one of the three defects above pointed him away from it.** He was told to buy tables he
+did not need, told the room was his limit when it was not, and given no way to see that one
+cheap oven was capping the whole restaurant.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

@@ -47,6 +47,12 @@ const COMFY_WAIT = 0.40;             // ComfortableWaitShare
 const QUOTE_OPTIMISM = 0.95;         // SimulationRunner.QuotedWaitOptimism
 const PLATES_PER_COOK = 2;           // KitchenPass.PlatesPerCook
 
+// Said the way a cook would say it, not by id.
+const STATION_NAMES = {
+  "oven":"oven", "saute":"range", "garde-manger":"cold section",
+  "grill":"grill", "coffee":"coffee machine", "pastry":"pastry section"
+};
+
 const REP = {
   neutral:0.5, good:0.00008, bad:0.0002,
   worstTraffic:0.60, bestTraffic:1.40,
@@ -795,9 +801,18 @@ function forecastDay(){
     seatCeil += seatsHere;
     kitchenCeil += kitchenHere;
 
-    let served = wanted;
-    if(seatsHere < served){ lostSeats += served - seatsHere; served = seatsHere; }
-    if(kitchenHere < served){ lostKitchen += served - kitchenHere; served = kitchenHere; }
+    // ATTRIBUTED TO WHICHEVER CEILING IS ACTUALLY LOWEST, not by subtracting them in turn.
+    // Applying seats first capped what the kitchen could be blamed for at (seats - kitchen)
+    // while the seat loss grew without limit, so past a certain footfall the verdict always
+    // read "seats" — Aaron's day 175 showed "seats-bound" with a pass ceiling of 40 against
+    // a seat ceiling of 80, while the autopsy underneath it said the pass could not keep up.
+    // The trade you lose is wanted minus what you can actually do, and it belongs to the
+    // tightest ceiling, not to the one that happened to be checked first.
+    const served = Math.min(wanted, seatsHere, kitchenHere);
+    const missed = wanted - served;
+    if(missed > 0){
+      if(kitchenHere <= seatsHere) lostKitchen += missed; else lostSeats += missed;
+    }
     covers += served;
   }
 
@@ -824,6 +839,65 @@ function forecastDay(){
     covers, revenue, food, labor, gross, constraint, demand,
     seatCeil: Math.floor(seatCeil), kitchenCeil: Math.floor(kitchenCeil),
     reads: `About ${Math.round(covers)} covers, ${gross>=0?"clearing":"losing"} ${money(Math.abs(gross))}. ${because}.`
+  };
+}
+
+/* WHERE THE PRICES WANT TO BE, worked out from the same demand model the service runs on
+   rather than from a rule of thumb.
+
+   Aaron asked for this after a run where 15 parties a night were deciding against him on price
+   before setting off, and nothing on screen connected those two facts. Food-cost percentage
+   could not answer it either: his coffee ran a 4% food cost and his sea bass 20%, and the
+   trade's healthy 28-35% band is a BLENDED figure across a whole card, so applying it per dish
+   would have told him to sell focaccia at $3.
+
+   It sweeps the one thing a restaurant actually sets — where the whole card sits against what
+   the dishes are designed to sell for — and takes the peak of (what you charge x how many
+   still come). Deliberately reported as a POSITION with its reasoning rather than a price to
+   copy: per Binding Principle 5 the game suggests and the player decides, and a per-dish
+   optimum handed over would be the game solving the menu for you. */
+function suggestedPosition(){
+  const dps = [...new Set(G.windows.map(w => daypartAt(w.from)))];
+  if(!dps.length) return { position:1, gain:0 };
+
+  // Scored on CONTRIBUTION, not takings. Ingredients are paid per cover, so the price that
+  // maximises revenue and the price that maximises what you keep are different numbers — and
+  // it is the second one that pays the rent. Scoring takings alone put the peak at exactly
+  // 1.00x every time, which is a suggestion that tells you nothing.
+  const on = RECIPES.filter(r => G.onMenu.has(r.id));
+  if(!on.length) return { position:1, now:pricePosition(), gain:0 };
+  const avgBase = on.reduce((a,r)=>a+r.base, 0) / on.length;
+  const avgCost = on.reduce((a,r)=>a+plateCost(r), 0) / on.length;
+
+  function scoreAt(pos){
+    let total = 0;
+    for(const dp of dps){
+      const pool = likelyAt(dp, G.site.id);
+      let w = 0, come = 0;
+      for(const a of pool){
+        const weight = G.onMenu.size ? menuAppealTo(a) : 1;
+        come += wouldConsider(ARCHETYPES[a].sens, pos) * weight;
+        w += weight;
+      }
+      const margin = (pos * avgBase) - avgCost;
+      total += Math.max(0, margin) * (w > 0 ? come/w : 1);
+    }
+    return total;
+  }
+
+  let best = null;
+  for(let pos = 0.60; pos <= 2.20; pos += 0.02){
+    const score = scoreAt(pos);
+    if(!best || score > best.score) best = { position:pos, score };
+  }
+
+  const now = pricePosition();
+  const here = scoreAt(now);
+
+  return {
+    position: best.position,
+    now,
+    gain: here > 0 ? (best.score/here - 1) : 0
   };
 }
 
@@ -1237,6 +1311,7 @@ function render(){
   note.textContent = repVerdict() + (drag ? " — " + drag : "");
   note.className = "repnote" + (drag ? " falling" : "");
 
+  G.suggest = null;   // live, like everything else — never cached across a change
   renderForecast();
 
   // interrupt
@@ -1360,7 +1435,7 @@ function panelMenu(){
       pl.className = "priceline";
       pl.innerHTML = `<span class="num" style="min-width:74px">$${G.prices[r.id].toFixed(2)}</span>
         <input type="range" min="${(r.base*0.5).toFixed(1)}" max="${(r.base*4).toFixed(1)}" step="0.5" value="${G.prices[r.id]}" aria-label="Price of ${r.name}">
-        <span class="num" style="color:var(--muted);font-size:12px">costs $${cost.toFixed(2)} · <span title="${GLOSSARY.foodcost}">food cost</span> ${((cost/Math.max(0.01,G.prices[r.id]))*100).toFixed(0)}% · ${(G.prices[r.id]/r.base).toFixed(1)}<span title="${GLOSSARY.menuprice}">× the menu price</span> · ${(G.sold[r.id]||0)} sold</span>`;
+        <span class="num" style="color:var(--muted);font-size:12px">costs $${cost.toFixed(2)} · <span title="${GLOSSARY.foodcost}">food cost</span> ${((cost/Math.max(0.01,G.prices[r.id]))*100).toFixed(0)}% · ${(G.prices[r.id]/r.base).toFixed(1)}<span title="${GLOSSARY.menuprice}">× the menu price</span> · ${(G.sold[r.id]||0)} sold${suggestFor(r)}</span>`;
       pl.querySelector("input").oninput = ev=>{ G.prices[r.id] = parseFloat(ev.target.value); render(); };
       d.appendChild(pl);
     }
@@ -1412,16 +1487,66 @@ function avgMarginIn(category){
   return units > 0 ? weighted/units : plain/on.length;
 }
 
-// Seats and stations have to grow together. Hiring more cooks does nothing once the
-// stations are the constraint, which is where Aaron ended up: 132 seats against 7 units.
+/* Which single station is holding the kitchen back, and how many covers an hour it allows.
+   COUNTING STATIONS WAS THE WRONG UNIT and it gave flatly wrong advice. Aaron's day 175 was
+   told "7 stations for 12 seats — kitchen is idle, buy tables" while one second-hand oven was
+   cooking half his dinner menu and 17 parties a night were leaving over the wait. Two of the
+   seven were a fridge and a shelf, and the other five are not interchangeable: a station is
+   only as useful as the share of the card it has to cook. */
+function bottleneck(dp){
+  const on = menuFor(dp || "dinner");
+  if(!on.length) return null;
+  const cl = complexityLoad();
+  const byStation = {};
+  on.forEach(r => (byStation[r.station] = byStation[r.station] || []).push(r));
+
+  let worst = null;
+  for(const st in byStation){
+    const units = stationUnits(st);
+    if(!units) continue;
+    const list = byStation[st], sp = stationSpeed(st);
+    const avgMin = list.reduce((a,r)=>a + Math.max(1, Math.round(r.prep*cl/sp)), 0) / list.length;
+    const share = list.length / on.length;
+    const coversPerHour = (60/avgMin) * units / share;
+    if(!worst || coversPerHour < worst.coversPerHour)
+      worst = { station:st, units, dishes:list.length, coversPerHour, share };
+  }
+  return worst;
+}
+
 function balanceNote(){
-  const k = kitchenCapacity();
-  const stations = k.units;
-  if(!stations) return "no kitchen at all";
-  const seatsPerStation = G.seats / stations;
-  if(seatsPerStation > 12) return `${G.seats} seats against ${stations} stations — the kitchen cannot keep up`;
-  if(seatsPerStation < 4) return `${stations} stations for ${G.seats} seats — kitchen is idle, buy tables`;
-  return `${G.seats} seats to ${stations} stations — about right`;
+  const dp = daypartAt(G.windows[0] ? G.windows[0].from : 19);
+  const b = bottleneck(dp);
+  if(!b) return "no kitchen at all";
+
+  const seatsPerHour = servableSeats() * (60/DWELL);
+  const kitchenPerHour = b.coversPerHour * PRACTICAL_CAPACITY;
+  const name = (STATION_NAMES && STATION_NAMES[b.station]) || b.station;
+  const allows = Math.round(kitchenPerHour);
+  const room = Math.round(seatsPerHour);
+
+  if(kitchenPerHour < seatsPerHour * 0.8)
+    return `the ${name} is the bottleneck — ${b.units} unit${b.units>1?"s":""} cooking ${b.dishes} of the card allows about ${allows} covers an hour, against ${room} the room could turn. Another ${name} unit, or a faster one, buys more than tables or cooks do.`;
+  if(seatsPerHour < kitchenPerHour * 0.8)
+    return `the room is the bottleneck — ${room} covers an hour against a kitchen that could send ${allows}. Buy tables before anything else.`;
+  return `${room} covers an hour of room against ${allows} of kitchen — about right.`;
+}
+
+/* Only says anything when it is worth saying — a suggestion attached to every dish every time
+   is wallpaper, and within a run the player stops seeing it. */
+function suggestFor(r){
+  const s = G.suggest || (G.suggest = suggestedPosition());
+  const want = r.base * s.position;
+  const have = G.prices[r.id];
+  if(have <= 0) return "";
+  const off = Math.abs(want - have) / have;
+  if(off < 0.08) return "";
+
+  const dearer = want > have;
+  const why = dearer
+    ? "this crowd would pay it"
+    : "you are losing more custom than the extra is worth";
+  return ` · <span class="sugg" title="Worked out from where the whole card sits against what these dishes are designed to sell for — the point where what you charge times how many still come is highest. ${Math.round(s.gain*100)}% better than where the prices are now.">suggest $${want.toFixed(2)} — ${why}</span>`;
 }
 
 function panelPantry(){
@@ -1841,35 +1966,28 @@ $("#untilBtn").addEventListener("click", ()=>{ G.interrupt = null; advance(120, 
 
 buildSetup();
 
-/*
- * Does the browser build's forecast match the night the browser build actually runs?
- *
- * The C# equivalent (`ForecastTests`) lands within 12% of the C# service. This is the same
- * question asked of the port, and the two answers differing is the point of asking.
- *
- *     python3 tools/headless.py tools/probe-forecast.js
- */
+// Does a full week still run, with every new code path touched?
+var sub = SITES.filter(function(s){return s.id==="suburban-high-street";})[0];
+G = newGame(sub, 12345);
+G.cash=40000; G.seats=30; G.fittings=[{id:"t",name:"T",seats:30,comfort:0.5}]; G.seatSpend=450;
+for(var i=0;i<3;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
+for(var i=0;i<3;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
+["oven","garde-manger","grill"].forEach(function(st){
+  var m=EQUIPMENT.filter(function(e){return e.station===st;})[0];
+  G.stations[st]=[{id:m.id,speed:m.speed,foot:m.foot,capacity:0}]; });
+RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:900,day:G.day}]; });
 
-function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
-var suburban = SITES.filter(function(s){return s.id==="suburban-high-street";})[0]||SITES[SITES.length-1];
-function build(seats,cooks,units,seed){
-  G=newGame(suburban,seed); G.cash=400000; G.seats=seats;
-  G.fittings=[{id:"t",name:"T",seats:seats,comfort:0.5}]; G.seatSpend=seats*15;
-  for(var i=0;i<3;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
-  for(var i=0;i<cooks;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
-  var need={}; RECIPES.forEach(function(r){ if(G.onMenu.has(r.id)) need[r.station]=true; });
-  for(var st in need){ var m=EQUIPMENT.filter(function(e){return e.station===st;})[0]; if(!m) continue;
-    G.stations[st]=[]; for(var u=0;u<units;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:m.capacity||0}); }
-  RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:400,day:G.day}]; });
+for(var d=0; d<7; d++){
+  var f = forecastDay();
+  var day = runDay();
+  var a = autopsy(f, day);
+  if(d===0 || d===6)
+    console.log("day "+(d+1)+": forecast "+Math.round(f.covers)+" ("+f.constraint+"), served "+day.covers+" — "+a.headline);
 }
-var shapes=[[40,4,3,"balanced"],[12,5,4,"tiny room"],[60,2,1,"short kitchen"],[30,3,2,"modest"]];
-var errs=[];
-for(var s=0;s<shapes.length;s++) for(var seed=0;seed<3;seed++){
-  build(shapes[s][0],shapes[s][1],shapes[s][2],4242+seed*977);
-  var f=forecastDay(), d=runDay(), a=autopsy(f,d); errs.push(a.err);
-  if(seed===0) console.log(pad(shapes[s][3],15)+"forecast "+pad(Math.round(f.covers),5)+" actual "+pad(d.covers,5)+
-    "("+Math.round(a.err*100)+"% out, bound by "+f.constraint+")");
-}
-errs.sort(function(a,b){return a-b;});
 console.log("");
-console.log("median "+Math.round(errs[Math.floor(errs.length/2)]*100)+"%   worst "+Math.round(errs[errs.length-1]*100)+"%");
+console.log("balance:  " + balanceNote());
+var s = suggestedPosition();
+console.log("pricing:  at " + s.now.toFixed(2) + "x, peak " + s.position.toFixed(2) + "x (+" + Math.round(s.gain*100) + "%)");
+console.log("suggestFor(margherita):" + suggestFor(RECIPES.filter(function(r){return r.id==="margherita";})[0]).replace(/<[^>]*>/g,""));
+console.log("");
+console.log("SMOKE OK — a week ran with forecast, autopsy, balance and pricing all live.");
