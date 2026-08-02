@@ -1648,13 +1648,56 @@ function advise(){
     } else if(perHour < roomPerHour * 0.8){
       const name = STATION_NAMES[lim.station] || lim.station;
       const model = EQUIPMENT.filter(e => e.station === lim.station).sort((x,y)=>x.cost-y.cost)[0];
+      // A BUTTON THAT SILENTLY DOES NOTHING IS WORSE THAN NO BUTTON. The interrupt checked
+      // floor space before offering the purchase and this did not, so at 14 sq ft free the
+      // Advisor still said "Buy a Second-hand Deck Oven" and clicking it did nothing at all.
+      const canFit = model && freeArea() >= model.foot && G.cash >= model.cost;
+
+      // No floor left is not a dead end — it is what the premium tier exists for. A Stone
+      // Hearth is 34 sq ft against the second-hand oven's 54 and more than twice the speed,
+      // so swapping one for the other buys throughput AND gives floor back. That is the
+      // "upgrade instead of expand" move the equipment ladder was designed around, and the
+      // player has no way to discover it while the game keeps pointing at a bigger box.
+      const owned = (G.stations[lim.station] || [])[0];
+      const better = EQUIPMENT.filter(e => e.station === lim.station && owned &&
+                       e.speed > owned.speed && e.foot < owned.foot && G.cash >= e.cost)
+                     .sort((a,b)=>b.speed-a.speed)[0];
+
+      const tail = canFit
+        ? ` Another ${model.name} is $${model.cost.toLocaleString()}; you have ${money(G.cash)}.`
+        : better
+          ? ` There is no floor left for another — but a ${better.name} runs at ${better.speed}× against the ${owned.speed}× you have now and takes ${owned.foot - better.foot} sq ft LESS. Sell one of the old ones and put that in its place.`
+          : ` There is no floor left for another, and nothing faster fits either. The building would have to be extended.`;
+
       out.push({ rank:3, id:"kitchen", head:`The ${name} is what is holding us back.`,
-        body:`${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` +
-             (model ? ` Another ${model.name} is $${model.cost.toLocaleString()}; you have ${money(G.cash)}.` : ""),
-        buy: model && G.cash >= model.cost ? model : null });
+        body:`${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` + tail,
+        buy: canFit ? model : null,
+        upgrade: !canFit && better ? { from: owned, to: better, station: lim.station } : null });
     } else if(roomPerHour < perHour * 0.8){
-      out.push({ rank:3, id:"room", head:"The kitchen is built for more people than the room can hold.",
-        body:`About ${Math.round(roomPerHour)} covers an hour of seating against a kitchen that could send ${Math.round(perHour)}. Tables earn more than another cook would.` });
+      // A SEAT YOU CANNOT FEED IS WORSE THAN NO SEAT AT ALL, and this advice used to ignore it.
+      //
+      // Measured, 30 days each with the same kitchen: 12 seats gave 68.8 covers a day and 6.1
+      // walkouts; 20 seats gave 56.8 covers and 26.2 walkouts. **Adding tables made it worse.**
+      // Turning someone away at the door costs the sale. Seating them and losing them costs the
+      // plate you cooked, the food, the seat they sat in while waiting, and your reputation —
+      // and it burns kitchen capacity on plates nobody pays for.
+      //
+      // The trap is granularity: headroom here was ~4 covers an hour and the smallest block of
+      // tables adds 13. So only suggest seats the kitchen can actually feed.
+      const headroom = perHour - roomPerHour;
+      const blockAdds = 10 * (60/DWELL);      // what +10 seats does to the turn rate
+      const turned = d && d.noTable ? ` Last night ${d.noTable} parties were turned away with nowhere to sit.` : "";
+
+      if(headroom >= blockAdds){
+        const fit = FURNITURE.filter(f => freeArea() >= f.foot*10 && G.cash >= f.perSeat*10)
+                             .sort((a,b)=>a.perSeat-b.perSeat)[0];
+        out.push({ rank:3, id:"room", head:"The kitchen is built for more people than the room can hold.",
+          body:`About ${Math.round(roomPerHour)} covers an hour of seating against a kitchen that could send ${Math.round(perHour)}.${turned} There is room to seat more without outrunning the pass.`,
+          seats: fit || null });
+      } else {
+        out.push({ rank:3, id:"roomtight", head:"The room is a little smaller than the kitchen — leave it that way for now.",
+          body:`${Math.round(roomPerHour)} covers an hour of seating against ${Math.round(perHour)} of kitchen, so there is only about ${Math.round(headroom)} an hour spare.${turned} That sounds like a reason to buy tables and it is not: the smallest block adds about ${Math.round(blockAdds)} covers an hour, which would seat people the pass cannot feed. A guest turned away at the door costs you the sale; one who sits down and gives up costs you the plate, the food, the table they held and your name. **Lift the kitchen first, then the room.**` });
+      }
     }
   }
 
@@ -1708,6 +1751,8 @@ function advise(){
   const broke = G.recent.length >= 5 && runway < 2;
   if(broke){
     for(const a of out){
+      if(a.seats) a.seats = null;
+      if(a.upgrade) a.upgrade = null;
       if(a.buy){ a.buy = null; a.body += ` There is not enough money to buy your way out of this — the cheaper move is to take the slowest dishes off the card until the pass can keep up.`; }
       else if(a.needsWage){ a.body += ` There is not the money to hire right now, so the move is to shorten the card or the hours until it can be worked with who you have.`; }
     }
@@ -1762,7 +1807,17 @@ function checkInterrupts(d){
     const name = STATION_NAMES[busiest] || busiest;
     return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
       body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour against ${Math.round(servableSeats()*(60/DWELL))} the room turns.`,
-      why:cheapest ? `Another ${cheapest.name} costs $${cheapest.cost.toLocaleString()}. You have ${money(G.cash)}, and ${freeArea().toFixed(1)} sq ft of floor free.` : "",
+      why:(function(){
+        if(!cheapest) return "";
+        if(freeArea() >= cheapest.foot)
+          return `Another ${cheapest.name} costs $${cheapest.cost.toLocaleString()}. You have ${money(G.cash)}, and ${freeArea().toFixed(1)} sq ft of floor free.`;
+        const owned = (G.stations[busiest] || [])[0];
+        const better = EQUIPMENT.filter(e => e.station === busiest && owned && e.speed > owned.speed && e.foot < owned.foot)
+                       .sort((a,b)=>b.speed-a.speed)[0];
+        return better
+          ? `There is no floor for another — only ${freeArea().toFixed(0)} sq ft free and it needs ${cheapest.foot}. But a ${better.name} is faster AND smaller: swap one out for it.`
+          : `There is no floor for another — only ${freeArea().toFixed(0)} sq ft free and it needs ${cheapest.foot}.`;
+      })(),
       acts: cheapest && G.cash>=cheapest.cost && freeArea()>=cheapest.foot
         ? [{ label:`Buy a ${cheapest.name} — $${cheapest.cost.toLocaleString()}`, fn:()=>buyEquip(cheapest) },
            { label:"Go to hiring", fn:()=>{ TAB="team"; } }]
@@ -1822,6 +1877,17 @@ function sellEquip(e){
   G.cash += back;
   G.ledger.capex -= back;
   say("money", `Sold a ${e.name} — $${back.toLocaleString()} back, ${e.foot} sq ft free. You paid $${e.cost.toLocaleString()}.`);
+}
+
+/* Ten more covers. Shared, so the Advisor's button and the Build tab's cannot drift on price,
+   floor area or comfort — the same class of split that had one cook doing 19 covers an hour in
+   one readout and 14 in another. */
+function buySeats(f){
+  const cost = f.perSeat*10, area = f.foot*10;
+  if(G.cash < cost || freeArea() < area) return;
+  G.cash -= cost; G.ledger.capex += cost; G.seats += 10; G.seatSpend += area;
+  G.fittings.push({ seats:10, comfort:f.comfort });
+  say("money", `Ten more covers — ${f.name.toLowerCase()}.`);
 }
 
 function buyEquip(e){
@@ -1931,6 +1997,25 @@ function renderAdvisor(){
       b.className = "btn";
       b.textContent = `Buy a ${a.buy.name} — $${a.buy.cost.toLocaleString()}`;
       b.onclick = ()=>{ buyEquip(a.buy); render(); };
+      row.appendChild(b);
+    }
+    if(a.upgrade){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = `Swap one for a ${a.upgrade.to.name} — $${a.upgrade.to.cost.toLocaleString()} less $${Math.round(a.upgrade.from.cost*RESALE_RATE).toLocaleString()} back`;
+      b.onclick = ()=>{
+        const old_ = EQUIPMENT.filter(e => e.id === a.upgrade.from.id)[0];
+        if(old_) sellEquip(old_);
+        buyEquip(a.upgrade.to);
+        render();
+      };
+      row.appendChild(b);
+    }
+    if(a.seats){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = `Add 10 seats — ${a.seats.name.toLowerCase()}, $${(a.seats.perSeat*10).toLocaleString()}`;
+      b.onclick = ()=>{ buySeats(a.seats); render(); };
       row.appendChild(b);
     }
     box.appendChild(row);
@@ -2567,20 +2652,14 @@ function panelBuild(){
   acts.className = "seg";
   acts.style.marginTop = "12px";
   for(const f of FURNITURE){
-    const cost = f.perSeat*10, area = f.foot*10;
     const b = document.createElement("button");
     b.className = "btn";
-    const noRoom = freeArea() < area;
+    const noRoom = freeArea() < f.foot*10;
     b.textContent = noRoom
-      ? `${f.name} — needs ${area} sq ft`
-      : `+10 seats (about ${tablesFrom(10)} more tables) · ${f.name} — $${cost.toLocaleString()}`;
-    b.disabled = noRoom || G.cash<cost;
-    b.onclick = ()=>{
-      G.cash-=cost; G.ledger.capex+=cost; G.seats+=10; G.seatSpend+=area;
-      G.fittings.push({seats:10, comfort:f.comfort});
-      say("money", `Ten more covers — ${f.name.toLowerCase()}.`);
-      render();
-    };
+      ? `${f.name} — needs ${f.foot*10} sq ft`
+      : `+10 seats (about ${tablesFrom(10)} more tables) · ${f.name} — $${(f.perSeat*10).toLocaleString()}`;
+    b.disabled = noRoom || G.cash < f.perSeat*10;
+    b.onclick = ()=>{ buySeats(f); render(); };
     acts.appendChild(b);
   }
 

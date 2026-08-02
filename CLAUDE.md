@@ -1976,6 +1976,46 @@ producing most of the walkouts, because arrivals clump and the queue never clear
 closes it; a third is wasted because the ovens become the limit — so there is a real right
 answer, and it is legible. Kept as `tools/probe-onecook-vs-room.js`.
 
+### A SEAT YOU CANNOT FEED IS WORSE THAN NO SEAT AT ALL
+
+The Advisor's room advice said *"tables earn more than another cook would"* and had no button.
+Adding one was obvious. **Measuring first was what stopped it shipping**, 30 days per
+configuration, fresh state each time, same kitchen throughout:
+
+| seats | room/hr | pass/hr | covers/day | walkouts | turned away | revenue/day |
+|---:|---:|---:|---:|---:|---:|---:|
+| **12** | 16 | 20 | **68.8** | **6.1** | 33.2 | **$717** |
+| 20 | 27 | 20 | 56.8 | 26.2 | 0.7 | $582 |
+| 60 | 56 | 20 | 56.5 | 26.4 | 0.0 | $579 |
+
+**Adding tables made it worse — 68.8 covers a day down to 56.8.** A guest turned away at the
+door costs the sale. A guest who sits down and gives up costs the plate you cooked, the food,
+the table they held while waiting, and your reputation — and burns kitchen capacity on plates
+nobody pays for. **The model is right and the advice was wrong.**
+
+**AARON'S NEXT RUN CONFIRMED IT LIVE, which is the part worth keeping.** He went 12 -> 32 seats
+on day 283 and the log reads: **79 covers and 3 walkouts, then 55, 38, 35 covers with 33, 44, 50
+walkouts.** He hired two cooks on day 287 and it recovered to 84-93. The measurement predicted
+his playthrough three days before he played it.
+
+**The real trap is granularity.** His headroom was ~4 covers an hour; the smallest block of
+tables adds 13. So the advice now only offers seats when the kitchen can absorb a whole block,
+and otherwise says so plainly — *"that sounds like a reason to buy tables and it is not... lift
+the kitchen first, then the room."*
+
+**And a dead button, found on the same screen.** At 14 sq ft free the interrupt correctly
+withheld the oven purchase; the Advisor offered it anyway, and clicking did nothing because
+`buyEquip` refuses silently. **A button that does nothing is worse than no button.** It now
+checks floor — and when there is none, it surfaces the move the equipment ladder was designed
+around and which nothing had ever pointed at:
+
+> *"There is no floor left for another — but a Stone Hearth Oven runs at 1.6x against the 0.75x
+> you have now and takes 20 sq ft LESS. Sell one of the old ones and put that in its place."*
+
+**Premium being faster AND smaller has been in the catalogue since M1 and was undiscoverable**
+while every readout pointed at buying another cheap box. Offered as one action, since selling
+and re-buying is two moves the player would have to infer.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
