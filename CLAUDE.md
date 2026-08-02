@@ -1269,11 +1269,50 @@ in mise en place, and in what a cook has to hold in their head. Broad Menu fell 
 four dishes, mid-tier supplier, 1.1x prices — now wins every market instead. The tax removed
 one dominant strategy and revealed another underneath it.
 
-**The diagnosis for next time: specialisation does not pay where it should.** Fine Dining
-correctly dies in a business district (lunchers want quick) but also loses to the generalist in
-the nightlife quarter, where influencers and couples are supposed to want exactly what it
-sells. **The archetype pull is too weak to make committing to a crowd beat hedging.** That is
-the next lever — not another cost on breadth, but a bigger reward for fitting a market.
+**FIXED, and the cause was the same shape as everything else on this list: MENU FIT WAS
+READ ONLY ON THE ORDERING SIDE.** A guest already sitting down chose a dish they liked, but
+the card had no bearing on whether they came at all — so a fine-dining room and a pizzeria
+drew the identical street, and specialising was strictly worse than hedging by construction.
+The fifth instance of a field read on one side of the decision it exists to inform, after
+`PriceSensitivity`, `IngredientQuality`, `PartiesTurnedAway` and `Employee.Skill`. **The
+prediction that there would be a fifth was correct. Assume there is a sixth.**
+
+`Menu.AppealTo(archetype)` scores a card against a sort of guest, normalised so a menu with
+no opinion is exactly 1.0. It feeds two places, and both are needed:
+
+- **How many come.** `MenuDrawAt` averages appeal across whoever is out at that hour and
+  scales the street's footfall by `0.55 + avg x 0.45`. Damped deliberately — the card shifts
+  traffic, it does not replace it. Without this, specialising only redistributed a fixed crowd
+  and a fine-dining room at business lunch was never actually empty.
+- **Who comes.** `PickWhoWalksIn` draws from the crowd weighted by appeal, in exactly one
+  draw like the uniform pick it replaced, so chunk-size invariance is untouched. A truffle and
+  sea-bass card fills with the people who came for truffle and sea bass.
+
+**Result: 1 distinct winner out of 4, to 3 of 4.**
+
+| Strategy | city | business | nightlife | suburban |
+|---|---:|---:|---:|---:|
+| Cheap and cheerful | 2,771 | -1,562 | 15,839 | 768 |
+| Neighbourhood standard | 23,810 | **8,385** | **38,501** | 10,724 |
+| Fine dining | 20,128 | -28,157 | 1,794 | **15,110** |
+| High volume | -5,321 | -5,836 | -945 | -6,592 |
+| Coffee and counter | -7,185 | 5,127 | -9,145 | -8,208 |
+| Broad menu | **26,330** | 3,976 | 31,766 | 12,413 |
+
+**PART OF THAT GAIN WAS A FIXTURE CORRECTION AND IS RECORDED AS SUCH, NOT CLAIMED FOR THE
+MODEL.** Fine Dining ran 5 skilled cooks against 24 seats while the generalist ran 4 against
+36 — so the comparison was concept against a badly-run version of another concept, and it was
+losing on payroll rather than on fit. Restaffed to 4 cooks and 34 seats it goes -3,374 to
++1,794 in nightlife and wins suburban outright. **The model change alone bought 1/4 to 2/4;
+the fixture correction bought the third.** Changing a fixture while hunting a better number is
+exactly the trap this project has been caught in before, so: the defence is that 5 cooks for
+24 covers is over-staffed on the model's own arithmetic (`PlatesPerCook` x skill), independent
+of what it did to the score.
+
+**Still open, and it is the interesting one: fine dining wins the SUBURBS rather than the
+nightlife quarter.** Cheap rent and the largest site cap beat the crowd that actually wants
+what it sells. That may be right — a destination restaurant does go where the rent is — but it
+was not the prediction, and the nightlife quarter is still won by the generalist.
 
 **This is now the gate that matters more than the sweep.** A restaurant game where one build
 wins everywhere is a spreadsheet with a theme.

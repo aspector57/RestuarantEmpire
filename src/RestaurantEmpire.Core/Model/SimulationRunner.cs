@@ -346,7 +346,8 @@ namespace RestaurantEmpire.Core.Model
                 // to a minute-by-minute one — the multiplier changes the odds, never the
                 // number of rolls.
                 var footfall = _restaurant.TrafficAt(now)
-                             * (double)_restaurant.Reputation.TrafficMultiplier;
+                             * (double)_restaurant.Reputation.TrafficMultiplier
+                             * (double)MenuDrawAt(now);
 
                 if (_rng.Chance(footfall / 60.0))
                 {
@@ -664,6 +665,64 @@ namespace RestaurantEmpire.Core.Model
             if (satisfaction.Overall < 0.6m) _diagnostics.Add(satisfaction.Diagnosis);
         }
 
+        /// <summary>
+        /// How much this menu pulls the crowd that is out at this hour — the reward for being
+        /// a particular kind of restaurant rather than a bit of everything.
+        ///
+        /// Menu fit used to change only what a SEATED guest ordered, never whether anyone came,
+        /// so a fine-dining room and a pizzeria drew the identical street and specialising was
+        /// strictly worse than hedging. Measured across six strategies and four markets, one
+        /// generalist won all four. Fitting the neighborhood now brings people in, and failing
+        /// to fit it leaves the room quiet.
+        /// </summary>
+        private decimal MenuDrawAt(DateTime now)
+        {
+            if (_restaurant.Menu.Count == 0) return 1m;
+
+            var likely = ArchetypeProfile.LikelyAt(Dayparts.At(now),
+                _restaurant.Location == null ? "" : _restaurant.Location.Id);
+            if (likely.Length == 0) return 1m;
+
+            var total = 0m;
+            for (var i = 0; i < likely.Length; i++) total += _restaurant.Menu.AppealTo(likely[i]);
+
+            // Damped: the card shifts the street's traffic, it does not replace it. A menu
+            // nobody out tonight wants still gets passers-by; a perfect fit is not a queue
+            // around the block.
+            return 0.55m + ((total / likely.Length) * 0.45m);
+        }
+
+        /// <summary>
+        /// Draws from the crowd that is out, weighted by how much each sort of person likes
+        /// the look of the menu. Consumes exactly one number, like the uniform draw it
+        /// replaced, so chunk-size invariance is unaffected.
+        /// </summary>
+        private CustomerArchetype PickWhoWalksIn(CustomerArchetype[] likely)
+        {
+            if (likely.Length == 1) return likely[0];
+
+            var weights = new decimal[likely.Length];
+            var total = 0m;
+            for (var i = 0; i < likely.Length; i++)
+            {
+                var w = _restaurant.Menu.AppealTo(likely[i]);
+                weights[i] = w;
+                total += w;
+            }
+
+            if (total <= 0m) return likely[_rng.Next(likely.Length)];
+
+            var roll = (decimal)_rng.NextDouble() * total;
+            var running = 0m;
+            for (var i = 0; i < likely.Length; i++)
+            {
+                running += weights[i];
+                if (roll < running) return likely[i];
+            }
+
+            return likely[likely.Length - 1];
+        }
+
         private CustomerParty RollParty(long tick, DateTime now)
         {
             _partyCounter++;
@@ -673,7 +732,11 @@ namespace RestaurantEmpire.Core.Model
             var likely = ArchetypeProfile.LikelyAt(Dayparts.At(now),
                 _restaurant.Location == null ? "" : _restaurant.Location.Id);
 
-            var archetype = likely[_rng.Next(likely.Length)];
+            // WHICH of them walks in is decided by the card. A room serving truffle and sea
+            // bass fills with the people who came for truffle and sea bass; the same street
+            // with a pizza list fills with families. One draw, exactly as before, so the
+            // arrival sequence keeps its shape.
+            var archetype = PickWhoWalksIn(likely);
             var profile = ArchetypeProfile.For(archetype);
 
             // Would this sort of person come here at all, at these prices? Decided BEFORE they

@@ -55,7 +55,7 @@ namespace RestaurantEmpire.Core.Tests
 
                 new Strategy { Name = "Fine dining", Supplier = "premium-harvest",
                     Menu = new[] { "truffle-risotto", "sea-bass", "caprese-salad" },
-                    PriceMultiplier = 1.35m, Units = 3, Seats = 24, Cooks = 5, Servers = 3, CookSkill = 0.85m },
+                    PriceMultiplier = 1.35m, Units = 3, Seats = 34, Cooks = 4, Servers = 3, CookSkill = 0.85m },
 
                 new Strategy { Name = "High volume", Supplier = "budget-wholesale",
                     Menu = new[] { "margherita", "house-focaccia" },

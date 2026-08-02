@@ -96,6 +96,43 @@ namespace RestaurantEmpire.Core.Model
         /// unrelated work and in cooks holding more in their heads. Four dishes is free;
         /// past that, each one taxes the pass.
         /// </summary>
+        /// <summary>
+        /// How much this card appeals to a given sort of guest, where 1.0 is a menu they have
+        /// no feelings about either way. Above 1, they would go out of their way; below, they
+        /// would rather eat elsewhere.
+        ///
+        /// **This is what makes committing to a crowd worth doing.** Menu fit used to change
+        /// only what a seated guest ORDERED, never whether they came — so a fine-dining room
+        /// and a pizzeria drew exactly the same people and specialising was strictly worse than
+        /// hedging. Measured across six strategies and four markets, the generalist won all
+        /// four. A restaurant that knows what it is should pull its own crowd in.
+        /// </summary>
+        public decimal AppealTo(CustomerArchetype archetype)
+        {
+            if (_recipeIds.Count == 0) return 1m;
+
+            var profile = ArchetypeProfile.For(archetype);
+            var total = 0m;
+            var counted = 0;
+
+            foreach (var recipe in Recipes)
+            {
+                var weight = 2m;   // the same neutral footing appetite starts from
+                for (var i = 0; i < recipe.Tags.Count; i++) weight += profile.PullToward(recipe.Tags[i]);
+
+                if (weight < 0.5m) weight = 0.5m;
+                total += weight;
+                counted++;
+            }
+
+            if (counted == 0) return 1m;
+
+            // Normalised against that neutral 2, so a card with no opinion scores exactly 1.
+            var appeal = (total / counted) / 2m;
+            if (appeal < 0.35m) return 0.35m;
+            return appeal > 2.2m ? 2.2m : appeal;
+        }
+
         public decimal ComplexityLoad
         {
             get
