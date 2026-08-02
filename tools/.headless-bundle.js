@@ -205,6 +205,7 @@ const GLOSSARY = {
   foodcost:"What the ingredients cost as a share of what you charge. The trade runs 28–35%. Much lower and you are relying on people not noticing.",
   prime:"Food plus wages over takings — the number that actually decides whether a restaurant lives. Under 55% excellent, 55–65% healthy, 65–70% tight, over 70% and you are going backwards.",
   standing:"What the neighbourhood thinks of you, 0 to 100. It drifts toward whatever your meals actually score, and moves over months rather than days.",
+  advisor:"What is worth your attention, most urgent first. It stays quiet when nothing needs doing — an advisor that always has an opinion stops being read. It tells you what is happening in your restaurant and what it would cost to change; it will not tell you what to decide.",
   forecast:"What tonight should look like, worked out before it happens from the same model that runs the service — the traffic outside, your prices, the room and the pass. It cannot know the dice, so it will never be exact; the gap between it and the night is the useful part, because it tells you which assumption you had wrong.",
   menufit:"How well your menu suits the people who are out around here, across the hours you open. Above 100% and the card is pulling people in who would otherwise have walked past; below and they are going somewhere that serves what they came out for. It changes WHO turns up as well as how many — a truffle and sea bass list fills the room with the crowd that wanted truffle and sea bass.",
   breadth:"What a wide menu costs the kitchen. Four dishes are free; each one after that adds 9% to how long a ticket takes and how often a plate goes wrong, because breadth is paid for in prep, in mise en place, and in what a cook has to hold in their head.",
@@ -1180,6 +1181,115 @@ function say(kind, text){
 
 /* ---------- interrupts: named problem, named action, named price ---------- */
 
+/* =========================================================================
+   THE ADVISOR — ported from the engine, which had it and this did not.
+
+   Aaron: *"we need more insights to be able to make changes."* Right, and the gap was
+   structural: the browser build had INTERRUPTS (something has gone wrong, here is the fix) but
+   no ADVISOR (here is what to work on, in order). An interrupt only speaks when something
+   breaks. An advisor speaks when you ask.
+
+   Three rules carried across from the engine, and they are what make it advice rather than a
+   readout:
+
+   1. IT NEVER NAMES THE MECHANISM. It may say "the risotto earns most of anything we sell and
+      nobody orders it" and never "this is a Puzzle". Same information, entirely different
+      relationship, and only the first leaves the player running the restaurant.
+   2. IT SAYS WHAT MATTERS FIRST. Every suggestion being individually correct is worthless if
+      the sequence is ruinous — a run that skips seats for want of cash and then spends it on
+      an oven two suggestions later. Sorted by urgency.
+   3. IT IS ALLOWED TO SAY NOTHING. An advisor that always has an opinion stops being read.
+   ========================================================================= */
+
+function advise(){
+  const out = [];
+  const d = G.recent.length ? G.recent[G.recent.length-1] : null;
+  const runway = monthlyBurn() > 0 ? G.cash / monthlyBurn() : 99;
+
+  // --- 0. Nothing to sell at an hour you are open. Free to fix, and it bleeds twice. ---
+  const bare = G.windows.filter(w => menuFor(daypartAt(w.from)).length === 0 && drinksFor(daypartAt(w.from)).length === 0);
+  if(bare.length)
+    out.push({ rank:0, id:"menu", head:"People are coming in and finding nothing they want.",
+      body:`Nothing on the card suits ${bare.map(w=>w.name.toLowerCase()).join(" or ")}. Put something on for that service, or stop opening for it — the stock you bought for it is spoiling either way.` });
+
+  // --- 1. Paying for hands you did not need. Stops the bleeding, costs nothing. ---
+  const seatsHeld = servableSeats();
+  if(G.servers.length > 1 && seatsHeld > G.seats * 1.6)
+    out.push({ rank:1, id:"floor", head:"We are paying for more floor staff than the room needs.",
+      body:`${G.servers.length} servers can hold ${seatsHeld} covers and there are ${G.seats} seats. One fewer would not be noticed.` });
+
+  // --- 2. Runway. Know before you spend. ---
+  if(runway < 2 && monthlyBurn() > 0)
+    out.push({ rank:2, id:"runway", head:"There is less than two months of money left.",
+      body:`${money(G.cash)} against about ${money(monthlyBurn())} a month going out. Anything that adds a wage is a bad idea until this turns.` });
+
+  // --- 3. The bottleneck, named. This is the one that pays. ---
+  const b = bottleneck(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+  if(b && d){
+    const perHour = b.coversPerHour * PRACTICAL_CAPACITY;
+    const roomPerHour = servableSeats() * (60/DWELL);
+    if(perHour < roomPerHour * 0.8){
+      const name = STATION_NAMES[b.station] || b.station;
+      const model = EQUIPMENT.filter(e => e.station === b.station).sort((x,y)=>x.cost-y.cost)[0];
+      out.push({ rank:3, id:"kitchen", head:`The ${name} is what is holding us back.`,
+        body:`${b.units} unit${b.units>1?"s":""} cooking ${b.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` +
+             (model ? ` Another ${model.name} is $${model.cost.toLocaleString()}; you have ${money(G.cash)}.` : ""),
+        buy: model && G.cash >= model.cost ? model : null });
+    } else if(roomPerHour < perHour * 0.8){
+      out.push({ rank:3, id:"room", head:"The kitchen is built for more people than the room can hold.",
+        body:`About ${Math.round(roomPerHour)} covers an hour of seating against a kitchen that could send ${Math.round(perHour)}. Tables earn more than another cook would.` });
+    }
+  }
+
+  // --- 4. Priced away from the money. ---
+  const sp = G.suggest || (G.suggest = suggestedPosition());
+  if(sp.gain > 0.08)
+    out.push({ rank:4, id:"price", head:"The prices are leaving money on the table.",
+      body:`The card sits at ${sp.now.toFixed(2)}× what these dishes are designed to sell for. Around ${sp.position.toFixed(2)}× suits this crowd better — roughly ${Math.round(sp.gain*100)}% more from the same covers.` });
+
+  // --- 5. Binning too much of what we buy. ---
+  // Guarded on both ends. A probe once reported "669% of the food bill has gone in the bin"
+  // because its pantry was loaded directly rather than bought, so the denominator was nearly
+  // zero — nonsense, and the sort of nonsense that destroys trust in every other line here.
+  // A share cannot exceed one, and a share of almost nothing is not worth saying.
+  if(d && G.spoiled > 0 && G.ledger.food > 500){
+    const binned = Math.min(1, G.spoiled / G.ledger.food);
+    if(binned > 0.30)
+      out.push({ rank:5, id:"waste", head:"We are throwing away too much of what we buy.",
+        body:`${Math.round(binned * 100)}% of the food bill has gone in the bin. Either the standing order is set too deep, or the card is carrying things that do not sell fast enough to stay fresh.` });
+  }
+
+  // --- 6. Prime cost. The number that decides whether a restaurant lives. ---
+  if(G.ledger.revenue > 1000){
+    const prime = (G.ledger.food + G.ledger.labor) / G.ledger.revenue;
+    if(prime > 0.70)
+      out.push({ rank:6, id:"prime", head:"Food and wages are eating almost everything we take.",
+        body:`${Math.round(prime*100)}% of revenue goes on food and staff before rent. Under 65% is where a restaurant can breathe.` });
+  }
+
+  // --- 7. A bar, if the hours would carry one. ---
+  const lateHours = G.windows.some(w => daypartAt(w.from) === "latenight" || w.to > 22 || w.to <= 3);
+  if(!G.licence && lateHours && G.cash > LICENCE_FEE * 1.8)
+    out.push({ rank:7, id:"licence", head:"We are open late with nothing late people actually want.",
+      body:`Nobody orders a main at one in the morning — they order a drink. A licence is $${LICENCE_FEE.toLocaleString()} and $${LICENCE_RENEWAL} a month, and drinks carry a better margin than the kitchen.` });
+
+  // THE RUNWAY BRAKE, and it distinguishes ONGOING cost from CAPITAL. A restaurant with three
+  // weeks of money should not be told to buy an oven. But suppressing ALL spending is a death
+  // trap — poor because small, then advised to stay small — so this only silences the things
+  // that spend, and only when the money genuinely is not there. Everything free to do (the
+  // menu, the prices, the standing order, letting someone go) still gets said.
+  const spends = { kitchen:1, licence:1, room:1 };
+  const filtered = runway < 2 ? out.filter(a => !spends[a.id]) : out;
+
+  filtered.sort((x,y)=>x.rank-y.rank);
+  return filtered;
+}
+
+function monthlyBurn(){
+  const wages = wageBill() * HOURS_PER_SHIFT * 30;
+  return wages + G.site.rent + (G.licence ? LICENCE_RENEWAL : 0);
+}
+
 function checkInterrupts(d){
   if(G.cash < 0){
     return { kind:"cash", title:"You have run out of money.",
@@ -1241,6 +1351,7 @@ function buyEquip(e){
 /* ---------- advancing ---------- */
 
 function advance(days, stopOnInterrupt){
+  let stoppedOn = null;
   for(let i=0;i<days;i++){
     // Taken before the night, from the state the player last saw — committing to a belief is
     // the whole mechanic, and a forecast computed afterwards would just be a second report.
@@ -1257,10 +1368,19 @@ function advance(days, stopOnInterrupt){
     if(d.balkedWait > 3) say("warn", `Day ${G.day}: ${d.balkedWait} parties put off by the wait.`);
     if(d.balkedPrice > 3) say("warn", `Day ${G.day}: ${d.balkedPrice} parties put off by the prices.`);
 
+    // JUMPING AHEAD MUST STOP WHEN SOMETHING NEEDS DECIDING. Aaron: *"the only time I got
+    // this was when I clicked sim until something happens; if I did 1w, 1m, it would not stop
+    // me."* That was the fast-forward-with-interrupts loop only half wired — the day buttons
+    // passed `false` and ran blind through every problem. Jumping a month is a bet that
+    // nothing needs you, and the game owes you the moment that bet is wrong.
     const int_ = checkInterrupts(d);
-    if(int_ && stopOnInterrupt){ G.interrupt = int_; break; }
-    if(int_ && int_.kind==="cash"){ G.interrupt = int_; break; }
+    if(int_){ G.interrupt = int_; stoppedOn = i + 1; break; }
   }
+
+  // Say plainly that the jump was cut short, or a "1m" that ran four days is baffling.
+  if(stoppedOn !== null && stoppedOn < days)
+    say("warn", `Stopped after ${stoppedOn} day${stoppedOn===1?"":"s"} of ${days} — something needs you.`);
+
   render();
 }
 
@@ -1302,6 +1422,36 @@ function ratingFor(r){
                              : "made with cheaper ingredients than it could be";
 
   return { food, speed, value, room, stars:overall*5, weakest, verdict };
+}
+
+function renderAdvisor(){
+  const list = advise();
+  const box = $("#advlist");
+  $("#advcount").textContent = list.length ? list.length + (list.length === 1 ? " thing" : " things") : "";
+
+  // ALLOWED TO SAY NOTHING. A healthy restaurant gets silence, not manufactured advice.
+  if(!list.length){
+    box.innerHTML = `<div class="advquiet">Nothing needs you right now. Trade on.</div>`;
+    return;
+  }
+
+  box.innerHTML = "";
+  for(const a of list){
+    const row = document.createElement("div");
+    row.className = "advitem";
+    row.innerHTML = `<div class="advhead">${a.head}</div><div class="advbody">${a.body}</div>`;
+
+    // Where there is one obvious purchase, offer it here rather than making the player go
+    // and find it. The decision stays theirs; only the walking is removed.
+    if(a.buy){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = `Buy a ${a.buy.name} — $${a.buy.cost.toLocaleString()}`;
+      b.onclick = ()=>{ buyEquip(a.buy); render(); };
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
 }
 
 /* The forecast is only worth anything if it is in front of the player BEFORE they commit —
@@ -1387,6 +1537,7 @@ function render(){
   note.className = "repnote" + (drag ? " falling" : "");
 
   G.suggest = null;   // live, like everything else — never cached across a change
+  renderAdvisor();
   renderForecast();
 
   // interrupt
@@ -2163,7 +2314,7 @@ function buyEquipSilent(id){
 
 document.addEventListener("click", ev=>{
   const adv = ev.target.closest("[data-adv]");
-  if(adv){ G.interrupt = null; advance(parseInt(adv.dataset.adv,10), false); return; }
+  if(adv){ G.interrupt = null; advance(parseInt(adv.dataset.adv,10), true); return; }
   const tab = ev.target.closest(".tab");
   if(tab){ TAB = tab.dataset.tab; render(); }
 });
@@ -2171,70 +2322,42 @@ $("#untilBtn").addEventListener("click", ()=>{ G.interrupt = null; advance(120, 
 
 buildSetup();
 
-/*
- * Do drinks behave in the browser build the way they do in the engine?
- *
- * The C# equivalent (`DrinksTests`) measures spend per cover $13.43 -> $22.39 and food cost
- * 37% -> 28%. This asks the same of the port.
- *
- *     python3 tools/headless.py tools/probe-drinks.js
- */
-function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
-var night = SITES.filter(function(s){return s.id==="nightlife-quarter";})[0];
+var sub = SITES.filter(function(s){return s.id==="suburban-high-street";})[0];
+G = newGame(sub, 7777);
+G.cash = 6000; G.seats = 30;
+G.fittings=[{id:"t",name:"T",seats:30,comfort:0.5}]; G.seatSpend=450;
+for(var i=0;i<2;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
+for(var i=0;i<2;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
+["oven","garde-manger"].forEach(function(st){
+  var m=EQUIPMENT.filter(function(e){return e.station===st;})[0];
+  G.stations[st]=[{id:m.id,speed:m.speed,foot:m.foot,capacity:0}]; });
+G.stations["cold-storage"]=[{id:"c",speed:1,foot:90,capacity:3000}];
+G.stations["dry-storage"]=[{id:"d",speed:1,foot:34,capacity:4000}];
+// BUY the opening stock rather than conjuring it, or the books show food binned that was
+// never purchased -- which produced "669% of the food bill" once.
+RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) orderStock(k, 300); });
 
-function build(menu, licensed, windows, seed){
-  G = newGame(night, seed);
-  G.cash = 400000; G.seats = 36;
-  G.fittings=[{id:"t",name:"T",seats:36,comfort:0.5}]; G.seatSpend=540;
-  G.onMenu = new Set(menu);
-  G.licence = licensed;
-  G.windows = windows;
-  for(var i=0;i<3;i++) G.servers.push({id:"s"+i,name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5});
-  for(var i=0;i<4;i++) G.cooks.push({id:"c"+i,name:"C",role:"cook",wage:16,skill:0.5,claim:0.5,potential:0.5});
-  var need={}; RECIPES.forEach(function(r){ if(G.onMenu.has(r.id)) need[r.station]=true; });
-  for(var st in need){
-    var m=EQUIPMENT.filter(function(e){return e.station===st;})[0]; if(!m) continue;
-    G.stations[st]=[]; for(var u=0;u<3;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:0});
-  }
-  // Somewhere to PUT the stock, or the standing order silently refuses every delivery and
-  // the restaurant quietly starves. Cost a false finding once already.
-  G.stations["cold-storage"] = [{id:"cold-walkin", speed:1, foot:90, capacity:3000}];
-  G.stations["dry-storage"]  = [{id:"dry-racking", speed:1, foot:34, capacity:4000}];
-  RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) G.pantry[k]=[{qty:300,day:G.day}]; });
-}
-function run(days){
-  var tot={covers:0,revenue:0,food:0,lostMenu:0,drinks:0};
-  for(var i=0;i<days;i++){ var d=runDay();
-    tot.covers+=d.covers; tot.revenue+=d.revenue; tot.food+=d.food;
-    tot.lostMenu+=d.lostMenu; tot.drinks+=(d.drinks||0); }
-  return tot;
-}
-
-var dinner=[{name:"Dinner",from:18,to:23}];
-var dinnerLate=[{name:"Dinner",from:18,to:23},{name:"Late",from:23,to:2}];
-var food=["sea-bass","caprese-salad"];
-var withBar=["sea-bass","caprese-salad","house-wine","negroni","draught-pint"];
-
-console.log(pad("setup",22)+pad("covers",8)+pad("revenue",10)+pad("$/cover",9)+pad("food%",7)+pad("drinks",8)+"found nothing");
-build(food,false,dinner,4242); var a=run(30);
-console.log(pad("dinner, no bar",22)+pad(a.covers,8)+pad("$"+Math.round(a.revenue),10)+pad("$"+(a.revenue/a.covers).toFixed(2),9)+pad(Math.round(a.food/a.revenue*100)+"%",7)+pad(a.drinks,8)+a.lostMenu);
-build(withBar,true,dinner,4242); var b=run(30);
-console.log(pad("dinner, licensed",22)+pad(b.covers,8)+pad("$"+Math.round(b.revenue),10)+pad("$"+(b.revenue/b.covers).toFixed(2),9)+pad(Math.round(b.food/b.revenue*100)+"%",7)+pad(b.drinks,8)+b.lostMenu);
-build(food,false,dinnerLate,4242); var c=run(30);
-console.log(pad("dinner+late, no bar",22)+pad(c.covers,8)+pad("$"+Math.round(c.revenue),10)+pad("$"+(c.revenue/c.covers).toFixed(2),9)+pad(Math.round(c.food/c.revenue*100)+"%",7)+pad(c.drinks,8)+c.lostMenu);
-build(withBar,true,dinnerLate,4242); var e=run(30);
-console.log(pad("dinner+late, licensed",22)+pad(e.covers,8)+pad("$"+Math.round(e.revenue),10)+pad("$"+(e.revenue/e.covers).toFixed(2),9)+pad(Math.round(e.food/e.revenue*100)+"%",7)+pad(e.drinks,8)+e.lostMenu);
-
-build(withBar,false,dinner,4242); var f=run(10);
+for(var i=0;i<20;i++) runDay();
+console.log("After 20 days — cash " + Math.round(G.cash) + ", covers/day ~" + G.recent[G.recent.length-1].covers);
 console.log("");
-console.log("unlicensed with a drinks list: "+(G.sold["house-wine"]||0)+" wine, "+(G.sold["negroni"]||0)+" negroni sold (must be 0)");
+var list = advise();
+console.log("ADVISOR (" + list.length + " things, most urgent first):");
+list.forEach(function(a){
+  console.log("  [" + a.id + "] " + a.head);
+  console.log("        " + a.body);
+  if(a.buy) console.log("        -> offers: " + a.buy.name + " $" + a.buy.cost);
+});
+console.log("");
+console.log("--- a healthy restaurant should get silence ---");
+G.cash = 200000;
+for(var st of ["oven","garde-manger"]) { var m=EQUIPMENT.filter(function(e){return e.station===st;})[1];
+  G.stations[st]=[]; for(var u=0;u<4;u++) G.stations[st].push({id:m.id,speed:m.speed,foot:m.foot,capacity:0}); }
+G.suggest = null;
+console.log("  " + advise().length + " things to say");
 
 console.log("");
-console.log("--- is the food-only case running out of stock? ---");
-build(food,false,dinner,4242);
-for(var day=0; day<30; day++){
-  var d = runDay();
-  if(day===0 || day===4 || day===29)
-    console.log("  day "+pad(day+1,4)+" covers "+pad(d.covers,5)+" foundNothing "+pad(d.lostMenu,5)+
-                " sea-bass stock "+stockOf("sea-bass").toFixed(1)+"  mozzarella "+stockOf("mozzarella").toFixed(1));
-}
+console.log("--- the 669% ---");
+console.log("  G.spoiled      = " + G.spoiled.toFixed(2) + "   (value of stock binned)");
+console.log("  G.ledger.food  = " + G.ledger.food.toFixed(2) + "   (money spent buying food)");
+console.log("  G.ledger.revenue = " + G.ledger.revenue.toFixed(2));
+console.log("  G.ledger.labor   = " + G.ledger.labor.toFixed(2));

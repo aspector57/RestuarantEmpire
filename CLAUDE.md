@@ -1670,6 +1670,41 @@ by daypart then price, which put a Negroni between two mains. The card is now GR
 the course structure a large catalogue needs.** Grouping is what makes a big menu legible;
 without it, hundreds of dishes is just a longer list.
 
+### Jump-ahead now stops, and the browser build finally has an Advisor
+
+> *"loved the advisor letting me know that... then recommended things to do to fix it, that is
+> good. The only time I got this though was when I clicked sim until something happens — if I
+> did 1w, 1m, it would not stop me. Also we need more insights to be able to make changes."*
+
+**1. THE FAST-FORWARD LOOP WAS ONLY HALF WIRED.** The day buttons passed `stopOnInterrupt:
+false` and ran blind through every problem; only "run until something happens" ever stopped.
+That is the M1(a) mechanism bar failing in the build a human actually plays — **jumping a month
+is a bet that nothing needs you, and the game owes you the moment that bet is wrong.** All jumps
+now stop, and say how far they got: *"Stopped after 4 days of 30 — something needs you."*
+
+**2. THE BROWSER BUILD HAD NO ADVISOR AT ALL.** Zero occurrences. It had INTERRUPTS (something
+broke, here is the fix) and nothing that answers *"what should I work on?"* — which is exactly
+the gap Aaron named. An interrupt speaks when something breaks; an advisor speaks when you ask.
+
+Ported with the three rules that make it advice rather than a readout: it **never names the
+mechanism**, it **says what matters first** (a correct list in a ruinous order is worthless),
+and it is **allowed to say nothing** — a healthy restaurant gets *"Nothing needs you right now.
+Trade on."* Where there is one obvious purchase it offers the button inline, so the decision
+stays the player's and only the walking is removed.
+
+**The runway brake came with it**, and it is the subtle part: below two months of money the
+suggestions that SPEND are suppressed, while everything free — the menu, the prices, the
+standing order, letting someone go — still gets said. Suppressing all spending is a death trap
+(poor because small, then advised to stay small); suppressing none tells a restaurant three
+weeks from closing to buy an oven.
+
+**A guard worth keeping: the Advisor reported "669% of the food bill has gone in the bin."**
+The probe's pantry was loaded directly rather than bought, so the denominator was near zero.
+**Nonsense in one line destroys trust in every other line**, so shares are now clamped to 1 and
+suppressed below a meaningful denominator. Third fixture bug this session found by the headless
+probe (after the missing fridge and the storage-less starvation) — **the pattern is that a
+fixture which skips the game's own economy measures something that is not the game.**
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
