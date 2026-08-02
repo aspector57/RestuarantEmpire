@@ -1373,7 +1373,14 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
-- **The browser build is LEVEL WITH THE ENGINE as of arrival-side pricing.** It carries
+- **The browser build is LEVEL WITH THE ENGINE as of menu fit deciding arrivals.** It carries
+  `menuAppealTo` / `menuDrawAt` / `pickWhoWalksIn` and `complexityLoad`, so specialising pulls
+  its own crowd there exactly as it does here, and breadth is paid for in ticket time and
+  mistakes. A **"card suits the street"** readout sits under the reputation panel, averaged
+  across the dayparts actually being served — green above 105%, red below 90% — because a
+  mechanic the player cannot see is one they cannot play around. Both terms are in the hover
+  glossary.
+- **It was previously level as of arrival-side pricing.** It carries
   `wouldConsider` (who turns up at all, reputation-adjusted) and the city-shaped
   `MENU_AT_DOOR` remainder, so raising prices there thins the crowd before it arrives rather
   than filling the log with people storming out.
