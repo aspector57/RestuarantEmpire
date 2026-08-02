@@ -51,19 +51,30 @@ namespace RestaurantEmpire.Core.Tests
         // ---- Quality has to change behavior, not just the score afterwards ----
 
         [Fact]
-        public void CheapIngredientsAtPremiumPricesCostYouTrade()
+        public void CheapIngredientsAtPremiumPricesCostYouYourNameAndThenYourTrade()
         {
             // The specific thing Aaron predicted: "if you use cheap ingredients and charge a
             // premium, people will notice and either complain or not order it."
-            var cheapAndDear = Build(out _, "budget-wholesale", priceMultiplier: 1.6m);
-            var goodAndDear = Build(out _, "valley-produce", priceMultiplier: 1.6m);
+            var cheapAndDear = Build(out _, "budget-wholesale", priceMultiplier: 1.35m);
+            var goodAndDear = Build(out _, "valley-produce", priceMultiplier: 1.35m);
 
             var cheapNight = Dinner.Run(cheapAndDear, 30, 99);
             var goodNight = Dinner.Run(goodAndDear, 30, 99);
 
-            // Guests read the menu and leave, without having to eat first.
-            Assert.True(cheapNight.PartiesPutOffByThePrices > goodNight.PartiesPutOffByThePrices);
-            Assert.True(cheapNight.UnitsSoldByRecipeId.Values.Sum() < goodNight.UnitsSoldByRecipeId.Values.Sum());
+            // MEASURED, and it changed what this test can honestly claim: on one night the two
+            // restaurants serve exactly the same number of covers and lose exactly the same
+            // parties to price. You cannot see the ingredients from home. What you know before
+            // you go is the price and the place's name, and here those are identical.
+            //
+            // So cheap ingredients at premium prices do not cost you trade TONIGHT. They cost
+            // you the meal, which costs you your name, which costs you the trade — over months.
+            // That chain is the honest claim and it is a better one.
+            Assert.Equal(cheapNight.CoversServed, goodNight.CoversServed);
+            Assert.True(cheapNight.AverageSatisfaction < goodNight.AverageSatisfaction);
+
+            // And the name follows the food.
+            Assert.True(cheapAndDear.Reputation.Standing < goodAndDear.Reputation.Standing);
+            Assert.True(cheapAndDear.ReputationCeiling < goodAndDear.ReputationCeiling);
 
             // And it costs more than the ingredient saving is worth.
             Assert.True(cheapNight.Revenue - cheapNight.FoodCost < goodNight.Revenue - goodNight.FoodCost);

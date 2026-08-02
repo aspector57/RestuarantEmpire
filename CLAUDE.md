@@ -1132,6 +1132,56 @@ definitions**, which is queued rather than built at his suggestion.
 - **Far more recipes, and a recipe builder.** Content, and a real feature. The data-driven
   loader already supports the first half.
 
+### Price decides who WALKS IN, not who storms out (Aaron)
+
+> *"I do think that you should attract the right people. In real life people know the rough
+> costs before going to a restaurant... typically they don't go somewhere and leave unless they
+> are in like a city and look at the menu on the door."*
+
+This is the correct model and it replaced ours. We had parties arrive and then read the menu
+and leave — 68 to 93 a day in his last playthrough. Wrong twice over: **it is not how people
+behave, and it is a weak punishment**, because the ones who stay pay the higher price and make
+up the difference. That is precisely why over-charging stayed profitable no matter how steep
+the curve got. If they never come, there is nobody left to make it up.
+
+**`ArchetypeProfile.WouldConsider(pricePosition, standing)`** now decides, before arrival,
+whether this sort of person would eat here at all. The price-sensitive drop away first, so a
+dear menu quietly fills the room with couples and enthusiasts rather than families — **still
+one price on the menu**, it just decides who reads it.
+
+**Reputation is the only quality signal available from home**, so it belongs here: you cannot
+see the ingredients before you go, but you have heard whether the place is any good, and a
+strong name carries about a third more price. **That is what finally makes building a
+reputation buy something concrete.**
+
+**Door-balking survives as a small, city-shaped remainder** — `Neighborhood.MenuReadAtTheDoor`
+is 1.0 in the city centre, 0.2 in the suburbs. Nobody drives to a high street for dinner and
+turns round over the price of a pizza.
+
+**Measured, and this is the fix to the thing that had been half-done twice:**
+
+| Price | Covers | Lost to price | Net |
+|---|---:|---:|---:|
+| x1.0 | 3,651 | **0** | 7,315 |
+| x1.1 | 3,482 | 185 | 9,807 |
+| x1.4 | 2,971 | 776 | **14,847** |
+| x1.6 | 2,276 | 1,208 | 10,531 |
+| x2.0 | 574 | 1,888 | −12,371 |
+
+**The dead zone is gone** — resistance starts at 1.1x rather than 2.0x — and the reward for
+finding the optimum fell from 6.4x to **2.0x**. Over-pricing now loses money at 2x rather than
+being the best strategy in the game.
+
+**Four tests moved with the model, and two of them taught something:**
+- *"Cheap ingredients at premium prices cost you trade"* is **no longer true on the night** —
+  measured, the two restaurants serve identical covers and lose identical parties, because you
+  cannot see the ingredients from home. Bad food does not empty your restaurant tonight; it
+  empties it over months through your name. The test is renamed for that chain and asserts it.
+- *"Premium sourcing becomes viable once you charge for it"* now yields a **6% gross gain
+  rather than over 100%** — because when price decides who turns up, most of what you gain per
+  cover you give back in covers. The clear win is the food-cost ratio (41.9% to 35.5%).
+  Charging properly makes premium survivable, not lucrative.
+
 ### The parallel implementation (Howard's branch) — what is worth taking
 
 Aaron co-owns a second implementation of this same design: `HSpector1/Restaurant`, branch

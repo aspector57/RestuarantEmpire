@@ -85,6 +85,31 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>The hourly profile, for saving and for showing the player what they're buying into.</summary>
         public double[] TrafficByHour { get { return (double[])_trafficByHour.Clone(); } }
 
+        /// <summary>
+        /// How much of the passing trade reads the menu on the door and reconsiders, 0 to 1.
+        ///
+        /// Aaron: *"typically they don't go somewhere and leave unless they are in like a city
+        /// and look at the menu on the door."* Exactly — walking away at the door is a real
+        /// behaviour and a CITY one. Somebody who has driven to a suburban high street for
+        /// dinner is not turning round over the price of a pizza; they came here on purpose.
+        ///
+        /// So price does most of its work deciding who sets off at all
+        /// (<see cref="ArchetypeProfile.WouldConsider"/>), and this is the small remainder.
+        /// </summary>
+        public double MenuReadAtTheDoor
+        {
+            get
+            {
+                switch (Id)
+                {
+                    case "city-center": return 1.0;        // menus in the window, somewhere else next door
+                    case "nightlife-quarter": return 0.75; // plenty of choice, little planning
+                    case "business-district": return 0.5;  // a decision made walking, but a short walk
+                    default: return 0.2;                    // you came here on purpose
+                }
+            }
+        }
+
         public double TrafficAtHour(int hour)
         {
             return _trafficByHour[((hour % 24) + 24) % 24];

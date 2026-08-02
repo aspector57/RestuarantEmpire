@@ -69,6 +69,45 @@ namespace RestaurantEmpire.Core.Model
             return tag != null && _pull.TryGetValue(tag, out weight) ? weight : 0;
         }
 
+        /// <summary>
+        /// Whether somebody of this sort would consider eating here at all, given how dear the
+        /// place looks. 0 to 1.
+        ///
+        /// Aaron, and he is right about how this works in life: *"people know the rough costs
+        /// before going to a restaurant... typically they don't go somewhere and leave unless
+        /// they are in a city and look at the menu on the door."* Price mostly decides WHO
+        /// TURNS UP. An expensive restaurant does not get crowds storming out; it gets fewer
+        /// of the wrong people walking in.
+        ///
+        /// That matters for more than realism. Punishing high prices with a crowd that arrives
+        /// and leaves is weak, because the ones who stay pay the higher price and make up the
+        /// difference — which is exactly why over-charging stayed profitable. If they never
+        /// come, there is nobody left to make it up.
+        ///
+        /// The price-sensitive drop away first, so a dear menu quietly fills the room with
+        /// couples and enthusiasts instead of families. **Still one price on the menu** — this
+        /// decides who reads it, not what they are charged.
+        /// </summary>
+        /// <param name="standing">
+        /// What the place is known for, 0 to 1. **The only quality signal available before you
+        /// go** — you cannot see the ingredients from home, but you have heard whether it is
+        /// any good, and a well-regarded restaurant is forgiven a dearer menu. This is what
+        /// makes building a reputation the thing that BUYS the right to charge.
+        /// </param>
+        public decimal WouldConsider(decimal pricePosition, decimal standing = 0.5m)
+        {
+            if (pricePosition <= 1m) return 1m;   // priced as designed or under: everybody is in
+
+            // A neutral name is worth nothing either way; a strong one carries about a third
+            // more price before people stop considering you.
+            var reputationAllowance = 0.75m + (standing * 0.5m);
+
+            var over = (pricePosition - 1m) / reputationAllowance;
+            var chance = 1m - (over * PriceSensitivity * 0.85m);
+
+            return chance < 0.03m ? 0.03m : chance;
+        }
+
         public static ArchetypeProfile For(CustomerArchetype archetype)
         {
             switch (archetype)

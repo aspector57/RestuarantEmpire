@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using RestaurantEmpire.Core.Definitions;
 
 namespace RestaurantEmpire.Core.Model
@@ -125,6 +126,20 @@ namespace RestaurantEmpire.Core.Model
             }
 
             return worst;
+        }
+
+        /// <summary>
+        /// How dear this restaurant looks, as an average across the card. 1.0 is priced as
+        /// designed. This is what somebody knows about a place BEFORE they decide to go.
+        /// </summary>
+        public decimal PricePosition(IReadOnlyList<string> recipeIds)
+        {
+            if (recipeIds == null || recipeIds.Count == 0) return 1m;
+
+            var total = 0m;
+            for (var i = 0; i < recipeIds.Count; i++) total += Markup(recipeIds[i]);
+
+            return total / recipeIds.Count;
         }
 
         public decimal IngredientQuality(string recipeId)

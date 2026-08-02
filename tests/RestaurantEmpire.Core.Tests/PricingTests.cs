@@ -154,7 +154,7 @@ namespace RestaurantEmpire.Core.Tests
             cheapCo.Economy.RecordService(cheapPrices, asIs, 0);
 
             var repriced = Build(out var repricedCo, "premium-harvest");
-            foreach (var id in repriced.Menu.RecipeIds) repricedCo.Pricing.AdjustPrice(id, 1.5m);
+            foreach (var id in repriced.Menu.RecipeIds) repricedCo.Pricing.AdjustPrice(id, 1.2m);
             var charged = Dinner.Run(repriced, 25, 99);
             repricedCo.Economy.RecordService(repriced, charged, 0);
 
@@ -179,28 +179,51 @@ namespace RestaurantEmpire.Core.Tests
             var chargedBooks = repricedCo.Economy.Summarize(0, 0, repriced.Id);
 
             // Bands run Excellent(1) .. Unsustainable(4), so better is lower.
-            Assert.Equal(PrimeCostBand.Unsustainable, asIsBooks.Band);   // losing on every cover
-            Assert.True(chargedBooks.Band < asIsBooks.Band);             // charging for it moves you up the bands
+            //
+            // No longer pinned to Unsustainable. Premium stock at mid-market prices used to
+            // book a hopeless prime cost; now that price steers what people ORDER, fewer of
+            // the dear dishes sell and the ratio lands merely bad rather than fatal. The claim
+            // that survives — and it is the one the test is named for — is that the food cost
+            // is unhealthy until you charge for what you bought, and charging fixes it.
+            Assert.True(asIsBooks.FoodCostRatio > 0.38m,
+                "premium stock at mid-market prices should read badly: " + asIsBooks.FoodCostRatio.ToString("P0"));
+            Assert.True(chargedBooks.FoodCostRatio < asIsBooks.FoodCostRatio,
+                "charged " + chargedBooks.FoodCostRatio.ToString("P1") + " vs asIs " + asIsBooks.FoodCostRatio.ToString("P1"));
+            Assert.True(chargedBooks.Band <= asIsBooks.Band, "bands " + chargedBooks.Band + " vs " + asIsBooks.Band);
 
-            // The same night earns more than twice as much once the plate is priced for
-            // what went into it.
-            Assert.True(charged.Revenue - charged.FoodCost > (asIs.Revenue - asIs.FoodCost) * 2m);
+            // The same night earns appreciably more once the plate is priced for what went
+            // into it. Not "twice" any more — that figure came from a model where raising
+            // prices cost nothing until you doubled them. Price now decides who turns up, so
+            // charging properly is a real gain with a real price attached rather than free.
+            // Measured here: 935.81 gross at the designed prices against 995.76 at 1.2x — a
+            // 6% gain, where it used to be over 100%. That collapse in headroom IS the change:
+            // when price decides who turns up, most of what you gain per cover you give back
+            // in covers. The clear win is the food-cost ratio above (41.9% to 35.5%), which is
+            // the number the claim is really about — charging for what you bought is what
+            // makes premium sourcing survivable, not what makes it lucrative.
+            Assert.True(charged.Revenue - charged.FoodCost > (asIs.Revenue - asIs.FoodCost) * 1.05m,
+                "gross charged " + (charged.Revenue - charged.FoodCost) + " vs asIs " + (asIs.Revenue - asIs.FoodCost));
         }
 
         [Fact]
         public void RaisingPricesCostsGoodwill_SoItIsATradeoffRatherThanFreeMoney()
         {
-            // Value perception is driven by food cost ratio against the industry's fair
-            // third. Charge more for the same plate and guests notice.
+            // Charge more for the same plate and guests notice — and now MOST of that shows
+            // up as people who never come, rather than as a crowd that arrives and storms off.
             var modest = Build(out _);
             var modestNight = Dinner.Run(modest, 25, 99);
 
             var dear = Build(out var dearCo);
-            foreach (var id in dear.Menu.RecipeIds) dearCo.Pricing.AdjustPrice(id, 1.75m);
+            foreach (var id in dear.Menu.RecipeIds) dearCo.Pricing.AdjustPrice(id, 1.25m);
             var dearNight = Dinner.Run(dear, 25, 99);
 
-            Assert.True(dearNight.Revenue > modestNight.Revenue);                       // more money in
-            Assert.True(dearNight.AverageSatisfaction < modestNight.AverageSatisfaction); // less goodwill
+            // A modest rise is still worth making...
+            Assert.True(dearNight.Revenue > modestNight.Revenue);
+            Assert.True(dearNight.AverageSatisfaction < modestNight.AverageSatisfaction);
+
+            // ...and it already costs custom, which is the point. Under the old model nothing
+            // at all happened until double the designed price.
+            Assert.True(dearNight.PartiesPutOffByThePrices > 0);
         }
 
         [Fact]
@@ -251,16 +274,25 @@ namespace RestaurantEmpire.Core.Tests
             Assert.Equal(0, fairNight.PartiesPutOffByThePrices);
             Assert.True(greedyNight.PartiesPutOffByThePrices > 0);
             Assert.True(greedyNight.CoversServed < fairNight.CoversServed / 2);
-            Assert.Contains(greedyNight.Diagnostics, d => d.Contains("read the prices and left"));
+
+            // No diagnostic line any more, and that is the change: at triple the price people
+            // do not turn up to be disappointed. Most of the loss is now guests who never set
+            // off, which is how it works in life — you know roughly what a place costs before
+            // you go. Reading a menu at the door and leaving still happens, but it is a city
+            // behaviour and a small remainder (Neighborhood.MenuReadAtTheDoor).
         }
 
         [Fact]
         public void AModestMarkupIsStillWorthDoing()
         {
+            // Multipliers here came down from 1.5x when price began deciding who turns up at
+            // all. The profitable band now peaks around 1.4x rather than 2.5x, so 1.5x is past
+            // the top rather than comfortably inside it — the claims are unchanged, the
+            // numbers that express them are not.
             // The threshold has to be forgiving, or pricing stops being a lever at all.
             var fair = Build(out _);
             var modest = Build(out var modestCo);
-            foreach (var id in modest.Menu.RecipeIds) modestCo.Pricing.AdjustPrice(id, 1.5m);
+            foreach (var id in modest.Menu.RecipeIds) modestCo.Pricing.AdjustPrice(id, 1.25m);
 
             var fairNight = Dinner.Run(fair, 25, 4242);
             var modestNight = Dinner.Run(modest, 25, 4242);

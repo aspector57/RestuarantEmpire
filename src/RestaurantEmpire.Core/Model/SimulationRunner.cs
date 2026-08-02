@@ -375,6 +375,10 @@ namespace RestaurantEmpire.Core.Model
         private Interrupt Seat(long tick, DateTime now)
         {
             var party = RollParty(tick, now);
+
+            // Null means this sort of person would not have come here at these prices, so
+            // there is nobody at the door to seat. Already counted where the decision was made.
+            if (party == null) return null;
             _partiesArrived++;
 
             // "No seats" means unlimited ONLY in a building whose floor was never measured —
@@ -520,7 +524,9 @@ namespace RestaurantEmpire.Core.Model
             // A chance rather than a wall, so a dear menu bleeds custom instead of emptying
             // the room the moment it crosses a line.
             var looksWorthIt = totalValue / wanted.Count;
-            if (_judgement.Chance((double)SatisfactionModel.WalkAwayChance(looksWorthIt)))
+            var readsTheDoor = _restaurant.Location == null ? 0.5 : _restaurant.Location.MenuReadAtTheDoor;
+
+            if (_judgement.Chance((double)SatisfactionModel.WalkAwayChance(looksWorthIt) * readsTheDoor))
             {
                 _partiesPutOffByThePrices++;
                 _diagnostics.Add("A party of " + party.Size + " read the prices and left.");
@@ -665,6 +671,16 @@ namespace RestaurantEmpire.Core.Model
 
             var archetype = likely[_rng.Next(likely.Length)];
             var profile = ArchetypeProfile.For(archetype);
+
+            // Would this sort of person come here at all, at these prices? Decided BEFORE they
+            // arrive, because that is when people decide — they know roughly what a place
+            // costs. Drawn from the judgement stream so it cannot shift arrivals or mishaps.
+            var pricePosition = _restaurant.Costing.PricePosition(_restaurant.Menu.RecipeIds);
+            if (!_judgement.Chance((double)profile.WouldConsider(pricePosition, _restaurant.Reputation.Standing)))
+            {
+                _partiesPutOffByThePrices++;
+                return null;
+            }
 
             // Most people have one thing they particularly love.
             var tastes = new List<string>();
