@@ -1301,7 +1301,11 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
-- **The browser build is LEVEL WITH THE ENGINE as of the price-resistance change.** It carries
+- **The browser build is LEVEL WITH THE ENGINE as of arrival-side pricing.** It carries
+  `wouldConsider` (who turns up at all, reputation-adjusted) and the city-shaped
+  `MENU_AT_DOOR` remainder, so raising prices there thins the crowd before it arrives rather
+  than filling the log with people storming out.
+- **It was previously level as of the price-resistance change.** It carries
   the squared tolerance curve and the probabilistic walk-away, so pricing behaves there the way
   it behaves here. **Sync it before asking for a playtest** — testing a model the engine no
   longer has produces feedback about nothing, which nearly happened.
