@@ -1842,6 +1842,37 @@ once and shared.
 `tools/probe-spiral.js` reproduces his position and asserts the advice flips between "people"
 and "equipment" as the brigade changes.
 
+### A PARTIAL FIX READS AS A FINISHED ONE — the same bug, one commit later
+
+The previous entry ends with *"any question worth answering twice should be answered once and
+shared."* It was written, committed, and then **applied to two of the three callers.** Aaron's
+next run showed both answers on one screen:
+
+> Forecast: *"kitchen-bound — the pass is the limit, we could seat more than we can cook"*
+> Build tab: *"the room is the bottleneck. **Buy tables before anything else.**"*
+
+`balanceNote()` was still on the old station-only `bottleneck()`, which ignores the brigade —
+and he had **one cook**. `bottleneck()` is now deleted rather than left available, because a
+helper that gives the wrong answer will be called again by whoever writes the next panel.
+
+**Two more false alarms in the same screen, both mine:**
+
+**The runway alarm was wrong, and it was suppressing good advice.** `monthlyBurn()` counted
+gross outgoings and ignored takings entirely, so a restaurant turning $11,314 a month against
+$11,640 of costs — **roughly break-even** — was told it had "less than two months of money
+left", and the brake then stripped the buy buttons off everything. Runway is how long cash
+lasts at the current rate of LOSS; a restaurant that is not losing money has no runway problem
+however large its wage bill. Measured from the last fortnight's actual trading: **10.4 months,
+not two.**
+
+**"We are open late with nothing late people actually want"** fired on a **18:00–23:00 dinner
+service**, because the test was `w.to > 22`. Closing at eleven is not trading into the small
+hours. It now checks for a window that genuinely wraps past midnight.
+
+**The pattern across all three: every one was a readout confidently telling the player something
+false.** A wrong number is worse than a missing one — it is acted on. `tools/probe-agreement.js`
+now reproduces his position and asserts the three capacity views agree.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

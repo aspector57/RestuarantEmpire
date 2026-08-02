@@ -1517,7 +1517,7 @@ function runDay(){
     }
   }
 
-  G.recent.push({ covers:d.covers, walkouts:d.walkouts });
+  G.recent.push({ covers:d.covers, walkouts:d.walkouts, revenue:d.revenue, food:d.food });
   if(G.recent.length > 30) G.recent.shift();
 
   if(G.day % 15 === 0 || G.applicants.length === 0){
@@ -1639,7 +1639,9 @@ function advise(){
   }
 
   // --- 7. A bar, if the hours would carry one. ---
-  const lateHours = G.windows.some(w => daypartAt(w.from) === "latenight" || w.to > 22 || w.to <= 3);
+  // A dinner service that closes at eleven is not "open late". The old test caught `to > 22`,
+  // so a perfectly ordinary 18:00-23:00 was told it was trading into the small hours.
+  const lateHours = G.windows.some(w => daypartAt(w.from) === "latenight" || w.to < w.from || w.to === 0);
   if(!G.licence && lateHours && G.cash > LICENCE_FEE * 1.8)
     out.push({ rank:7, id:"licence", head:"We are open late with nothing late people actually want.",
       body:`Nobody orders a main at one in the morning — they order a drink. A licence is $${LICENCE_FEE.toLocaleString()} and $${LICENCE_RENEWAL} a month, and drinks carry a better margin than the kitchen.` });
@@ -1669,9 +1671,24 @@ function advise(){
   return out;
 }
 
+/* WHAT IS ACTUALLY GOING OUT, NET OF WHAT COMES IN. The first version counted gross outgoings
+   and ignored takings entirely, so a restaurant turning over $13,500 a month against $11,640 of
+   costs — roughly break-even — was told it had "less than two months of money left", and the
+   runway brake then stripped the buy buttons off advice it needed. Runway is how long the cash
+   lasts at the CURRENT rate of loss; a restaurant that is not losing money has no runway
+   problem however large its wage bill. */
 function monthlyBurn(){
-  const wages = wageBill() * HOURS_PER_SHIFT * 30;
-  return wages + G.site.rent + (G.licence ? LICENCE_RENEWAL : 0);
+  const outgoing = wageBill() * HOURS_PER_SHIFT * 30 + G.site.rent + (G.licence ? LICENCE_RENEWAL : 0);
+
+  // Measured from what it has actually been taking lately, not from hope.
+  const days = Math.min(14, G.recent.length);
+  if(days === 0) return outgoing;
+
+  const recent = G.recent.slice(-days);
+  const takings = recent.reduce((a,x)=>a + (x.revenue || 0), 0) / days * 30;
+  const food = recent.reduce((a,x)=>a + (x.food || 0), 0) / days * 30;
+
+  return Math.max(0, outgoing + food - takings);
 }
 
 function checkInterrupts(d){
@@ -2345,41 +2362,29 @@ function avgMarginIn(category){
    cooking half his dinner menu and 17 parties a night were leaving over the wait. Two of the
    seven were a fridge and a shelf, and the other five are not interchangeable: a station is
    only as useful as the share of the card it has to cook. */
-function bottleneck(dp){
-  const on = menuFor(dp || "dinner");
-  if(!on.length) return null;
-  const cl = complexityLoad();
-  const byStation = {};
-  on.forEach(r => (byStation[r.station] = byStation[r.station] || []).push(r));
+/* THIRD COMPONENT, SAME QUESTION — and it was still answering it differently. The forecast
+   and the Advisor were moved onto `passLimit()` last commit; this one was left on the old
+   station-only `bottleneck()`, which ignores the brigade entirely. So Aaron's day 35 read
+   "kitchen-bound, the pass is the limit" in the forecast and "the room is the bottleneck, BUY
+   TABLES BEFORE ANYTHING ELSE" in Build, on the same screen, with one cook on the pass.
 
-  let worst = null;
-  for(const st in byStation){
-    const units = stationUnits(st);
-    if(!units) continue;
-    const list = byStation[st], sp = stationSpeed(st);
-    const avgMin = list.reduce((a,r)=>a + Math.max(1, Math.round(r.prep*cl/sp)), 0) / list.length;
-    const share = list.length / on.length;
-    const coversPerHour = (60/avgMin) * units / share;
-    if(!worst || coversPerHour < worst.coversPerHour)
-      worst = { station:st, units, dishes:list.length, coversPerHour, share };
-  }
-  return worst;
-}
-
+   The lesson was written down one commit earlier and applied to two of three callers. That is
+   how this class of bug survives: a partial fix reads as a finished one. `bottleneck()` is
+   deleted rather than left available. */
 function balanceNote(){
   const dp = daypartAt(G.windows[0] ? G.windows[0].from : 19);
-  const b = bottleneck(dp);
-  if(!b) return "no kitchen at all";
+  const lim = passLimit(dp);
+  if(!lim) return "no kitchen at all";
 
-  const seatsPerHour = servableSeats() * (60/DWELL);
-  const kitchenPerHour = b.coversPerHour * PRACTICAL_CAPACITY;
-  const name = (STATION_NAMES && STATION_NAMES[b.station]) || b.station;
-  const allows = Math.round(kitchenPerHour);
-  const room = Math.round(seatsPerHour);
+  const room = Math.round(servableSeats() * (60/DWELL));
+  const allows = Math.round(lim.allows * PRACTICAL_CAPACITY);
 
-  if(kitchenPerHour < seatsPerHour * 0.8)
-    return `the ${name} is the bottleneck — ${b.units} unit${b.units>1?"s":""} cooking ${b.dishes} of the card allows about ${allows} covers an hour, against ${room} the room could turn. Another ${name} unit, or a faster one, buys more than tables or cooks do.`;
-  if(seatsPerHour < kitchenPerHour * 0.8)
+  if(allows < room * 0.8){
+    return lim.kind === "brigade"
+      ? `the brigade is the bottleneck — ${lim.cooks} cook${lim.cooks===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 can move about ${allows} covers an hour, against ${room} the room could turn. Equipment will not help; this is hands.`
+      : `the ${STATION_NAMES[lim.station] || lim.station} is the bottleneck — ${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${allows} covers an hour, against ${room} the room could turn.`;
+  }
+  if(room < allows * 0.8)
     return `the room is the bottleneck — ${room} covers an hour against a kitchen that could send ${allows}. Buy tables before anything else.`;
   return `${room} covers an hour of room against ${allows} of kitchen — about right.`;
 }
