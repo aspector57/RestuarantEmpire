@@ -1,0 +1,24 @@
+{
+  "id": "house-wine",
+  "name": "House Wine, by the Glass",
+  "station": "bar",
+  "prepMinutes": 1,
+  "dayparts": [
+    "lunch",
+    "dinner",
+    "latenight"
+  ],
+  "tags": [
+    "wine",
+    "classic"
+  ],
+  "menuPrice": 11.0,
+  "category": "drink",
+  "requiresLicense": true,
+  "ingredients": [
+    {
+      "ingredientId": "house-red",
+      "quantity": 0.17
+    }
+  ]
+}

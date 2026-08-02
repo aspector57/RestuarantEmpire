@@ -86,7 +86,7 @@ namespace RestaurantEmpire.Core.Model
         private readonly Dictionary<string, int> _recentWalkoutStations = new Dictionary<string, int>(StringComparer.Ordinal);
 
         private decimal _revenue, _foodCost, _wastedFoodCost, _satisfactionTotal, _laborCost;
-        private int _remakes, _comped;
+        private int _remakes, _comped, _drinksSold;
         private int _lastSpoilageDay = -1;
         private decimal _spoiledCost;
         private decimal _compedValue;
@@ -298,7 +298,7 @@ namespace RestaurantEmpire.Core.Model
                     if (order.Resolved || order.Ticket.CompletedTick > tick) continue;
 
                     order.Resolved = true;
-                    Deliver(table, order);
+                    Deliver(table, order, tick);
                 }
             }
 
@@ -446,6 +446,14 @@ namespace RestaurantEmpire.Core.Model
 
                 if (!candidate.SuitsDaypart(Dayparts.At(now))) continue;
 
+                // Drinks are chosen separately and IN ADDITION, so they must not compete here
+                // for the one thing a party orders — that would make a drinks list cannibalise
+                // the kitchen rather than add to the check, which is backwards.
+                if (candidate.IsDrink) continue;
+
+                // No licence, no sale. The same gate as a missing station.
+                if (!_restaurant.MayServe(candidate)) continue;
+
                 if (!_restaurant.Kitchen.HasStation(candidate.StationId))
                 {
                     missingStation = candidate.StationId;
@@ -461,6 +469,37 @@ namespace RestaurantEmpire.Core.Model
 
                 wanted.Add(recipeId);
                 appetites.Add(appetite);
+            }
+
+            // PEOPLE COME OUT JUST TO DRINK, and at one in the morning that is most of them.
+            //
+            // Without this the whole point of a bar was missed: a late crowd still counted as
+            // "found nothing they wanted" because no FOOD suited the hour, and the parties-lost
+            // figure barely moved when a bar was added (2,506 to 2,498). A bar that cannot seat
+            // someone who only wants a drink is not a bar. So when the kitchen has nothing for
+            // this hour but the bar does, they sit down anyway and drink.
+            if (wanted.Count == 0)
+            {
+                foreach (var recipeId in _restaurant.Menu.RecipeIds)
+                {
+                    var candidate = _definitions.GetRecipe(recipeId);
+                    if (!candidate.IsDrink) continue;
+                    if (!candidate.SuitsDaypart(Dayparts.At(now))) continue;
+                    if (!_restaurant.MayServe(candidate)) continue;
+
+                    // A drinks-only card still owes the player the real reason when it cannot
+                    // be served. A coffee counter with no coffee machine must say so — the
+                    // diagnostic used to come from the food loop, which now skips drinks.
+                    if (!_restaurant.Kitchen.HasStation(candidate.StationId))
+                    {
+                        missingStation = candidate.StationId;
+                        continue;
+                    }
+
+                    wanted.Add(recipeId);
+                    appetites.Add(party.AppetiteFor(candidate, 1m,
+                        _restaurant.Costing.IngredientQuality(recipeId)));
+                }
             }
 
             if (wanted.Count == 0)
@@ -624,7 +663,7 @@ namespace RestaurantEmpire.Core.Model
             return interrupt;
         }
 
-        private void Deliver(Table table, Order order)
+        private void Deliver(Table table, Order order, long tick)
         {
             var recipe = _definitions.GetRecipe(order.RecipeId);
             var plateCost = _restaurant.Costing.PlateCost(order.RecipeId);
@@ -653,6 +692,12 @@ namespace RestaurantEmpire.Core.Model
 
             _revenue += _restaurant.Costing.MenuPrice(order.RecipeId);
             _coversServed++;
+
+            // AND SOMETHING TO DRINK WITH IT. Additive, never instead — this is the whole
+            // reason a drinks list lifts a check rather than competing with the kitchen for
+            // the same order. Drawn from the judgement stream so adding a bar does not shift
+            // arrivals or mishaps in every seeded test in the project.
+            SellADrinkWith(table.Party, tick);
             _satisfactionTotal += satisfaction.Overall;
             _restaurant.Reputation.RecordMeal(satisfaction.Overall, _restaurant.ReputationCeiling);
 
@@ -721,6 +766,97 @@ namespace RestaurantEmpire.Core.Model
             }
 
             return likely[likely.Length - 1];
+        }
+
+        /// <summary>
+        /// Whether this guest also wants a drink, and pours it if so.
+        ///
+        /// **The margin is the point.** A glass of wine costs a few dollars and sells for
+        /// twenty-odd, so drinks run a food cost around 20-25% against a kitchen's 30-40%.
+        /// That is how an expensive concept survives in the trade: the wine programme blends
+        /// the food cost down. Without it the only lever a premium restaurant has is charging
+        /// more for food, and the measured cliff past the optimum is brutal.
+        ///
+        /// It is also what makes a late service exist. Nobody orders sea bass at one in the
+        /// morning; they order a drink. Before this, a late window was a room full of people
+        /// finding nothing they wanted.
+        /// </summary>
+        private void SellADrinkWith(CustomerParty party, long tick)
+        {
+            if (!_restaurant.Licence.Held && !AnyUnlicensedDrinkOnTheMenu()) return;
+
+            var wanted = new List<string>();
+            var appetites = new List<decimal>();
+            var now = Clock.Now;
+
+            foreach (var recipeId in _restaurant.Menu.RecipeIds)
+            {
+                var candidate = _definitions.GetRecipe(recipeId);
+                if (!candidate.IsDrink) continue;
+                if (!candidate.SuitsDaypart(Dayparts.At(now))) continue;
+                if (!_restaurant.MayServe(candidate)) continue;
+                if (!_restaurant.Kitchen.HasStation(candidate.StationId)) continue;
+
+                wanted.Add(recipeId);
+                appetites.Add(1m);
+            }
+
+            if (wanted.Count == 0) return;
+
+            // How likely they are to order one at all. A couple over dinner nearly always
+            // does; a family at lunch often does not.
+            if (!_judgement.Chance((double)DrinkChanceFor(party.Archetype, Dayparts.At(now)))) return;
+
+            var chosen = PickByAppetite(wanted, appetites);
+            var drink = _definitions.GetRecipe(chosen);
+            var ticket = _pass.Fire(drink, tick, _restaurant.Inventory);
+            _tickets.Add(ticket);
+
+            if (!ticket.WasServed)
+            {
+                _eightySixed++;
+                return;
+            }
+
+            _foodCost += _restaurant.Costing.PlateCost(chosen);
+            _revenue += _restaurant.Costing.MenuPrice(chosen);
+            _drinksSold++;
+
+            int sold;
+            _unitsSold.TryGetValue(chosen, out sold);
+            _unitsSold[chosen] = sold + 1;
+        }
+
+        private bool AnyUnlicensedDrinkOnTheMenu()
+        {
+            foreach (var recipeId in _restaurant.Menu.RecipeIds)
+            {
+                var candidate = _definitions.GetRecipe(recipeId);
+                if (candidate.IsDrink && !candidate.RequiresLicense) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Who drinks, and when. Not a flat rate — a bar crowd late at night is a different
+        /// business from a family at Sunday lunch, and that difference is what makes hours and
+        /// concept pull on each other.
+        /// </summary>
+        private static decimal DrinkChanceFor(CustomerArchetype archetype, Daypart daypart)
+        {
+            var baseline =
+                archetype == CustomerArchetype.RomanticCouple ? 0.70m
+                : archetype == CustomerArchetype.Influencer ? 0.65m
+                : archetype == CustomerArchetype.BusinessLuncher ? 0.30m
+                : archetype == CustomerArchetype.Family ? 0.25m
+                : 0.45m;
+
+            if (daypart == Daypart.LateNight) return baseline + 0.25m > 0.95m ? 0.95m : baseline + 0.25m;
+            if (daypart == Daypart.Dinner) return baseline;
+            if (daypart == Daypart.Breakfast) return baseline * 0.15m;
+
+            return baseline * 0.6m;   // lunch: a glass with lunch is the exception
         }
 
         private CustomerParty RollParty(long tick, DateTime now)

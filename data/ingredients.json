@@ -77,6 +77,48 @@
       "name": "Lemons",
       "unit": "kg",
       "shelfLifeDays": 21
+    },
+    {
+      "id": "house-red",
+      "name": "House Red Wine",
+      "unit": "bottle",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "house-white",
+      "name": "House White Wine",
+      "unit": "bottle",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "fine-red",
+      "name": "Cellar Red",
+      "unit": "bottle",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "draught-beer",
+      "name": "Draught Beer",
+      "unit": "litre",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "gin",
+      "name": "Gin",
+      "unit": "litre",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "vermouth",
+      "name": "Vermouth",
+      "unit": "litre",
+      "shelfLifeDays": 0
+    },
+    {
+      "id": "citrus",
+      "name": "Citrus and Garnish",
+      "unit": "kg",
+      "shelfLifeDays": 12
     }
   ]
 }

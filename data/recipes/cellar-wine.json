@@ -1,0 +1,24 @@
+{
+  "id": "cellar-wine",
+  "name": "Something from the Cellar",
+  "station": "bar",
+  "prepMinutes": 2,
+  "dayparts": [
+    "dinner",
+    "latenight"
+  ],
+  "tags": [
+    "wine",
+    "luxury",
+    "refined"
+  ],
+  "menuPrice": 26.0,
+  "category": "drink",
+  "requiresLicense": true,
+  "ingredients": [
+    {
+      "ingredientId": "fine-red",
+      "quantity": 0.17
+    }
+  ]
+}

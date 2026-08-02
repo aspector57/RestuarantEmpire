@@ -1,0 +1,25 @@
+{
+  "id": "draught-pint",
+  "name": "Pint of Draught",
+  "station": "bar",
+  "prepMinutes": 1,
+  "dayparts": [
+    "lunch",
+    "dinner",
+    "latenight"
+  ],
+  "tags": [
+    "beer",
+    "classic",
+    "sharing"
+  ],
+  "menuPrice": 8.0,
+  "category": "drink",
+  "requiresLicense": true,
+  "ingredients": [
+    {
+      "ingredientId": "draught-beer",
+      "quantity": 0.57
+    }
+  ]
+}

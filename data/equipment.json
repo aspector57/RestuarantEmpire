@@ -200,6 +200,36 @@
       "footprint": 34,
       "quality": 0.7,
       "capacity": 4000
+    },
+    {
+      "id": "bar-speedrail",
+      "station": "bar",
+      "name": "Speed Rail and Fridge",
+      "cost": 1100,
+      "speed": 0.8,
+      "footprint": 26,
+      "quality": 0.4,
+      "capacity": 0
+    },
+    {
+      "id": "bar-back",
+      "station": "bar",
+      "name": "Back Bar with Taps",
+      "cost": 3800,
+      "speed": 1.0,
+      "footprint": 40,
+      "quality": 0.6,
+      "capacity": 0
+    },
+    {
+      "id": "bar-cocktail",
+      "station": "bar",
+      "name": "Full Cocktail Bar",
+      "cost": 9500,
+      "speed": 1.5,
+      "footprint": 52,
+      "quality": 0.9,
+      "capacity": 0
     }
   ]
 }

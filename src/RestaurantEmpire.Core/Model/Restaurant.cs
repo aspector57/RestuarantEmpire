@@ -24,6 +24,7 @@ namespace RestaurantEmpire.Core.Model
             Company = company;
             Menu = new Menu(company.Definitions);
             Inventory = new Inventory(company.Definitions);
+            Licence = new LiquorLicense();
             Kitchen = new Kitchen();
             DiningRoom = new DiningRoom();
             Payroll = new Payroll();
@@ -44,6 +45,20 @@ namespace RestaurantEmpire.Core.Model
 
         public Menu Menu { get; }
         public Inventory Inventory { get; }
+
+        /// <summary>Permission to sell alcohol. Bought with <see cref="ApplyForLiquorLicense"/>.</summary>
+        public LiquorLicense Licence { get; }
+
+        /// <summary>
+        /// True when this restaurant may sell a given dish at all — the licence gate, sitting
+        /// alongside the station gate. A cocktail list with no licence is exactly as unsellable
+        /// as a risotto with no range.
+        /// </summary>
+        public bool MayServe(Definitions.RecipeDefinition recipe)
+        {
+            if (recipe == null) return false;
+            return !recipe.RequiresLicense || Licence.Held;
+        }
 
         /// <summary>
         /// The brigade stations installed here. This is the hard ceiling on how much this
@@ -271,6 +286,26 @@ namespace RestaurantEmpire.Core.Model
                 Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure, cost, "Bought " + station.Name, Id);
 
             return station;
+        }
+
+        /// <summary>
+        /// Applies for a liquor licence, billing the company. Refused if the money is not
+        /// there — a licence you cannot afford is not a licence.
+        ///
+        /// This is the capital gate that makes drinks a decision rather than a free upgrade:
+        /// real money up front, a renewal every month whether you sell a drop, and a whole
+        /// revenue line on the other side of it.
+        /// </summary>
+        public bool ApplyForLiquorLicense(long tick = 0, int today = 0)
+        {
+            if (Licence.Held) return false;
+            if (Company.Economy.CashOnHand < LiquorLicense.ApplicationFee) return false;
+
+            Licence.Grant(today);
+            Company.Economy.Record(tick, LedgerCategory.CapitalExpenditure,
+                LiquorLicense.ApplicationFee, "Liquor licence", Id);
+
+            return true;
         }
 
         /// <summary>Buys and installs a piece of furniture or decor, billing the company.</summary>

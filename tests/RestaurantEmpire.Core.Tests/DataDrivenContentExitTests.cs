@@ -94,9 +94,13 @@ namespace RestaurantEmpire.Core.Tests
             Assert.False(registry.HasRecipe("wagyu-special"));
             Assert.Contains(registry.LoadWarnings, w => w.Contains("wagyu-beef"));
 
-            // Crucially: everything else still loaded.
+            // Crucially: everything else still loaded — the ONE bad file is dropped and
+            // nothing else is. Counted against the shipped catalogue rather than a literal,
+            // so adding content never fails this for the wrong reason.
             Assert.True(registry.HasRecipe("margherita"));
-            Assert.Equal(7, registry.RecipeCount);
+
+            var shipped = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            Assert.Equal(shipped.RecipeCount, registry.RecipeCount);
 
             Directory.Delete(dataDir, true);
         }
@@ -107,9 +111,37 @@ namespace RestaurantEmpire.Core.Tests
             var registry = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
 
             Assert.Empty(registry.LoadWarnings);
-            Assert.Equal(13, registry.IngredientCount);
-            Assert.Equal(3, registry.SupplierCount);
-            Assert.Equal(7, registry.RecipeCount);
+
+            // ASSERTS THE INVARIANT, NOT THE INVENTORY. This used to check exact counts
+            // (13 ingredients, 7 recipes), which broke the moment any content was added —
+            // hostile to the rule it exists to protect, since Architecture Rule 2's whole
+            // claim is that new content needs no code change. Adding a drinks list failed it
+            // for entirely the wrong reason.
+            //
+            // What actually matters is that nothing was silently dropped and everything
+            // shipped can really be costed.
+            Assert.True(registry.IngredientCount > 0);
+            Assert.True(registry.SupplierCount > 0);
+            Assert.True(registry.RecipeCount > 0);
+
+            foreach (var recipe in registry.Recipes)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(recipe.StationId),
+                    recipe.Id + " has no station, so nothing could ever cook it");
+                Assert.True(recipe.MenuPrice > 0m, recipe.Id + " has no price");
+
+                foreach (var line in recipe.Ingredients)
+                {
+                    Assert.True(registry.HasIngredient(line.IngredientId),
+                        recipe.Id + " needs '" + line.IngredientId + "', which no ingredient file defines");
+
+                    // Every supplier must be able to quote every ingredient, or switching
+                    // supplier would throw on a dish that costed fine a moment earlier.
+                    foreach (var supplier in registry.Suppliers)
+                        Assert.True(supplier.Carries(line.IngredientId),
+                            supplier.Id + " has no price for '" + line.IngredientId + "'");
+                }
+            }
         }
 
         [Fact]

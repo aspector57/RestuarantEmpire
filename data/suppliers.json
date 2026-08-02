@@ -26,7 +26,14 @@
         "eggs": 2.4,
         "butter": 5.0,
         "sea-bass": 11.0,
-        "lemon": 1.6
+        "lemon": 1.6,
+        "house-red": 11.0,
+        "house-white": 10.0,
+        "fine-red": 26.0,
+        "draught-beer": 3.2,
+        "gin": 18.0,
+        "vermouth": 11.0,
+        "citrus": 2.4
       }
     },
     {
@@ -46,7 +53,14 @@
         "eggs": 3.6,
         "butter": 8.0,
         "sea-bass": 18.0,
-        "lemon": 2.4
+        "lemon": 2.4,
+        "house-red": 16.0,
+        "house-white": 15.0,
+        "fine-red": 42.0,
+        "draught-beer": 4.4,
+        "gin": 26.0,
+        "vermouth": 16.0,
+        "citrus": 3.4
       }
     },
     {
@@ -66,7 +80,14 @@
         "eggs": 5.4,
         "butter": 13.0,
         "sea-bass": 29.0,
-        "lemon": 3.8
+        "lemon": 3.8,
+        "house-red": 24.0,
+        "house-white": 23.0,
+        "fine-red": 78.0,
+        "draught-beer": 6.0,
+        "gin": 38.0,
+        "vermouth": 24.0,
+        "citrus": 4.8
       }
     }
   ]

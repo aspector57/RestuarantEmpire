@@ -1,0 +1,32 @@
+{
+  "id": "negroni",
+  "name": "Negroni",
+  "station": "bar",
+  "prepMinutes": 3,
+  "dayparts": [
+    "dinner",
+    "latenight"
+  ],
+  "tags": [
+    "cocktail",
+    "luxury",
+    "refined"
+  ],
+  "menuPrice": 16.0,
+  "category": "drink",
+  "requiresLicense": true,
+  "ingredients": [
+    {
+      "ingredientId": "gin",
+      "quantity": 0.03
+    },
+    {
+      "ingredientId": "vermouth",
+      "quantity": 0.03
+    },
+    {
+      "ingredientId": "citrus",
+      "quantity": 0.01
+    }
+  ]
+}

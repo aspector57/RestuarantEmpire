@@ -52,6 +52,9 @@ namespace RestaurantEmpire.Core.Definitions
         /// <summary>Where a dish lands when its file doesn't say what kind of thing it is.</summary>
         public const string DefaultCategory = "main";
 
+        /// <summary>Drinks sit alongside a meal rather than instead of it.</summary>
+        public const string DrinkCategory = "drink";
+
         public string Id { get; }
         public string Name { get; }
 
@@ -87,7 +90,8 @@ namespace RestaurantEmpire.Core.Definitions
         public RecipeDefinition(
             string id, string name, decimal menuPrice, IList<RecipeIngredient> ingredients,
             string stationId = DefaultStationId, int prepMinutes = DefaultPrepMinutes,
-            IList<Model.Daypart> dayparts = null, IList<string> tags = null, string category = DefaultCategory)
+            IList<Model.Daypart> dayparts = null, IList<string> tags = null, string category = DefaultCategory,
+            bool requiresLicense = false)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Recipe id is required.", nameof(id));
             if (menuPrice < 0m) throw new ArgumentOutOfRangeException(nameof(menuPrice), "Menu price cannot be negative.");
@@ -102,6 +106,7 @@ namespace RestaurantEmpire.Core.Definitions
             Dayparts = new List<Model.Daypart>(dayparts ?? new List<Model.Daypart>()).AsReadOnly();
             Tags = new List<string>(tags ?? new List<string>()).AsReadOnly();
             Category = string.IsNullOrWhiteSpace(category) ? DefaultCategory : category;
+            RequiresLicense = requiresLicense;
         }
 
         /// <summary>
@@ -122,6 +127,22 @@ namespace RestaurantEmpire.Core.Definitions
         /// a code change (Architecture Rule 2).
         /// </summary>
         public string Category { get; }
+
+        /// <summary>
+        /// Cannot be sold without a liquor licence. Data-driven per Architecture Rule 2, so a
+        /// new cocktail is a JSON file and not a code change.
+        /// </summary>
+        public bool RequiresLicense { get; }
+
+        /// <summary>
+        /// Drinks are ADDITIVE — a guest orders one alongside their food rather than instead
+        /// of it, which is the whole reason a drinks list lifts spend per cover instead of
+        /// just competing with the kitchen for the same order.
+        /// </summary>
+        public bool IsDrink
+        {
+            get { return string.Equals(Category, DrinkCategory, System.StringComparison.OrdinalIgnoreCase); }
+        }
 
         public bool HasTag(string tag)
         {

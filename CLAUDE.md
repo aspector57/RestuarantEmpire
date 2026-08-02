@@ -1561,6 +1561,65 @@ Two things worth keeping from the measurement regardless:
   optimum exists, which is the design goal, but the fall past it is sharp enough to be worth
   watching — a player who overshoots gets very little warning.
 
+### Drinks and the liquor licence — the answer to the late-service problem
+
+Aaron: *"we also probably want to add like alcohol and wine, maybe you need to buy a liquor
+licence to sell it? idk what do you think?"* Built, and it is the right thing to have built
+before more dishes, for a reason the strategy probe had already handed us.
+
+**Fine dining could not run a late service because there was nothing on the card anyone wanted
+at one in the morning — and that is TRUE, not a content gap.** Nobody orders sea bass at
+midnight. They order drinks. So a drinks list is not more content; it is the thing that makes a
+daypart exist.
+
+**Drinks are ADDITIVE, and that is the whole design.** A guest orders one ALONGSIDE their food,
+never instead of it. A drinks list that merely competed for the same order would cannibalise
+the kitchen rather than lift the check, which is backwards.
+
+| One month, nightlife, same food menu | covers | $/cover | food cost |
+|---|---:|---:|---:|
+| No bar | 4,775 | $13.43 | **37%** |
+| Licensed, wine and cocktails | 4,949 | **$22.39** | **28%** |
+
+**Spend per cover +67%, and the food-cost ratio falls into the healthy band.** That is exactly
+how the trade solves the premium concept: the wine programme blends the kitchen's cost down.
+Without it the only lever an expensive restaurant has is charging more for food, and the
+measured cliff past the price optimum is brutal (38,484 at 1.9x to -9,639 at 2.2x).
+
+**And it makes a late service worth opening**, which is what it was for:
+
+| Dinner + late, nightlife | covers | revenue | found nothing |
+|---|---:|---:|---:|
+| Kitchen only | 4,576 | $76,733 | **2,506** |
+| With a bar | 5,941 | **$135,227** | **0** |
+
+**THE FIRST VERSION OF THAT BARELY WORKED, AND THE WEAK TEST NEARLY HID IT.** Parties lost went
+2,506 -> 2,498 and the assertion said only "fewer", so it passed. The cause: a late crowd still
+counted as finding nothing because no FOOD suited the hour. **People come out just to drink**,
+and a bar that cannot seat someone who only wants a drink is not a bar. When the kitchen has
+nothing for the hour but the bar does, they now sit down anyway. **An assertion that only checks
+direction will pass on noise — say what the number has to BE.**
+
+**The licence is a capital gate, Binding Principle 4 in its cleanest form:** $6,500 up front
+against an opening bankroll of 18,000-27,000, plus $340 a month whether you sell a drop.
+Refused outright when the cash is not there. It is not a tax — it is what gives the decision
+weight, and a quiet restaurant holding a licence is bleeding.
+
+Margins are the trade's: house wine 25% cost, cellar wine 27%, cocktails far lower — which is
+why bars love cocktails and why prep minutes, not ingredients, are their real constraint.
+`bar` joins the station list with three tiers like every other station.
+
+**Two brittle tests were fixed rather than updated, and the distinction matters.**
+`TheShippedContentFiles_LoadCleanlyWithNoWarnings` asserted exact counts (13 ingredients,
+7 recipes), so it broke the instant any content was added — **hostile to the very rule it
+exists to protect**, since Architecture Rule 2's claim is that new content needs no code
+change. It now asserts the invariant: nothing silently dropped, every ingredient resolves,
+every supplier can quote every ingredient. **A test that fails when you do the thing it is
+meant to permit is a bad test, not a passing content change.**
+
+**Still open:** the browser build has none of this yet, and course/cuisine structure — the
+thing that makes hundreds of dishes a decision rather than a longer list — is not started.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
