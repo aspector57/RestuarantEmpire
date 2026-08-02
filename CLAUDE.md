@@ -1153,7 +1153,11 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
 
 ## Working agreements
 
-- **The browser build (`pass.html`) is LEVEL WITH THE ENGINE as of storage capacity.** It
+- **The browser build is LEVEL WITH THE ENGINE as of the price-resistance change.** It carries
+  the squared tolerance curve and the probabilistic walk-away, so pricing behaves there the way
+  it behaves here. **Sync it before asking for a playtest** — testing a model the engine no
+  longer has produces feedback about nothing, which nearly happened.
+- **The browser build was previously level as of storage capacity.** It
   carries every system: awareness, staff with claimed-versus-actual skill, mistakes and comps
   by dish complexity, category menu engineering, the pantry with dated batches and FIFO,
   pay-on-delivery, freshness on the plate, the standing order, and storage caps with fridges
