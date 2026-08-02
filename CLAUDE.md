@@ -1873,6 +1873,45 @@ hours. It now checks for a window that genuinely wraps past midnight.
 false.** A wrong number is worse than a missing one — it is acted on. `tools/probe-agreement.js`
 now reproduces his position and asserts the three capacity views agree.
 
+### "12 tables" was 12 SEATS — a labelling failure that cost a whole playthrough
+
+> *"what I'm showing is that we only have like 12 tables in there and can't keep up with it,
+> but I guess each table has like 4 seats or something?"*
+
+He had **twelve seats — about three tables.** He had been playing as though he had twelve
+tables and roughly fifty covers. **Every capacity readout was correct and every one was being
+read as four times its real size**, which makes every downstream judgement wrong: the room looks
+big, so the kitchen must be broken, so buy another oven.
+
+The model counts COVERS because parties are counted in people, and that is right. The label has
+to say so. `seatsAndTables()` is now used everywhere: *"12 seats — about 3 tables of 4"*, the
+header carries `12 (~3 tables)`, and furniture reads *"+10 seats (about 3 more tables)"*.
+
+**A correct number with an ambiguous unit is a wrong number.** This is the third defect in three
+sessions where the simulation was right and the readout misled — after the seats/kitchen
+contradiction and the false runway alarm.
+
+### And the follow-up question was the right one: could one cook keep up with twelve seats?
+
+> *"well if it is only 12 seats, they should be able to keep up with the demand right?"*
+
+Measured rather than assumed, 20 days each:
+
+| 12 seats, one 5-hour dinner | covers/day | walkouts |
+|---|---:|---:|
+| **1 cook, 3 second-hand ovens** (his) | 38.6 | **11.4** |
+| 2 cooks, 3 second-hand ovens | **56.8** | **1.4** |
+| 1 cook, 1 second-hand oven | 25.4 | 5.6 |
+| 1 cook, 1 fast oven | 50.0 | 3.2 |
+
+**The arithmetic holds up.** A seat turns every 45 minutes, so twelve seats offer ~80 seatings a
+night. One cook holds two plates; a margherita on a 0.75x oven takes 12 minutes — 10 plates an
+hour against a room turning 16. **He had three ovens and one cook, so two ovens stood idle.**
+
+Either a second cook or one faster oven fixes it; a third second-hand oven never could. **The
+model is defensible and the intuition was half right** — the room was not the problem, but even
+that small room needed more than he had. Kept as `tools/probe-onecook.js`.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

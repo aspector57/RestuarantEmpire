@@ -286,6 +286,7 @@ td.num{font-variant-numeric:tabular-nums}
       <div class="row"><span class="k" data-gloss="awareness">Heard of you</span><span class="v" id="known">—</span></div>
       <div class="row"><span class="k" data-gloss="brigade">Kitchen</span><span class="v" id="brigade">—</span></div>
       <div class="row"><span class="k" data-gloss="menufit">Card suits the street</span><span class="v" id="menufit">—</span></div>
+      <div class="row"><span class="k" data-gloss="seats">Seats</span><span class="v" id="seatstat">—</span></div>
     </div>
 
     <div class="controls">
@@ -521,6 +522,7 @@ const GLOSSARY = {
   foodcost:"What the ingredients cost as a share of what you charge. The trade runs 28–35%. Much lower and you are relying on people not noticing.",
   prime:"Food plus wages over takings — the number that actually decides whether a restaurant lives. Under 55% excellent, 55–65% healthy, 65–70% tight, over 70% and you are going backwards.",
   standing:"What the neighbourhood thinks of you, 0 to 100. It drifts toward whatever your meals actually score, and moves over months rather than days.",
+  seats:"How many PEOPLE you can sit down at once — not how many tables. A party of four takes four of these. Twelve seats is about three tables, not twelve.",
   advisor:"What is worth your attention, most urgent first. It stays quiet when nothing needs doing — an advisor that always has an opinion stops being read. It tells you what is happening in your restaurant and what it would cost to change; it will not tell you what to decide.",
   forecast:"What tonight should look like, worked out before it happens from the same model that runs the service — the traffic outside, your prices, the room and the pass. It cannot know the dice, so it will never be exact; the gap between it and the night is the useful part, because it tells you which assumption you had wrong.",
   menufit:"How well your menu suits the people who are out around here, across the hours you open. Above 100% and the card is pulling people in who would otherwise have walked past; below and they are going somewhere that serves what they came out for. It changes WHO turns up as well as how many — a truffle and sea bass list fills the room with the crowd that wanted truffle and sea bass.",
@@ -1023,6 +1025,19 @@ function usedArea(){
   return a;
 }
 function freeArea(){ return G.floorArea - usedArea(); }
+/* SEATS ARE PEOPLE, NOT TABLES, and reading it the other way costs you the whole game.
+   Aaron: *"we only have like 12 tables in there and can't keep up with it, but I guess each
+   table has like 4 seats or something?"* He had TWELVE SEATS — about three tables — and had
+   been playing as though he had twelve tables and roughly fifty covers. Every capacity readout
+   was correct and every one of them was being read as four times its real size.
+   The model counts covers because parties are counted in people; the LABEL has to say so. */
+const SEATS_PER_TABLE = 4;
+function tablesFrom(seats){ return Math.max(1, Math.round(seats / SEATS_PER_TABLE)); }
+function seatsAndTables(seats){
+  const tables = tablesFrom(seats);
+  return `${seats} seat${seats===1?"":"s"} — about ${tables} table${tables===1?"":"s"} of ${SEATS_PER_TABLE}`;
+}
+
 function servableSeats(){ return Math.min(G.seats, Math.floor(G.servers.length * SEATS_PER_SERVER * (0.7+avgSkill(G.servers)*0.6))); }
 function kitchenCapacity(){
   let units = 0;
@@ -1965,6 +1980,8 @@ function render(){
   const fit = serving.length
     ? serving.reduce((a,dp)=>a+menuDrawAt(dp), 0) / serving.length
     : 1;
+  $("#seatstat").textContent = `${G.seats} (~${tablesFrom(G.seats)} tables)`;
+
   const fitEl = $("#menufit");
   fitEl.textContent = Math.round(fit*100) + "%";
   fitEl.style.color = fit >= 1.05 ? "var(--good)" : (fit < 0.9 ? "var(--bad)" : "");
@@ -2505,7 +2522,8 @@ function panelBuild(){
   stats.className = "scroll";
   stats.innerHTML = `<table><tbody>
     <tr><td>Floor used</td><td class="num">${usedArea().toFixed(1)} / ${G.floorArea.toFixed(0)}  sq ft</td></tr>
-    <tr><td>Seats</td><td class="num">${G.seats} (${servableSeats()} servable with ${G.servers.length} server${G.servers.length===1?"":"s"})</td></tr>
+    <tr><td>Seats</td><td class="num">${seatsAndTables(G.seats)}</td></tr>
+    <tr><td>Of those, servable</td><td class="num">${servableSeats()} with ${G.servers.length} server${G.servers.length===1?"":"s"}</td></tr>
     <tr><td>The room</td><td class="num">${(comfortOf()*5).toFixed(1)}/5 · caps any dish at ${bestPossibleStars().toFixed(1)} stars</td></tr>
     <tr><td>Kitchen units</td><td class="num">${kitchenCapacity().units} · ${G.cooks.length} cook${G.cooks.length===1?"":"s"} work ${kitchenCapacity().cookCapacity} plates at once</td></tr>
     <tr><td>Balance</td><td class="num">${balanceNote()}</td></tr>
@@ -2523,7 +2541,7 @@ function panelBuild(){
     const noRoom = freeArea() < area;
     b.textContent = noRoom
       ? `${f.name} — needs ${area} sq ft`
-      : `+10 covers · ${f.name} — $${cost.toLocaleString()}`;
+      : `+10 seats (about ${tablesFrom(10)} more tables) · ${f.name} — $${cost.toLocaleString()}`;
     b.disabled = noRoom || G.cash<cost;
     b.onclick = ()=>{
       G.cash-=cost; G.ledger.capex+=cost; G.seats+=10; G.seatSpend+=area;
@@ -2554,7 +2572,7 @@ function panelBuild(){
     s10.className = "btn";
     const last = G.fittings[G.fittings.length-1];
     const back = Math.round(last.seats * 40);
-    s10.textContent = `Clear ${Math.min(10,last.seats)} covers — recover $${back.toLocaleString()}`;
+    s10.textContent = `Clear ${Math.min(10,last.seats)} seats — recover $${back.toLocaleString()}`;
     s10.onclick = ()=>{
       const n = Math.min(10, last.seats);
       const area = (G.seatSpend / G.seats) * n;
