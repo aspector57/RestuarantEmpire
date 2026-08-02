@@ -63,6 +63,27 @@ namespace RestaurantEmpire.Core.Tests
             };
         }
 
+        /// <summary>
+        /// A card suited to the site rather than the whole catalogue. Putting all seven dishes
+        /// on every menu stopped being free once breadth began taxing the pass, and it was
+        /// never how anyone would run these places — a business district doing breakfast and
+        /// lunch has no business carrying a truffle risotto.
+        /// </summary>
+        private static string[] MenuFor(string siteId)
+        {
+            switch (siteId)
+            {
+                case "business-district":
+                    return new[] { "eggs-benedict", "flat-white", "caprese-salad", "house-focaccia" };
+                case "nightlife-quarter":
+                    return new[] { "truffle-risotto", "sea-bass", "caprese-salad", "house-focaccia" };
+                case "city-center":
+                    return new[] { "margherita", "caprese-salad", "sea-bass", "house-focaccia" };
+                default:
+                    return new[] { "margherita", "caprese-salad", "house-focaccia", "sea-bass" };
+            }
+        }
+
         private static decimal MonthlyProfit(Plan plan, out ServiceResult month)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
@@ -76,7 +97,11 @@ namespace RestaurantEmpire.Core.Tests
             // found, so start it established rather than unknown.
             restaurant.Reputation.Restore(Reputation.Neutral, Reputation.MealsToBecomeKnown);
 
-            foreach (var recipe in definitions.Recipes) restaurant.Menu.Add(recipe.Id);
+            // A CARD SUITED TO THE SITE, not the whole catalogue. Putting all seven dishes on
+            // every menu stopped being free when breadth started taxing the pass — and it was
+            // never how anyone would actually run these places. A business district doing
+            // breakfast and lunch has no business carrying a truffle risotto.
+            restaurant.Menu.Add(MenuFor(plan.Site.Id));
             company.SupplierPolicy.AssignAll("valley-produce");
 
             restaurant.ServiceWindows.Clear();

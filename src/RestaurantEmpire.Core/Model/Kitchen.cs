@@ -56,10 +56,15 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Which catalogue model this is, when it came from the shop.</summary>
         public string EquipmentId { get; }
 
-        /// <summary>Actual minutes this station takes on a dish, after its speed multiplier.</summary>
-        public int MinutesFor(RecipeDefinition recipe)
+        /// <summary>
+        /// Actual minutes this station takes on a dish, after its speed multiplier and after
+        /// whatever the breadth of the menu is costing the kitchen.
+        /// </summary>
+        public int MinutesFor(RecipeDefinition recipe, decimal complexityLoad = 1m)
         {
-            var minutes = (int)Math.Ceiling(recipe.PrepMinutes / SpeedMultiplier);
+            if (complexityLoad < 1m) complexityLoad = 1m;
+
+            var minutes = (int)Math.Ceiling((recipe.PrepMinutes * complexityLoad) / SpeedMultiplier);
             return minutes < 1 ? 1 : minutes;
         }
 
@@ -330,7 +335,7 @@ namespace RestaurantEmpire.Core.Model
             var rounds = (plates + atOnce - 1) / atOnce;
             if (rounds < 1) rounds = 1;
 
-            return (int)(startsAt - atTick) + (rounds * station.MinutesFor(recipe));
+            return (int)(startsAt - atTick) + (rounds * station.MinutesFor(recipe, ComplexityLoad));
         }
 
         /// <summary>
@@ -341,6 +346,12 @@ namespace RestaurantEmpire.Core.Model
         /// back as a ticket with a named failure, because an 86'd dish is an event the
         /// player should see, not an exception.
         /// </summary>
+        /// <summary>
+        /// What a wide menu costs the pass, as a multiplier on cook time. Set by the caller
+        /// each service; 1.0 unless told otherwise, so a bare kitchen behaves as it always did.
+        /// </summary>
+        public decimal ComplexityLoad { get; set; } = 1m;
+
         public Ticket Fire(RecipeDefinition recipe, long placedTick, Inventory inventory)
         {
             if (recipe == null) throw new ArgumentNullException(nameof(recipe));
@@ -386,7 +397,7 @@ namespace RestaurantEmpire.Core.Model
                 if (_cookFreeAt[cook] > startedTick) startedTick = _cookFreeAt[cook];
             }
 
-            var completedTick = startedTick + station.MinutesFor(recipe);
+            var completedTick = startedTick + station.MinutesFor(recipe, ComplexityLoad);
 
             slots[chosen] = completedTick;
             if (cook >= 0) _cookFreeAt[cook] = completedTick;

@@ -114,6 +114,10 @@ namespace RestaurantEmpire.Core.Model
             _pass = restaurant.Kitchen.OpenPass(clock.Tick,
                 restaurant.Payroll.PlateCapacity(KitchenPass.PlatesPerCook));
 
+            // A wide card slows the pass down. Set once for the run; changing the menu
+            // mid-service is not a thing anyone does.
+            _pass.ComplexityLoad = restaurant.Menu.ComplexityLoad;
+
             Clock = clock;
             Interrupts = interrupts ?? new InterruptPolicy();
         }
@@ -742,7 +746,8 @@ namespace RestaurantEmpire.Core.Model
             // 1.0 at twelve minutes, so most of the card sits either side of "demanding".
             var demand = recipe.PrepMinutes / 12m;
 
-            var chance = 0.01m + (shortfall * shortfall * 0.10m * demand);
+            // A wide card is more to hold in your head, so more goes wrong on it.
+            var chance = (0.01m + (shortfall * shortfall * 0.10m * demand)) * _restaurant.Menu.ComplexityLoad;
             return chance < 0m ? 0m : chance > 0.30m ? 0.30m : chance;
         }
 

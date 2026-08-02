@@ -73,6 +73,41 @@ namespace RestaurantEmpire.Core.Model
         public IReadOnlyList<string> RecipeIds { get { return _recipeIds; } }
         public int Count { get { return _recipeIds.Count; } }
 
+        /// <summary>Dishes a kitchen carries without strain.</summary>
+        public const int FreeMenuSize = 4;
+
+        /// <summary>What each dish past that adds to ticket work and to mistakes.</summary>
+        public const decimal ComplexityPerExtraDish = 0.09m;
+
+        /// <summary>However wide the card, a kitchen does not seize up entirely.</summary>
+        public const decimal MaxComplexityLoad = 1.65m;
+
+        /// <summary>
+        /// What a wide card costs the kitchen — a multiplier on ticket work and on how often a
+        /// plate goes wrong. 1.0 for a tight menu, climbing from there.
+        ///
+        /// **Breadth used to be free, and that made "put everything on" the one dominant
+        /// strategy.** Measured across six strategies and four markets: Broad Menu won every
+        /// market, one distinct winner out of four. A game where a single plan wins everywhere
+        /// has no decision in it, and this was why — each dish added found more guests
+        /// something they wanted and nothing pushed back.
+        ///
+        /// A kitchen pays for breadth in prep, in mise en place, in stations juggling
+        /// unrelated work and in cooks holding more in their heads. Four dishes is free;
+        /// past that, each one taxes the pass.
+        /// </summary>
+        public decimal ComplexityLoad
+        {
+            get
+            {
+                var beyond = Count - FreeMenuSize;
+                if (beyond <= 0) return 1m;
+
+                var load = 1m + (beyond * ComplexityPerExtraDish);
+                return load > MaxComplexityLoad ? MaxComplexityLoad : load;
+            }
+        }
+
         public void Add(params string[] recipeIds)
         {
             if (recipeIds == null) return;

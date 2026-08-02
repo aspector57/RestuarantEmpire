@@ -1245,6 +1245,39 @@ JSON per Architecture Rule 2.
 **The honest summary: he built a better ECONOMIC MODEL, we built more GAME.** The budget anchor
 and per-entity streams are the two things to take.
 
+### The question we never asked: are there SEVERAL ways to run a restaurant?
+
+`Sweep` asks "is this configuration profitable?" and answered 100/100 for months while Aaron
+kept saying the game was too easy. **Profitability is not strategy.** A game with one dominant
+plan can be profitable everywhere and still have nothing to decide.
+
+`StrategyDiversity` asks the real question, borrowed from the parallel implementation whose
+harness reports *"distinct winners across scenarios: 2/3, no single dominant strategy"*. Six
+strategies across four markets:
+
+**First run — one distinct winner out of four. Broad Menu won everywhere**, by a mile
+(46,910 in the city against 27,677 for the nearest rival). **Menu breadth was free**: every
+dish added found more guests something they wanted, and nothing pushed back. That is why Aaron
+could not find a wrong move.
+
+**Fixed: `Menu.ComplexityLoad`.** Four dishes are free; each one past that adds 9% to ticket
+work and to how often a plate goes wrong, capped at 1.65x. A kitchen pays for breadth in prep,
+in mise en place, and in what a cook has to hold in their head. Broad Menu fell from 46,910 to
+27,214 and lost its crown.
+
+**STILL FAILING, and honestly: one distinct winner out of four.** "Neighbourhood standard" —
+four dishes, mid-tier supplier, 1.1x prices — now wins every market instead. The tax removed
+one dominant strategy and revealed another underneath it.
+
+**The diagnosis for next time: specialisation does not pay where it should.** Fine Dining
+correctly dies in a business district (lunchers want quick) but also loses to the generalist in
+the nightlife quarter, where influencers and couples are supposed to want exactly what it
+sells. **The archetype pull is too weak to make committing to a crowd beat hedging.** That is
+the next lever — not another cost on breadth, but a bigger reward for fitting a market.
+
+**This is now the gate that matters more than the sweep.** A restaurant game where one build
+wins everywhere is a spreadsheet with a theme.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
