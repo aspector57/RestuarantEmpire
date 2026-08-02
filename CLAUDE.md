@@ -1525,6 +1525,42 @@ commit and a measurement, not a config edit.
 **When porting a constant to the browser build, add it to `Shared()` in the drift test.** A
 number that is duplicated and unguarded is the exact shape of every port bug so far.
 
+### Aaron's balance bar, and it changes how every strategy result must be read
+
+> *"You should be able to win with any concept anywhere if you run the restaurant properly,
+> unless the concept just totally sucks."*
+
+**This makes an underperforming strategy a QUESTION rather than a finding**, and applied to the
+fine-dining result it dissolved it entirely. The probe was running that concept badly on two
+counts, neither of which is a property of fine dining:
+
+| Fine dining, nightlife quarter, dinner only | net/month |
+|---|---:|
+| 1.35x (what the probe used) | 15,428 |
+| 1.60x | 32,668 |
+| **1.90x** | **38,484** |
+| 2.20x | -9,639 |
+| *Neighbourhood standard, same market* | *38,866* |
+
+Closing the late service it could not feed: **2,166 -> 15,428**. Pricing premium ingredients
+like premium ingredients: **-> 38,484, within 1% of the generalist.** Fine dining is competitive
+in its own market when run properly. It was losing to operating mistakes.
+
+**THE INSTRUMENT IS THEREFORE MEASURING THE WRONG THING.** `StrategyDiversity` hands every
+strategy a fixed price multiplier and a fixed set of hours, so it compares concepts run at
+arbitrary settings rather than concepts run well. Under Aaron's bar the honest question is
+*"what is this concept's best result in this market?"* — each strategy tuned to its own optimum,
+then compared. **Do not read the existing distinct-winner count as a balance verdict until that
+is fixed**; it currently rewards whichever concept happens to suit the fixture's defaults.
+
+Two things worth keeping from the measurement regardless:
+
+- **A menu that cannot feed its hours is paid for twice** — the parties who walk, and the stock
+  that rots behind them. Now surfaced as `opportunity:menu`.
+- **The price cliff above the optimum is steep**: 38,484 at 1.9x to -9,639 at 2.2x. An interior
+  optimum exists, which is the design goal, but the fall past it is sharp enough to be worth
+  watching — a player who overshoots gets very little warning.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

@@ -179,6 +179,69 @@ namespace RestaurantEmpire.Core.Tests
             }
         }
 
+        /// <summary>
+        /// AARON'S BAR: *"you should be able to win with any concept anywhere if you run the
+        /// restaurant properly, unless the concept just totally sucks."*
+        ///
+        /// That makes the fine-dining result a question rather than a finding. The probe runs
+        /// it BADLY — it opens a late service with nothing late-appropriate on the card, which
+        /// is an operating mistake, not a property of the concept. This asks what happens when
+        /// the same concept is run properly in the same market.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void CanFineDiningWinItsOwnMarketIfRunProperly()
+        {
+            var fine = Strategies().First(s => s.Name == "Fine dining");
+            var nightlife = Neighborhood.NightlifeQuarter();
+
+            var dinnerAndLate = new[] { new ServiceWindow("Dinner", 18, 23), new ServiceWindow("Late", 23, 2) };
+            var dinnerOnly = new[] { new ServiceWindow("Dinner", 18, 23) };
+
+            _out.WriteLine("Fine dining, nightlife quarter, same menu and staff — only the hours differ.");
+            _out.WriteLine("");
+            _out.WriteLine("  " + "hours".PadRight(18) + "net/mo".PadLeft(10) + "food%".PadLeft(8)
+                           + "spoiled".PadLeft(10) + "lost to menu".PadLeft(14));
+
+            foreach (var (hours, label) in new[] { (dinnerAndLate, "dinner + late"), (dinnerOnly, "dinner only") })
+            {
+                var d = Detail(fine, nightlife, hours, 4242);
+                _out.WriteLine("  " + label.PadRight(18)
+                    + d.Net.ToString("N0").PadLeft(10)
+                    + (d.Revenue <= 0 ? "-" : (d.Food / d.Revenue).ToString("P0")).PadLeft(8)
+                    + d.Wasted.ToString("N0").PadLeft(10)
+                    + d.LostMenu.ToString("N0").PadLeft(14));
+            }
+
+            _out.WriteLine("");
+            _out.WriteLine("And priced properly? Premium ingredients at 1.35x may simply be too cheap.");
+            _out.WriteLine("  " + "price".PadRight(18) + "net/mo".PadLeft(10) + "food%".PadLeft(8)
+                           + "spoiled".PadLeft(10) + "covers/mo".PadLeft(12));
+            foreach (var multiplier in new[] { 1.35m, 1.6m, 1.9m, 2.2m, 2.6m })
+            {
+                var priced = new Strategy
+                {
+                    Name = fine.Name, Menu = fine.Menu, Supplier = fine.Supplier,
+                    PriceMultiplier = multiplier, Units = fine.Units, Seats = fine.Seats,
+                    Cooks = fine.Cooks, Servers = fine.Servers, CookSkill = fine.CookSkill
+                };
+                var d = Detail(priced, nightlife, dinnerOnly, 4242);
+                _out.WriteLine("  " + (multiplier.ToString("0.00") + "x").PadRight(18)
+                    + d.Net.ToString("N0").PadLeft(10)
+                    + (d.Revenue <= 0 ? "-" : (d.Food / d.Revenue).ToString("P0")).PadLeft(8)
+                    + d.Wasted.ToString("N0").PadLeft(10)
+                    + d.Covers.ToString("N0").PadLeft(12));
+            }
+
+            _out.WriteLine("");
+            _out.WriteLine("For comparison, the generalist in the same market on dinner only:");
+            var standard = Strategies().First(s => s.Name == "Neighbourhood standard");
+            var s2 = Detail(standard, nightlife, dinnerOnly, 4242);
+            _out.WriteLine("  " + "standard".PadRight(18) + s2.Net.ToString("N0").PadLeft(10)
+                + (s2.Food / s2.Revenue).ToString("P0").PadLeft(8)
+                + s2.Wasted.ToString("N0").PadLeft(10)
+                + s2.LostMenu.ToString("N0").PadLeft(14));
+        }
+
         private sealed class Line
         {
             public int Covers, LostPrice, LostWait, LostSeats, LostMenu;
