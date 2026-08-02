@@ -1352,10 +1352,54 @@ entirely opposite fixes and buying the wrong one is the classic way to lose here
 stays silent when the night went to plan, held to the same standard as the Advisor: one that
 always has an opinion stops being read.
 
-**Not built yet: the player never SEES it.** This is engine-side only — no browser build, no
-harness command. Until it is surfaced, the loop exists in the model and not in the game, which
-is exactly the "populated but read on only one side" shape this project keeps hitting. Wiring
-it into `pass.html` is the next step and should not be deferred.
+**Now surfaced in the browser build**, which was the point — a forecast the player cannot see
+before committing is a report, and this project already had too many of those. A card above the
+tabs shows the projection, a `demand`/`seats`/`kitchen`-bound chip, and the three ceilings as
+bars scaled against each other so which one is short is something you SEE. Underneath, after
+the night, the autopsy. It is taken BEFORE the day advances, from the state the player last
+looked at.
+
+### THE BROWSER BUILD CAN NOW BE RUN HEADLESSLY, and it found a divergence immediately
+
+`tools/headless.py` runs `pass.html` under the **JavaScriptCore CLI that ships with macOS**
+(`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc`) — no node, no
+install. The DOM is stubbed to a proxy that swallows everything; the simulation never reads
+from the page, so the model half runs unmodified. `tools/probe-forecast.js` is the first probe.
+
+**This closes a hole that has cost real time twice.** The port had drifted twice before —
+invented equipment speeds, and `Markup` ported by NAME rather than by definition — and both
+times the only detector was Aaron losing an evening to a broken game. The port can now be
+MEASURED against the engine rather than trusted.
+
+**It found one within minutes: the two services disagree about kitchens.**
+
+| | C# service | browser service |
+|---|---:|---:|
+| Median cover error | **12%** | 18% |
+| Worst | 35% | **66%** |
+
+The same forecast, ported faithfully, is materially worse against the browser sim, and it
+over-predicts *only* when the kitchen binds. The instrumented run says exactly why:
+
+| shape | forecast | served | walked out | seated |
+|---|---:|---:|---:|---:|
+| balanced | 67 | 43 | 23 | 66 |
+| short kitchen | 29 | 10 | 15 | **25 — the ceiling was exactly right** |
+
+**The kitchen ceiling is not wrong. The browser sim seats those people and then loses them**,
+and the forecast counts seated as served.
+
+**A walkout term was tried and REVERTED, and that decision is the useful part.** Modelling
+walkouts as a function of hourly load improved the kitchen-bound cases and made the seat-bound
+one worse — it had been at 2% — and a sweep of the constant degraded the median monotonically
+from 18% to 72%. **One global constant fitted across cases that fail for different reasons is
+the "tune until the number pleases you" trap this project has already been caught in twice.**
+The honest reading is that the two services differ in more than one place, and that is a
+divergence to fix at the source rather than absorb into a fudge factor.
+
+**So: the browser forecast is knowingly 18% out and says so in a comment.** Do not close that
+gap by tuning the forecast. Close it by finding where `runDay` and `ServiceSimulation` actually
+disagree — which is now a measurable question for the first time.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
 
@@ -1450,6 +1494,9 @@ A ticket does not know whether it came from a dine-in table or a delivery order.
   so the new systems are visible while playing: **"heard of you"** (awareness) and
   **"kitchen"** (brigade skill out of five). Hiring is a list of applicants with what their CV
   reads as, and the Team tab shows who turned out better or worse than they claimed.
+- **The port can now be measured, not trusted: `python3 tools/headless.py <probe.js>`.** See
+  the headless section above. Write a probe rather than reasoning about whether a port is
+  faithful — the first one found a divergence that had been invisible for the whole project.
 - **A browser port of the sim is a playtest instrument, and it WILL drift.** `pass.html`
   reimplements the rules in JavaScript so the loop can be felt rather than read. Two drift
   bugs appeared within a day of writing it: the equipment table had invented footprints and
