@@ -1644,8 +1644,33 @@ per-dish *"use $15.40"* appears only where a dish is more than 8% off it. The pl
 deviates dish by dish where they have a reason — **which is what menu engineering actually is.**
 The boring part is automated; the interesting part is not.
 
-**Still open:** course/cuisine structure — the thing that makes hundreds of dishes a decision
-rather than a longer list — is not started.
+### Aaron's playtest of the drinks build — three defects, one of them the bad kind
+
+> *"the menu jumps around, now there is also more alcohol than anything else, I also didn't see
+> the option to buy the liquor licence, I just added the drinks to the menu."*
+
+**1. SILENT FAILURE, and this is the one that matters.** He put alcohol on the card without a
+licence and **nothing said a word** — the drinks simply never sold, with no explanation anywhere.
+A dish that cannot be served must say so where the player is looking at it, not fail quietly at
+service. Every licensed item now carries its own line: *"Needs a liquor licence before it can be
+sold"*, or, if it is already on the card, *"On the menu, but it cannot be sold."*
+
+The licence card existed, but it was below the whole dish list where he never scrolled. **A gate
+the player cannot find is not a gate, it is a bug.**
+
+**2. The menu jumped around, and it was not the sort.** The price slider ran `render()` on every
+`input` event — which fires continuously through a drag — so each pixel of movement tore down
+the entire list and rebuilt it. The row moved out from under the cursor and the slider lost
+focus. Now the readout updates live and the rebuild happens on `change`, when the drag ends.
+**A full re-render is not free just because it is correct.**
+
+**3. Four drinks in a seven-dish catalogue read as a bar that serves food.** `menuOrder` sorted
+by daypart then price, which put a Negroni between two mains. The card is now GROUPED BY COURSE
+— small plates, mains, sides, desserts, drinks — which is both the fix and **the first half of
+the course structure a large catalogue needs.** Grouping is what makes a big menu legible;
+without it, hundreds of dishes is just a longer list.
+
+**Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
 

@@ -1460,7 +1460,29 @@ function panelMenu(){
       ? "Each dish out of five, split into the four things that decide it. The restaurant's own standing is separate — a cheap plate can please whoever eats it without anyone loving the place."
       : "Nobody has eaten here yet, so these are projections, not opinions — what this dish would score if you served it now. They are here so you can price before you open. Real ratings replace them once plates go out.");
 
-  for(const r of [...RECIPES].sort(menuOrder)){
+  // GROUPED BY COURSE. Aaron, after four drinks joined a seven-dish catalogue: *"now there is
+  // also more alcohol than anything else."* Interleaving them by price put a Negroni between
+  // two mains and made the card read as a bar that serves food. A menu has SHAPE, and this is
+  // the first half of the course structure a big catalogue needs.
+  const COURSES = [["small plate","Small plates"],["main","Mains"],["side","Sides"],
+                   ["dessert","Desserts"],["drink","Drinks"]];
+  const grouped = [];
+  const placed = new Set();
+  for(const [key, label] of COURSES){
+    const items = RECIPES.filter(x => (x.cat||"main") === key).sort(menuOrder);
+    items.forEach(x => placed.add(x.id));
+    if(items.length) grouped.push([label, items]);
+  }
+  const rest = RECIPES.filter(x => !placed.has(x.id)).sort(menuOrder);
+  if(rest.length) grouped.push(["Everything else", rest]);
+
+  for(const [courseLabel, courseItems] of grouped){
+    const head = document.createElement("div");
+    head.className = "coursehead";
+    head.textContent = courseLabel;
+    c.appendChild(head);
+
+  for(const r of courseItems){
     const on = G.onMenu.has(r.id);
     const d = document.createElement("div");
     d.className = "dish";
@@ -1511,7 +1533,17 @@ function panelMenu(){
       pl.innerHTML = `<span class="num" style="min-width:74px">$${G.prices[r.id].toFixed(2)}</span>
         <input type="range" min="${(r.base*0.5).toFixed(1)}" max="${(r.base*4).toFixed(1)}" step="0.5" value="${G.prices[r.id]}" aria-label="Price of ${r.name}">
         <span class="num" style="color:var(--muted);font-size:12px">costs $${cost.toFixed(2)} · <span title="${GLOSSARY.foodcost}">food cost</span> ${((cost/Math.max(0.01,G.prices[r.id]))*100).toFixed(0)}% · ${(G.prices[r.id]/r.base).toFixed(1)}<span title="${GLOSSARY.menuprice}">× the menu price</span> · ${(G.sold[r.id]||0)} sold${suggestFor(r)}</span>`;
-      pl.querySelector("input").oninput = ev=>{ G.prices[r.id] = parseFloat(ev.target.value); G.suggest = null; render(); };
+      // A FULL RE-RENDER ON EVERY `input` EVENT IS WHY THE MENU JUMPED AROUND. Dragging a
+      // price slider fires this continuously; each one tore down the whole list and rebuilt
+      // it, so the row moved out from under the cursor and the slider lost focus mid-drag.
+      // Update the figures live, rebuild only when the drag ends.
+      const slider = pl.querySelector("input");
+      const readout = pl.querySelector(".num");
+      slider.oninput = ev=>{
+        G.prices[r.id] = parseFloat(ev.target.value);
+        readout.textContent = "$" + G.prices[r.id].toFixed(2);
+      };
+      slider.onchange = ()=>{ G.suggest = null; render(); };
 
       // One click for this dish, for when the card position is right but one item is not.
       const s2 = G.suggest || (G.suggest = suggestedPosition());
@@ -1529,10 +1561,23 @@ function panelMenu(){
     const toggle = document.createElement("button");
     toggle.className = "btn";
     toggle.style.justifySelf = "start";
+    // SILENT FAILURE WAS THE WORST OF THE THREE. Aaron put drinks on the card without a
+    // licence and nothing said a word — they simply never sold. A dish that cannot be served
+    // must say so where the player is looking at it, not fail quietly at service time.
+    if(r.licence && !G.licence){
+      const warn = document.createElement("div");
+      warn.className = "needslicence";
+      warn.textContent = on
+        ? "On the menu, but it cannot be sold — you have no liquor licence."
+        : "Needs a liquor licence before it can be sold.";
+      d.appendChild(warn);
+    }
+
     toggle.textContent = on ? "Take off the menu" : "Put on the menu";
     toggle.onclick = ()=>{ on ? G.onMenu.delete(r.id) : G.onMenu.add(r.id); render(); };
     d.appendChild(toggle);
     c.appendChild(d);
+  }
   }
 
   // ---- Pricing the whole card at once ----
@@ -2126,6 +2171,14 @@ $("#untilBtn").addEventListener("click", ()=>{ G.interrupt = null; advance(120, 
 
 buildSetup();
 
+/*
+ * Do drinks behave in the browser build the way they do in the engine?
+ *
+ * The C# equivalent (`DrinksTests`) measures spend per cover $13.43 -> $22.39 and food cost
+ * 37% -> 28%. This asks the same of the port.
+ *
+ *     python3 tools/headless.py tools/probe-drinks.js
+ */
 function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
 var night = SITES.filter(function(s){return s.id==="nightlife-quarter";})[0];
 
