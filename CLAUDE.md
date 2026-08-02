@@ -1705,6 +1705,37 @@ suppressed below a meaningful denominator. Third fixture bug this session found 
 probe (after the missing fridge and the storage-less starvation) — **the pattern is that a
 fixture which skips the game's own economy measures something that is not the game.**
 
+### The licence could not be found because HALF THE MENU TAB WAS CRASHING
+
+Aaron, twice: *"I didn't see the option to buy the liquor licence"*, then *"where do I buy the
+liquor licence? I can't find it."* The first time this was treated as a PLACEMENT problem and
+warnings were added to the dishes. **That was the wrong diagnosis and the second report is what
+forced a real look.**
+
+**`wrap.appendChild(pc)` referenced a variable that never existed.** `card()` appends to
+`#panel` itself and returns the node; there is no wrapper. So the line threw a `ReferenceError`
+**immediately after the dish list**, and everything below it — the pricing controls, the licence
+card, the sourcing switcher — never rendered at all. Shipped in the drinks commit and live for
+two sessions.
+
+**The brace counter said the file was fine, and it was right and useless.** Balanced braces do
+not mean the page runs. That check has been the only verification the browser build had, and it
+cannot catch a ReferenceError, a typo'd property, or a null dereference.
+
+**`tools/probe-panels.js` closes that hole**: it renders every panel, licensed and unlicensed,
+and reports which throw. Run against the shipped build it says exactly what the player
+experienced:
+
+    THROW panelMenu (unlicensed) -> ReferenceError: Can't find variable: wrap
+    THROW panelMenu (licensed)   -> ReferenceError: Can't find variable: wrap
+
+**RUN IT AFTER ANY UI CHANGE.** The pattern this session is consistent and worth stating
+plainly: every browser-build defect that reached Aaron was invisible to static checking and
+obvious the moment something actually executed the code.
+
+The licence card is now also a reusable `licenceCard()` built at the TOP of the menu, so its
+position comes from call order rather than from where it happened to be written.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

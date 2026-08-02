@@ -1900,8 +1900,50 @@ function panelService(){
   c.appendChild(rail);
 }
 
+/* THE LICENCE HAS TO BE WHERE THE PLAYER IS LOOKING. Twice now Aaron could not find it —
+   first because it sat below the whole dish list, then again after course grouping made that
+   list longer. Warnings on the dishes were not enough: they said what was wrong without
+   offering the fix. A gate the player cannot find is not a gate, it is a bug.
+   It now appears at the TOP of the menu, and in Build alongside every other capital purchase. */
+function licenceCard(){
+  // `card()` appends to #panel itself and returns the node — there is no wrapper to add it to.
+  // Assuming otherwise threw a ReferenceError right after the dish list and silently killed
+  // the rest of the Menu tab, which is why the licence could not be found for two sessions.
+  const lc = card("The bar",
+    "Nobody orders sea bass at one in the morning — they order a drink. A licence is what makes a late service worth opening, and drinks carry a better margin than the kitchen, which is how an expensive restaurant survives.");
+  const lrow = document.createElement("div");
+  lrow.className = "priceline";
+  lrow.style.gridTemplateColumns = "1fr auto";
+  lrow.innerHTML = `<span style="font-size:13px;line-height:1.5">${
+    G.licence
+      ? `<b>Licensed.</b> <span style="color:var(--muted)">$${LICENCE_RENEWAL} a month whether you sell a drop.</span>`
+      : `<b>No licence — nothing alcoholic can be sold.</b> <span style="color:var(--muted)">$${LICENCE_FEE.toLocaleString()} to apply, then $${LICENCE_RENEWAL} a month.</span>`
+  }</span>`;
+
+  if(!G.licence){
+    const buy = document.createElement("button");
+    buy.className = "btn";
+    const canAfford = G.cash >= LICENCE_FEE;
+    buy.textContent = canAfford ? "Apply for a licence — $" + LICENCE_FEE.toLocaleString() : "can't afford yet";
+    buy.disabled = !canAfford;
+    buy.onclick = ()=>{
+      if(G.cash < LICENCE_FEE) return;
+      G.cash -= LICENCE_FEE;
+      G.ledger.capex += LICENCE_FEE;
+      G.licence = true;
+      say("money", `Liquor licence granted — $${LICENCE_FEE.toLocaleString()} out. You can sell alcohol now.`);
+      render();
+    };
+    lrow.appendChild(buy);
+  }
+  lc.appendChild(lrow);
+  return lc;
+}
+
 function panelMenu(){
   const anySold = totalSold() > 0;
+  licenceCard();   // card() appends itself
+
   const legend = card("What the labels mean",
     "Two different questions, and it is worth keeping them apart.");
   legend.innerHTML += `<div class="scroll"><table><tbody>
@@ -2079,38 +2121,7 @@ function panelMenu(){
   };
   prow.appendChild(reset);
   pc.appendChild(prow);
-  wrap.appendChild(pc);
 
-  // ---- The liquor licence ----
-  const lc = card("The bar",
-    "Nobody orders sea bass at one in the morning — they order a drink. A licence is what makes a late service worth opening, and drinks carry a better margin than the kitchen, which is how an expensive restaurant survives.");
-  const lrow = document.createElement("div");
-  lrow.className = "priceline";
-  lrow.style.gridTemplateColumns = "1fr auto";
-  lrow.innerHTML = `<span style="font-size:13px;line-height:1.5">${
-    G.licence
-      ? `Licensed. <span style="color:var(--muted)">$${LICENCE_RENEWAL} a month whether you sell a drop.</span>`
-      : `No licence — nothing alcoholic can be sold. <span style="color:var(--muted)">$${LICENCE_FEE.toLocaleString()} to apply, then $${LICENCE_RENEWAL} a month.</span>`
-  }</span>`;
-
-  if(!G.licence){
-    const buy = document.createElement("button");
-    buy.className = "btn";
-    const canAfford = G.cash >= LICENCE_FEE;
-    buy.textContent = canAfford ? "Apply for a licence" : "can't afford";
-    buy.disabled = !canAfford;
-    buy.onclick = ()=>{
-      if(G.cash < LICENCE_FEE) return;
-      G.cash -= LICENCE_FEE;
-      G.ledger.capex += LICENCE_FEE;
-      G.licence = true;
-      say("money", `Liquor licence granted — $${LICENCE_FEE.toLocaleString()} out. You can sell alcohol now.`);
-      render();
-    };
-    lrow.appendChild(buy);
-  }
-  lc.appendChild(lrow);
-  wrap.appendChild(lc);
 
   const s = card("Sourcing", "One assignment, felt everywhere. Switching moves every dish's cost and every rating at once — and it moves the ceiling on how well regarded you can ever be.");
   const seg = document.createElement("div");
