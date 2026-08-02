@@ -1155,8 +1155,17 @@ never enters the demand calculation. Ours makes it the anchor (`Markup = price /
 price`), which is exactly why we have a dead zone: a dish priced as designed scores ~1.0
 against a 0.40 walk-away, so the first chunk of any price rise is free. **Anchoring to budget
 removes the dead zone by construction** — there is no "fair" price to be safely at, only a
-customer who can or cannot afford you. It also makes the same dish correctly priced differently
-for a lunch crowd and a food enthusiast, which our archetypes want and cannot express.
+customer who can or cannot afford you.
+
+**THERE IS STILL ONE PRICE — the first version of this note said it badly.** Aaron pushed back
+on exactly that: *"when you got a restaurant everyone pays the same price."* He is right, and
+the note was wrong rather than the model. Nobody is charged differently. You set the risotto at
+$34 and the food enthusiast on an $85 budget orders it while the value-lunch crowd on $22 reads
+the menu and leaves. **One price, different answers.** What the model gives you is that the
+RIGHT price depends on which crowd you are trying to win — one decision, made for everyone, and
+exactly what choosing a price point does in real life. Demand segmentation, not price
+discrimination. Our archetypes already carry a price sensitivity; what they lack is a BUDGET to
+judge against, which is the whole difference.
 
 **2. RNG STREAMS ARE PER-ENTITY, NOT PER-DOMAIN.** `RngStreams.For(stream, entityKey)` returns a
 fresh SplitMix64 seeded from `Mix(Mix(rootSeed, streamSalt), entityKey)`. So a roll added to one
