@@ -1793,6 +1793,55 @@ The honest next step is a probe that deliberately makes a bad opening decision a
 the run can be saved — the same shape as `CanFineDiningWinItsOwnMarketIfRunProperly`, which
 dissolved a "finding" that turned out to be an operating mistake.
 
+### The death spiral, diagnosed from Aaron's day-149 log — and the game caused it
+
+His log is the clearest evidence this project has produced, because the same three lines repeat
+for seventeen days:
+
+    d132  Bought a Second-hand Deck Oven — $1,600     ...  23 walked out after waiting
+    d133  Bought a Prep Bench — $700                  ...  32 walked out after waiting
+    d134  Bought a Second-hand Deck Oven — $1,600     ...  35 walked out after waiting
+    d141  Bought a Second-hand Deck Oven — $1,600     ...  29 walked out after waiting
+    d145  Bought a Prep Bench — $700                  ...  41 walked out after waiting
+    d147  Bought a Second-hand Deck Oven — $1,600     ...  43 walked out after waiting
+    d149  Bought a Prep Bench — $700                  ...  39 walked out, 21 covers served
+
+**Seven purchases, roughly $8,500, and walkouts never fell below 23.** More guests walked out
+after sitting down than were served. **He was doing exactly what the game told him to**, and the
+game was wrong.
+
+**BUG 1: the interrupt blamed a station without ever checking whether the BRIGADE was the
+limit.** `busiestStation()` returns the busiest station unconditionally, so the interrupt always
+named equipment and always offered another one — with a button on it. His constraint was two
+cooks at 1.2/5. **No quantity of ovens fixes a shortage of hands**, and the stations he kept
+buying stood idle waiting for someone to work them.
+
+The forecast already had this right: `kitchenThroughput` takes `min(tightest station, brigade)`.
+**The component that knew was not the component with the button.** `passLimit()` is now the
+single shared answer, used by both, and the interrupt says:
+
+> *"It is not the equipment — it is the people. 2 cooks at 1.3/5 can move about 28 covers an
+> hour between them, and the stations are sitting idle waiting for hands. Another oven would
+> change nothing."* — and offers only **Go to hiring**.
+
+**BUG 2: MY RUNWAY BRAKE SILENCED THE DIAGNOSIS, NOT JUST THE SPENDING.** Below two months of
+money it dropped the kitchen advice entirely, so his Advisor read **"1 thing"** — the runway
+warning — while the pass strangled him unmentioned. **The moment a restaurant got into trouble,
+the Advisor stopped explaining why.** That is precisely backwards, and it left the interrupt
+(which had no brake) as the only voice, still selling him ovens.
+
+The brake now removes the ASK and never the cause: no buy button, and the advice is reframed as
+something to fix without spending — *"there is not the money to hire right now, so the move is
+to shorten the card or the hours until it can be worked with who you have."*
+
+**The wider lesson, and it has now cost a full playthrough: two components answering the same
+question from different data will eventually disagree, and the player believes whichever one has
+a button.** Same shape as the C#/JS drift. Any question worth answering twice should be answered
+once and shared.
+
+`tools/probe-spiral.js` reproduces his position and asserts the advice flips between "people"
+and "equipment" as the brigade changes.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

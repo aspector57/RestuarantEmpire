@@ -1098,6 +1098,42 @@ const DWELL = 45;
 /* Plates the kitchen can send in a stretch of minutes, governed by the TIGHTEST STATION.
    Counting cooks alone was the engine forecast's biggest error — three oven units cooking two
    of three dishes is a far harder limit than four cooks. */
+/* WHAT IS ACTUALLY LIMITING THE PASS — a station, or the people working it?
+ *
+ * These are different problems with opposite fixes and the game used to answer only the first.
+ * `busiestStation()` always names a station and always offers another one of them, so Aaron
+ * bought SEVEN pieces of equipment across seventeen days while walkouts never fell below 23 a
+ * night — because his brigade was the constraint the whole time and no amount of oven fixes a
+ * shortage of cooks. The forecast already got this right; the interrupt did not, and the
+ * interrupt is the one with a button on it.
+ */
+function passLimit(dp){
+  const on = menuFor(dp || "dinner");
+  if(!on.length) return null;
+
+  const cl = complexityLoad();
+  const byStation = {};
+  on.forEach(r => (byStation[r.station] = byStation[r.station] || []).push(r));
+
+  let tightest = Infinity, worstStation = null, worstUnits = 0, worstDishes = 0;
+  for(const st in byStation){
+    const units = stationUnits(st);
+    if(!units) continue;
+    const sp = stationSpeed(st), list = byStation[st];
+    const avgMin = list.reduce((a,r)=>a + Math.max(1, Math.round(r.prep*cl/sp)), 0) / list.length;
+    const share = list.length / on.length;
+    const allows = (60/avgMin) * units / share;
+    if(allows < tightest){ tightest = allows; worstStation = st; worstUnits = units; worstDishes = list.length; }
+  }
+
+  const avgPrep = on.reduce((a,r)=>a + r.prep*cl, 0) / on.length;
+  const byBrigade = avgPrep > 0 ? (60/avgPrep) * plateCapacity() : 0;
+
+  return byBrigade < tightest
+    ? { kind:"brigade", allows: byBrigade, cooks: G.cooks.length, skill: avgSkill(G.cooks) }
+    : { kind:"station", allows: tightest, station: worstStation, units: worstUnits, dishes: worstDishes };
+}
+
 function kitchenThroughput(minutes, dp){
   const on = menuFor(dp);
   if(!on.length) return 0;
@@ -1554,15 +1590,20 @@ function advise(){
       body:`${money(G.cash)} against about ${money(monthlyBurn())} a month going out. Anything that adds a wage is a bad idea until this turns.` });
 
   // --- 3. The bottleneck, named. This is the one that pays. ---
-  const b = bottleneck(daypartAt(G.windows[0] ? G.windows[0].from : 19));
-  if(b && d){
-    const perHour = b.coversPerHour * PRACTICAL_CAPACITY;
+  const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+  if(lim && d){
+    const perHour = lim.allows * PRACTICAL_CAPACITY;
     const roomPerHour = servableSeats() * (60/DWELL);
-    if(perHour < roomPerHour * 0.8){
-      const name = STATION_NAMES[b.station] || b.station;
-      const model = EQUIPMENT.filter(e => e.station === b.station).sort((x,y)=>x.cost-y.cost)[0];
+    if(perHour < roomPerHour * 0.8 && lim.kind === "brigade"){
+      // Costs a wage, so the runway brake will silence the ASK — but never the diagnosis.
+      out.push({ rank:3, id:"brigade", head:"The kitchen has more equipment than hands.",
+        body:`${lim.cooks} cook${lim.cooks===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 can move about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn. Stations are standing idle. **More equipment will not touch this** — it is people, or better people.`,
+        needsWage: true });
+    } else if(perHour < roomPerHour * 0.8){
+      const name = STATION_NAMES[lim.station] || lim.station;
+      const model = EQUIPMENT.filter(e => e.station === lim.station).sort((x,y)=>x.cost-y.cost)[0];
       out.push({ rank:3, id:"kitchen", head:`The ${name} is what is holding us back.`,
-        body:`${b.units} unit${b.units>1?"s":""} cooking ${b.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` +
+        body:`${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` +
              (model ? ` Another ${model.name} is $${model.cost.toLocaleString()}; you have ${money(G.cash)}.` : ""),
         buy: model && G.cash >= model.cost ? model : null });
     } else if(roomPerHour < perHour * 0.8){
@@ -1608,11 +1649,24 @@ function advise(){
   // trap — poor because small, then advised to stay small — so this only silences the things
   // that spend, and only when the money genuinely is not there. Everything free to do (the
   // menu, the prices, the standing order, letting someone go) still gets said.
-  const spends = { kitchen:1, licence:1, room:1 };
-  const filtered = runway < 2 ? out.filter(a => !spends[a.id]) : out;
+  // THE BRAKE MUST NOT SILENCE THE DIAGNOSIS. The first version dropped these suggestions
+  // entirely, which meant that the moment a restaurant got into trouble the Advisor stopped
+  // explaining WHY — exactly when the player most needs to know. Aaron's day 149 showed one
+  // line ("less than two months of money") while the pass was strangling him unmentioned, and
+  // he spent his remaining cash on equipment the interrupt kept recommending.
+  //
+  // Now the cause is always stated. What the brake removes is the ASK: no buy button, and the
+  // advice is reframed as something to fix without spending.
+  const broke = runway < 2;
+  if(broke){
+    for(const a of out){
+      if(a.buy){ a.buy = null; a.body += ` There is not enough money to buy your way out of this — the cheaper move is to take the slowest dishes off the card until the pass can keep up.`; }
+      else if(a.needsWage){ a.body += ` There is not the money to hire right now, so the move is to shorten the card or the hours until it can be worked with who you have.`; }
+    }
+  }
 
-  filtered.sort((x,y)=>x.rank-y.rank);
-  return filtered;
+  out.sort((x,y)=>x.rank-y.rank);
+  return out;
 }
 
 function monthlyBurn(){
@@ -1629,10 +1683,22 @@ function checkInterrupts(d){
   }
 
   if(d.balkedWait > d.covers*0.35 && d.balkedWait > 6){
-    const busiest = busiestStation();
+    const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+
+    // NOT ENOUGH HANDS. No amount of equipment fixes this, and telling the player to buy
+    // another oven here is how a restaurant spends its last $7,000 on kit it cannot staff.
+    if(lim && lim.kind === "brigade"){
+      return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
+        body:`It is not the equipment — it is the people. ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 can move about ${Math.round(lim.allows)} covers an hour between them, and the stations are sitting idle waiting for hands.`,
+        why:`Another oven would change nothing. A cook, or a better one, is the only thing that lifts this.`,
+        acts:[{ label:"Go to hiring", fn:()=>{ TAB="team"; } }] };
+    }
+
+    const busiest = lim ? lim.station : busiestStation();
     const cheapest = EQUIPMENT.filter(e=>e.station===busiest).sort((a,b)=>a.cost-b.cost)[0];
+    const name = STATION_NAMES[busiest] || busiest;
     return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
-      body:`The ${busiest} is the bottleneck — you have ${stationUnits(busiest)} of them and ${G.cooks.length} cook${G.cooks.length===1?"":"s"} on the pass.`,
+      body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour.`,
       why:cheapest ? `Another ${cheapest.name} costs $${cheapest.cost.toLocaleString()}. You have ${money(G.cash)}, and ${freeArea().toFixed(1)} sq ft of floor free.` : "",
       acts: cheapest && G.cash>=cheapest.cost && freeArea()>=cheapest.foot
         ? [{ label:`Buy a ${cheapest.name} — $${cheapest.cost.toLocaleString()}`, fn:()=>buyEquip(cheapest) },
