@@ -131,6 +131,15 @@ button{font:inherit; color:inherit; cursor:pointer}
 .advbody{font-size:12.5px; color:var(--muted); line-height:1.55}
 .advquiet{font-size:13px; color:var(--muted); line-height:1.5}
 .advitem .btn{justify-self:start; margin-top:3px}
+.trendrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11.5px; color:var(--muted)}
+.spark{width:96px; height:22px; flex:0 0 auto; overflow:visible}
+.sparkfill{fill:var(--line); opacity:.7}
+.sparkline{fill:none; stroke:var(--muted); stroke-width:1.4; stroke-linejoin:round}
+.sparkdot{fill:var(--heat)}
+.trendnum{font-variant-numeric:tabular-nums; white-space:nowrap}
+.trendnum.up{color:var(--good)}
+.trendnum.down{color:var(--bad)}
+.trendwhy{font-style:italic}
 .repnote.falling{color:var(--bad)}
 
 .controls{display:grid; gap:7px}
@@ -663,7 +672,8 @@ function newGame(site, seed){
     log: [], recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
     ledger: { revenue:0, food:0, labor:0, rent:0, capex:0 },
-    sold: {}, pantry: {}, usage: {}, usedToday: {}, spoiled: 0, standingOrder: true,
+    sold: {}, soldToday: {}, dishHistory: {}, decisions: [],
+    pantry: {}, usage: {}, usedToday: {}, spoiled: 0, standingOrder: true,
     interrupt: null,
     lastMonthBooked: 0,
     history: [],
@@ -1402,6 +1412,7 @@ function runDay(){
       d.revenue += G.prices[pick.id];
       d.covers++;
       G.sold[pick.id] = (G.sold[pick.id]||0) + 1;
+      G.soldToday[pick.id] = (G.soldToday[pick.id]||0) + 1;
       G.lostStreak = 0;
 
       // AND SOMETHING TO DRINK WITH IT — additive, never instead. A glass of wine runs about
@@ -1417,6 +1428,7 @@ function runDay(){
             d.revenue += G.prices[drink.id];
             d.drinks = (d.drinks||0) + 1;
             G.sold[drink.id] = (G.sold[drink.id]||0) + 1;
+            G.soldToday[drink.id] = (G.soldToday[drink.id]||0) + 1;
           }
         }
       }
@@ -1478,6 +1490,17 @@ function runDay(){
   }
 
   G.history.push({ day:G.day, cash:G.cash, standing:G.rep.standing, covers:d.covers });
+
+  // A DISH'S SALES OVER TIME, which the menu matrix cannot show. Star/Plowhorse/Puzzle/Dog is
+  // a SNAPSHOT — what a dish is right now. It cannot answer "what did my last decision do to
+  // it", which is the question a player actually has after changing a price. Legible cause and
+  // effect is Binding Principle 2, and a classification with no history has no causes in it.
+  for(const r of RECIPES){
+    const line = G.dishHistory[r.id] || (G.dishHistory[r.id] = []);
+    line.push(G.soldToday[r.id] || 0);
+    if(line.length > 90) line.shift();
+  }
+  G.soldToday = {};
   return d;
 }
 
@@ -1905,6 +1928,45 @@ function panelService(){
    list longer. Warnings on the dishes were not enough: they said what was wrong without
    offering the fix. A gate the player cannot find is not a gate, it is a bug.
    It now appears at the TOP of the menu, and in Build alongside every other capital purchase. */
+/* A TREND WITHOUT A CAUSE IS JUST A WIGGLY LINE. Recording what the player changed, and when,
+   is what turns "sales fell" into "sales fell after you raised the price" — Binding Principle 2
+   asks that every outcome trace to a specific named cause, and this is the cheapest honest
+   form of it. */
+function noteDecision(dishId, what){
+  G.decisions.push({ day: G.day, dish: dishId, what });
+  if(G.decisions.length > 200) G.decisions.shift();
+}
+
+/* What happened to this dish lately, and what you did to it. */
+function dishTrend(id){
+  const line = G.dishHistory[id] || [];
+  if(line.length < 6) return null;
+
+  const window = Math.min(14, Math.floor(line.length/2));
+  const recent = line.slice(-window);
+  const before = line.slice(-window*2, -window);
+  const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
+  const now = avg(recent), was = avg(before);
+
+  const change = was > 0.2 ? (now - was)/was : (now > 0.2 ? 1 : 0);
+  const since = G.decisions.filter(d => d.dish === id && G.day - d.day <= window*2);
+
+  return { line: line.slice(-40), now, was, change, since };
+}
+
+function sparkline(values, width, height){
+  if(!values.length) return "";
+  const max = Math.max(1, ...values);
+  const step = width / Math.max(1, values.length - 1);
+  const pts = values.map((v,i)=>`${(i*step).toFixed(1)},${(height - (v/max)*height).toFixed(1)}`).join(" ");
+  const area = `0,${height} ${pts} ${width},${height}`;
+  return `<svg class="spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+    <polygon points="${area}" class="sparkfill"/>
+    <polyline points="${pts}" class="sparkline"/>
+    <circle cx="${width}" cy="${(height - (values[values.length-1]/max)*height).toFixed(1)}" r="2" class="sparkdot"/>
+  </svg>`;
+}
+
 function licenceCard(){
   // `card()` appends to #panel itself and returns the node — there is no wrapper to add it to.
   // Assuming otherwise threw a ReferenceError right after the dish list and silently killed
@@ -2043,7 +2105,7 @@ function panelMenu(){
         G.prices[r.id] = parseFloat(ev.target.value);
         readout.textContent = "$" + G.prices[r.id].toFixed(2);
       };
-      slider.onchange = ()=>{ G.suggest = null; render(); };
+      slider.onchange = ()=>{ noteDecision(r.id, `price set to $${G.prices[r.id].toFixed(2)}`); G.suggest = null; render(); };
 
       // One click for this dish, for when the card position is right but one item is not.
       const s2 = G.suggest || (G.suggest = suggestedPosition());
@@ -2052,7 +2114,7 @@ function panelMenu(){
         const use = document.createElement("button");
         use.className = "btn tiny";
         use.textContent = "use $" + want.toFixed(2);
-        use.onclick = ()=>{ G.prices[r.id] = want; G.suggest = null; render(); };
+        use.onclick = ()=>{ G.prices[r.id] = want; noteDecision(r.id, `price set to $${want.toFixed(2)}`); G.suggest = null; render(); };
         pl.appendChild(use);
       }
       d.appendChild(pl);
@@ -2061,6 +2123,25 @@ function panelMenu(){
     const toggle = document.createElement("button");
     toggle.className = "btn";
     toggle.style.justifySelf = "start";
+    // HOW IT HAS BEEN SELLING, and what you did to it. The matrix says what a dish IS; this
+    // says what it has been DOING, which is the question you have after changing something.
+    const tr = dishTrend(r.id);
+    if(tr && (tr.now > 0 || tr.was > 0)){
+      const dir = Math.abs(tr.change) < 0.10 ? "steady"
+                : tr.change > 0 ? "up " + Math.round(tr.change*100) + "%"
+                : "down " + Math.round(-tr.change*100) + "%";
+      const cls = Math.abs(tr.change) < 0.10 ? "" : (tr.change > 0 ? " up" : " down");
+
+      const row = document.createElement("div");
+      row.className = "trendrow";
+      row.innerHTML = sparkline(tr.line, 96, 22) +
+        `<span class="trendnum${cls}">${tr.now.toFixed(1)}/day · ${dir}</span>` +
+        (tr.since.length
+          ? `<span class="trendwhy">after you ${tr.since[tr.since.length-1].what}, day ${tr.since[tr.since.length-1].day}</span>`
+          : `<span class="trendwhy">no changes lately — this is the market moving</span>`);
+      d.appendChild(row);
+    }
+
     // SILENT FAILURE WAS THE WORST OF THE THREE. Aaron put drinks on the card without a
     // licence and nothing said a word — they simply never sold. A dish that cannot be served
     // must say so where the player is looking at it, not fail quietly at service time.
@@ -2074,7 +2155,11 @@ function panelMenu(){
     }
 
     toggle.textContent = on ? "Take off the menu" : "Put on the menu";
-    toggle.onclick = ()=>{ on ? G.onMenu.delete(r.id) : G.onMenu.add(r.id); render(); };
+    toggle.onclick = ()=>{
+      on ? G.onMenu.delete(r.id) : G.onMenu.add(r.id);
+      noteDecision(r.id, on ? "taken off the menu" : "put on the menu");
+      render();
+    };
     d.appendChild(toggle);
     c.appendChild(d);
   }
@@ -2105,7 +2190,10 @@ function panelMenu(){
   applyAll.className = "btn";
   applyAll.textContent = "Price everything at " + sug.position.toFixed(2) + "×";
   applyAll.onclick = ()=>{
-    for(const r of RECIPES) if(G.onMenu.has(r.id)) G.prices[r.id] = Math.round(r.base * sug.position * 100)/100;
+    for(const r of RECIPES) if(G.onMenu.has(r.id)){
+      G.prices[r.id] = Math.round(r.base * sug.position * 100)/100;
+      noteDecision(r.id, `whole card repriced to ${sug.position.toFixed(2)}×`);
+    }
     say("", `Whole card repriced to ${sug.position.toFixed(2)}× designed.`);
     G.suggest = null; render();
   };

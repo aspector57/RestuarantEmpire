@@ -1736,6 +1736,31 @@ obvious the moment something actually executed the code.
 The licence card is now also a reusable `licenceCard()` built at the TOP of the menu, so its
 position comes from call order rather than from where it happened to be written.
 
+### Sales over time, and why the menu matrix could never answer it (Aaron)
+
+> *"it would be nice to see how things are selling over time, I guess the plowhorse thing is
+> meant to do that."*
+
+**It is not, and that is the useful distinction.** Kasavana-Smith is a SNAPSHOT: it says what a
+dish IS right now, on two axes. It has no history in it at all, so it cannot answer *"what did
+my last decision do?"* — which is the question a player actually has after moving a price. A
+classification with no time in it has no causes in it either.
+
+Each dish now carries its own sparkline, a run rate, and the direction of travel — **and, more
+importantly, what you did to it.** Every price change, bulk repricing, and menu add/remove is
+recorded against the day it happened, so the trend reads:
+
+    Margherita   21.3/day -> 10.7/day   down 39%   after you price set to $28.00, day 20
+    Caprese      30.1/day               steady     no changes lately — this is the market moving
+
+**That second line is the half that makes it honest.** Without it, every wobble looks like
+something the player caused. Separating *your doing* from *the market moving* is what turns a
+chart into evidence — and it is Binding Principle 2 ("every outcome must trace to a specific
+named cause") in its cheapest working form.
+
+Deliberately not built: a full charting view. A sparkline on the row you are already looking at
+answers the question where it is asked; a separate analytics tab would be somewhere else to go.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
