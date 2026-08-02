@@ -171,17 +171,44 @@ namespace RestaurantEmpire.Core.Model
             return id.StartsWith("understaffed:");
         }
 
+        /// <summary>
+        /// Which service the card cannot feed, named rather than left for the player to work
+        /// out. Says nothing when every open hour has something to sell.
+        /// </summary>
+        private string HoursWithNothingToSell()
+        {
+            if (_restaurant.ServiceWindows.Count == 0) return null;
+
+            var bare = new List<string>();
+            foreach (var window in _restaurant.ServiceWindows)
+            {
+                var daypart = Dayparts.At(System.DateTime.Today.AddHours(window.StartHour));
+
+                var servable = 0;
+                foreach (var recipe in _restaurant.Menu.Recipes)
+                    if (recipe.SuitsDaypart(daypart)) servable++;
+
+                if (servable == 0) bare.Add(window.Name.ToLowerInvariant());
+            }
+
+            if (bare.Count == 0) return null;
+            if (bare.Count == 1) return bare[0];
+
+            return string.Join(" and ", bare);
+        }
+
         private static int Urgency(string id)
         {
             if (id.StartsWith("restock:")) return 0;          // free, and it unblocks sales
             if (id.StartsWith("overstaffed:")) return 1;       // stops the bleeding, costs nothing
             if (id == "risk:runway") return 2;                 // know before you spend
-            if (id == "opportunity:room") return 3;            // nobody queues who cannot sit
-            if (id == "understaffed:floor") return 4;          // seats you cannot serve
-            if (id == "opportunity:capacity") return 5;        // then the kitchen behind them
-            if (id == "understaffed:kitchen") return 6;
-            if (id.StartsWith("feature:")) return 7;
-            return 8;
+            if (id == "opportunity:menu") return 3;            // trade lost for want of a dish to sell
+            if (id == "opportunity:room") return 4;            // nobody queues who cannot sit
+            if (id == "understaffed:floor") return 5;          // seats you cannot serve
+            if (id == "opportunity:capacity") return 6;        // then the kitchen behind them
+            if (id == "understaffed:kitchen") return 7;
+            if (id.StartsWith("feature:")) return 8;
+            return 9;
         }
 
         // ---- Tier 1: chores. Flatly stated, never a question. ----
@@ -195,6 +222,34 @@ namespace RestaurantEmpire.Core.Model
             // stands: if the game makes you watch stock every day it becomes a stocking game.
             // What is worth saying is that the standing order is set WRONG, which is a
             // judgement the player made and can change.
+            // A MENU THAT DOES NOT COVER THE HOURS YOU OPEN IS PAID FOR TWICE: once in the
+            // parties who walk because there is nothing they want, and again in the stock that
+            // rots waiting for a service it was never going to sell in.
+            //
+            // `PartiesLostToMenu` has been counted since dayparts existed and the Advisor never
+            // read it — only the autopsy does, and that speaks about last night rather than
+            // about what to change. Measured, it is what costs fine dining its own best market:
+            // in a nightlife quarter its card scores the HIGHEST appeal in the game (180%) and
+            // it still loses, because it opens a late service with nothing late-appropriate on
+            // it. 5,674 parties walked and 31% of the food bill went in the bin behind them.
+            if (trading != null && trading.PartiesLostToMenu > 0 && trading.PartiesArrived > 0)
+            {
+                var share = (decimal)trading.PartiesLostToMenu / trading.PartiesArrived;
+                if (share > 0.10m)
+                {
+                    var hungry = HoursWithNothingToSell();
+                    found.Add(new Suggestion(
+                        "opportunity:menu", AdvisorTier.Strategic,
+                        "People are coming in and finding nothing they want.",
+                        trading.PartiesLostToMenu + " parties left without ordering — " +
+                        share.ToString("P0") + " of everyone who walked in" +
+                        (hungry == null ? "." : ", and it is " + hungry + " where the card runs out.") +
+                        " Either put something on for that service, or stop opening for it — " +
+                        "the stock you bought for it is spoiling either way.",
+                        subjectId: "menu"));
+                }
+            }
+
             if (trading != null && trading.WastedFoodCost > 0m && trading.FoodCost > 0m)
             {
                 var binnedShare = trading.WastedFoodCost / trading.FoodCost;

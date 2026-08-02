@@ -1309,10 +1309,46 @@ exactly the trap this project has been caught in before, so: the defence is that
 24 covers is over-staffed on the model's own arithmetic (`PlatesPerCook` x skill), independent
 of what it did to the score.
 
-**Still open, and it is the interesting one: fine dining wins the SUBURBS rather than the
-nightlife quarter.** Cheap rent and the largest site cap beat the crowd that actually wants
-what it sells. That may be right — a destination restaurant does go where the rent is — but it
-was not the prediction, and the nightlife quarter is still won by the generalist.
+**ANSWERED, and the answer was not what either guess predicted. It is not the crowd — the
+nightlife quarter gives fine dining the HIGHEST menu appeal in the entire game, 180%.** The
+archetype pull is working exactly as intended. What kills it is the hours:
+
+| Fine dining | covers/mo | $/cover | food % | of which binned | parties lost to menu |
+|---|---:|---:|---:|---:|---:|
+| city | 5,788 | $22 | 52% | 19,381 | 0 |
+| business | 1,886 | $18 | **91%** | 21,188 | 3,898 |
+| nightlife | 4,381 | $24 | 59% | 19,422 | **5,674** |
+| **suburban** | 3,196 | $25 | **50%** | **5,531** | **0** |
+| Neighbourhood standard, nightlife | 7,128 | $13 | **21%** | 3,414 | 0 |
+
+**A menu that does not cover the hours you open is paid for twice** — once in the parties who
+walk because there is nothing they want, and again in the stock that rots waiting for a service
+it was never going to sell in. Fine dining opens a late service (23:00-02:00) with nothing
+late-appropriate on the card. Suburban is its best market for the dull reason that it runs one
+dinner window the menu actually covers.
+
+**So the model is right and the reporting was not.** This is a good mechanic working correctly
+and invisibly.
+
+**`PartiesLostToMenu` has been counted since dayparts existed and the ADVISOR never read it.**
+The autopsy does, but an autopsy speaks about last night rather than about what to change.
+Eleven advice codes and not one said "your menu does not cover the hours you open" — which is
+the single largest thing costing a strategy its own best market. **Near-miss on a sixth instance
+of the recurring shape**, and the near-miss is only because the autopsy was built two commits
+earlier; the actionable side was still unread.
+
+`opportunity:menu` now fires above the room and below the runway brake, and **names the bare
+service rather than reporting a number**: *"5,348 parties left without ordering — 100% of
+everyone who walked in, and it is dinner and late where the card runs out. Either put something
+on for that service, or stop opening for it — the stock you bought for it is spoiling either
+way."*
+
+**What this does NOT do, stated so it is not mistaken for a fix:** it tells the player, it does
+not change the economics. Fine dining still loses the nightlife quarter. The open question is
+now much sharper — is a 50-59% food cost correct for a premium concept, or is premium sourcing
+simply not priced to survive? Note the food-cost gap is ingredient PRICE, not waste rate: both
+strategies bin a similar share, but fine dining's ingredients cost four times as much, so the
+same carelessness costs four times more. That is arguably exactly right.
 
 **This is now the gate that matters more than the sweep.** A restaurant game where one build
 wins everywhere is a spreadsheet with a theme.

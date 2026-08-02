@@ -138,10 +138,108 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(distinct >= 1);
         }
 
+        /// <summary>
+        /// WHY DOES FINE DINING WIN THE SUBURBS AND LOSE THE NIGHTLIFE QUARTER? The nightlife
+        /// crowd is influencers and couples, who pull hard toward luxury, refined and seafood —
+        /// exactly what that menu is. It should be the strategy's home market and it is not.
+        ///
+        /// Reports the whole P&L rather than the net, because "it loses" is not a finding. The
+        /// question is which line loses it.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument. Remove this Skip to run.")]
+        public void WhyDoesFineDiningLoseItsOwnCrowd()
+        {
+            var fine = Strategies().First(s => s.Name == "Fine dining");
+            var standard = Strategies().First(s => s.Name == "Neighbourhood standard");
+
+            foreach (var strategy in new[] { fine, standard })
+            {
+                _out.WriteLine(strategy.Name.ToUpperInvariant());
+                _out.WriteLine("  " + "market".PadRight(11) + "covers".PadLeft(8) + "revenue".PadLeft(10)
+                               + "food".PadLeft(9) + "labor".PadLeft(9) + "rent".PadLeft(9)
+                               + "net/mo".PadLeft(10) + "$/cover".PadLeft(9) + "food%".PadLeft(7)
+                               + "spoiled".PadLeft(9) + "  lost to");
+
+                foreach (var market in Markets())
+                {
+                    var line = Detail(strategy, market.site, market.hours, 4242);
+                    _out.WriteLine("  " + market.label.PadRight(11)
+                        + line.Covers.ToString("N0").PadLeft(8)
+                        + line.Revenue.ToString("N0").PadLeft(10)
+                        + line.Food.ToString("N0").PadLeft(9)
+                        + line.Labor.ToString("N0").PadLeft(9)
+                        + (market.site.MonthlyRent * 3m).ToString("N0").PadLeft(9)
+                        + line.Net.ToString("N0").PadLeft(10)
+                        + line.PerCover.ToString("C0").PadLeft(9)
+                        + (line.Revenue <= 0 ? "-" : (line.Food / line.Revenue).ToString("P0")).PadLeft(7)
+                        + line.Wasted.ToString("N0").PadLeft(9)
+                        + "  menu " + line.LostMenu + " (appeal " + line.Appeal.ToString("P0") + ")");
+                }
+                _out.WriteLine("");
+            }
+        }
+
+        private sealed class Line
+        {
+            public int Covers, LostPrice, LostWait, LostSeats, LostMenu;
+            public decimal Wasted, PerCover;
+            public decimal Revenue, Food, Labor, Net, Appeal;
+        }
+
+        private static Line Detail(Strategy strategy, Neighborhood site, ServiceWindow[] hours, long seed)
+        {
+            var r = Open(strategy, site, hours, out var company);
+            var clock = new GameClock();
+            var runner = new SimulationRunner(r, clock, seed, InterruptPolicy.None());
+            runner.AdvanceDays(90);
+            var s = runner.Snapshot();
+
+            // How much the card appeals to whoever is out during the hours being served.
+            var appeal = 0m;
+            var counted = 0;
+            foreach (var w in hours)
+            {
+                var likely = ArchetypeProfile.LikelyAt(Dayparts.At(DateTime.Today.AddHours(w.StartHour)), site.Id);
+                foreach (var a in likely) { appeal += r.Menu.AppealTo(a); counted++; }
+            }
+
+            return new Line
+            {
+                Covers = s.CoversServed / 3,
+                Wasted = s.WastedFoodCost / 3m,
+                PerCover = s.CoversServed == 0 ? 0m : s.Revenue / s.CoversServed,
+                Revenue = s.Revenue / 3m,
+                Food = s.FoodCost / 3m,
+                Labor = s.LaborCost / 3m,
+                Net = (s.Revenue - s.FoodCost - s.LaborCost) / 3m - site.MonthlyRent,
+                Appeal = counted == 0 ? 1m : appeal / counted,
+                LostPrice = s.PartiesPutOffByThePrices,
+                LostWait = s.PartiesPutOffByTheWait,
+                LostSeats = s.PartiesTurnedAway,
+                LostMenu = s.PartiesLostToMenu,
+            };
+        }
+
         private static decimal MonthlyNet(Strategy strategy, Neighborhood site, ServiceWindow[] hours, long seed)
         {
+            var r = Open(strategy, site, hours, out _);
+            var clock = new GameClock();
+            var runner = new SimulationRunner(r, clock, seed, InterruptPolicy.None());
+
+            runner.AdvanceDays(90);
+            var trading = runner.Snapshot();
+
+            // Three months of trading, reported as a monthly figure after rent.
+            var net = trading.Revenue - trading.FoodCost - trading.LaborCost - (site.MonthlyRent * 3m);
+            return net / 3m;
+        }
+
+        /// <summary>Opens the restaurant this strategy describes. Shared so the headline sweep
+        /// and the diagnostic cannot drift into measuring two different restaurants.</summary>
+        private static Restaurant Open(Strategy strategy, Neighborhood site, ServiceWindow[] hours, out Company company)
+        {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
-            var company = new Company("co", "Co", definitions, 400000m);
+            company = new Company("co", "Co", definitions, 400000m);
             var r = company.OpenRestaurant("r", "R", LocationType.BrickAndMortar);
 
             r.Location = site;
@@ -175,15 +273,7 @@ namespace RestaurantEmpire.Core.Tests
 
             foreach (var id in used) { r.Inventory.SetPar(id, 20m, 600m); r.Inventory.Receive(id, 40m); }
 
-            var clock = new GameClock();
-            var runner = new SimulationRunner(r, clock, seed, InterruptPolicy.None());
-
-            runner.AdvanceDays(90);
-            var trading = runner.Snapshot();
-
-            // Three months of trading, reported as a monthly figure after rent.
-            var net = trading.Revenue - trading.FoodCost - trading.LaborCost - (site.MonthlyRent * 3m);
-            return net / 3m;
+            return r;
         }
     }
 }
