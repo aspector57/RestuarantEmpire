@@ -2694,6 +2694,46 @@ You cannot sell the last one — that is quitting, not a business decision, and 
 different button. And a restaurant with under a week of trading carries no goodwill at all,
 because a week is not evidence of anything.
 
+### Two things Aaron's day-168 run caught, one of them mine from an hour earlier
+
+**1. THE INTERRUPT CONTRADICTED ITSELF INSIDE ONE SENTENCE.** At 2 cooks and 22 seats it said:
+*"2 cooks... move about **34 covers an hour**, and 22 seats turn about **29 an hour**. The
+stations are sitting idle waiting for hands."* By its own two numbers the ROOM is the smaller
+half. The forecast one panel down said `seats-bound`. The Advisor said "starting with the
+kitchen". Three readouts, and both of the ones with buttons were wrong.
+
+`passLimit` compares the brigade against the stations and stops there, so every caller had to
+remember to check the room separately — and the walkout interrupt never did. **Fifth instance
+of two components answering one question from different data.** There is a
+`bindingConstraint()` now which includes the room, and the interrupt, the Advisor's growth
+rule and the Build tab all read it.
+
+**2. GOODWILL AT TWELVE MONTHS WAS AN ARBITRAGE, and the comment swearing it was not is the
+embarrassing part.** It read *"the exploit to watch is sell-and-reopen; it does not pay — you
+are selling the ramp."* Right idea, wrong arithmetic: the ramp is about six months of reduced
+trade and the payout was twelve months of full trade. Aaron sold a working suburban restaurant
+for **$173,276, of which $167,381 was goodwill**, within minutes of the feature shipping.
+
+Selling and rebuilding on the same street breaks even at roughly `rebuild (~$16k) + the ramp
+(~3 months of earnings)`, which after the fit-out half puts goodwill near **4x monthly**. Set
+there: the exit is fair and is not a business model.
+
+**The underlying reason is recorded rather than tuned away.** A restaurant earning $5,000 a
+month can be rebuilt from nothing for about $16,000 and six months. Real ones cannot, which is
+why real ones sell at one to three times ANNUAL profit without anybody farming them.
+**Rebuilding being that cheap and that fast is the actual imbalance; the multiple is only
+where it surfaces.**
+
+**A measurement error worth keeping:** the first probe for this reported "selling wins" at
+every multiple including 4x, because `build()` reset cash and never charged for the rebuild.
+The arithmetic had to be done by hand instead. **A probe that does not pay for the thing it is
+comparing is not comparing anything** — same family as the harness that built its restaurants
+by hand and so never noticed `openSite` shipped a shell.
+
+**And the seat advice now shares the harness's own test.** Offering a block of tables requires
+the result not to grossly outrun the pass — literally the assertion `playthrough.js` makes —
+so the Advisor and the invariant agree by construction rather than by coincidence.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

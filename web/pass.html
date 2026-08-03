@@ -1510,6 +1510,29 @@ function shareOfTheStreet(){
   return mine / total;
 }
 
+/*
+ * WHICH OF THE THREE IS ACTUALLY THE LIMIT — the room, the hands, or the machines.
+ *
+ * `passLimit` compares the brigade against the stations and stops there. Every caller then
+ * had to remember to check the ROOM separately, and the walkout interrupt did not — so at
+ * 2 cooks moving 34 covers an hour against 22 seats turning 29, it said "the stations are
+ * sitting idle waiting for hands" while quoting the two numbers that prove otherwise, and
+ * offered hiring. The forecast one panel below said `seats-bound` at the same moment.
+ *
+ * That is the fifth time on this project two components have answered one question from
+ * different data, and the player believes whichever one has a button. So there is one
+ * function now, and the room is in it.
+ */
+function bindingConstraint(dp){
+  const lim = passLimit(dp);
+  const room = servableSeats() * (60 / DWELL);
+
+  if(!lim) return { kind:"room", allows:room, room:room, pass:0 };
+  if(room < lim.allows) return { kind:"room", allows:room, room:room, pass:lim.allows, lim:lim };
+
+  return Object.assign({}, lim, { room:room, pass:lim.allows });
+}
+
 function runDay(){
   const d = G.today = { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 };
   const freeAt = {};   // station -> array of minute-free per unit
@@ -2018,8 +2041,21 @@ function advise(){
         // against room 16/hr the harness was offered seats that add ~13/hr — seating people
         // the kitchen cannot feed, which is the granularity trap the `roomtight` rule below
         // already knows about and this one had to learn.
-        const blockAdds   = 10 * (60/DWELL);
-        const roomIsAhead = f.constraint === "seats" && lim && (perHour - roomPerHour) >= blockAdds;
+        // DIRECTION FROM THE SHARED ANSWER, not from a private test. This used to require the
+        // pass to be a whole block of tables ahead before it would say "room", which meant a
+        // restaurant with the room genuinely tightest was told to lift the kitchen — and the
+        // forecast said seats-bound on the same screen. The granularity worry behind that
+        // guard was measured away when abandoned plates stopped burning the pass: overshooting
+        // the pass with seats is now neutral rather than harmful.
+        const bind      = bindingConstraint(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+        const blockAdds = 10 * (60/DWELL);
+
+        // The room is the answer when it is genuinely the tighter half AND a block of tables
+        // would not grossly outrun the pass. That second clause is the SAME test the
+        // playthrough harness asserts — deliberately, so the advice and the invariant agree
+        // by construction rather than by coincidence. At dead parity (pass 16, room 16) a
+        // block adds thirteen covers an hour, which is most of the kitchen again.
+        const roomIsAhead = bind.kind === "room" && (bind.room + blockAdds) <= bind.pass * 1.5;
 
         const fit = roomIsAhead
           ? FURNITURE.filter(x => freeArea() >= x.foot*10 && G.cash >= x.perSeat*10)
@@ -2147,7 +2183,26 @@ function checkInterrupts(d){
   }
 
   if(d.balkedWait > d.covers*0.35 && d.balkedWait > 6){
-    const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+    const dp0 = daypartAt(G.windows[0] ? G.windows[0].from : 19);
+    const bind = bindingConstraint(dp0);
+    const lim = passLimit(dp0);
+
+    // THE ROOM IS THE LIMIT, and this branch did not used to exist. The interrupt only ever
+    // compared the brigade against the stations, so when the dining room was tighter than
+    // both it still said "it is the people" — while quoting the numbers that disproved it.
+    if(bind.kind === "room"){
+      const fit = FURNITURE.filter(f => freeArea() >= f.foot*10 && G.cash >= f.perSeat*10)
+                           .sort((a,b)=>a.perSeat-b.perSeat)[0];
+      return { kind:"room", title:`${d.balkedWait} parties looked at the wait and left.`,
+        body:`It is not the kitchen — it is the room. ${seatsAndTables(G.seats)} turn about ` +
+             `${Math.round(bind.room)} covers an hour, and the pass could send ${Math.round(bind.pass)}. ` +
+             `People are queueing for a table while the kitchen waits for tickets. Another cook ` +
+             `would change nothing.`,
+        why:"A guest who cannot sit down never reaches the kitchen at all.",
+        acts: fit ? [{ label:`Add 10 seats — ${fit.name}, ${money(fit.perSeat*10)}`,
+                       run:()=>{ buySeats(fit); } }]
+                  : [] };
+    }
 
     // NOT ENOUGH HANDS. No amount of equipment fixes this, and telling the player to buy
     // another oven here is how a restaurant spends its last $7,000 on kit it cannot staff.
@@ -2368,15 +2423,34 @@ function advance(days, stopOnInterrupt){
  *   the same second-hand market. Consistency matters here: if breaking a restaurant up for
  *   parts paid better than selling it whole, everyone would do that instead.
  *
- *   GOODWILL, at a year of what it currently earns, and ONLY IF IT EARNS. This is the half
- *   that makes selling a decision rather than a bail-out button: a restaurant with a name and
- *   a full room is worth a great deal, and a failing one is worth its cookers. It also gives
- *   reputation a CAPITAL value for the first time — until now standing bought footfall and
- *   nothing else, so there was no way to realise the six months you spent earning it.
+ *   GOODWILL, at four months of what it currently earns, and ONLY IF IT EARNS. This is the
+ *   half that makes selling a decision rather than a bail-out button: a restaurant with a
+ *   name and a full room is worth more than its cookers, and a failing one is not. It also
+ *   gives reputation a CAPITAL value for the first time — until now standing bought footfall
+ *   and nothing else, so the six months spent earning a name could never be realized.
  *
- * The exploit to watch is sell-and-reopen. It does not pay: a new site starts unknown, at 35%
- * awareness and a neutral name, and takes months to ramp. You are selling the ramp.
+ * FOUR MONTHS IS CALIBRATED AGAINST THE REBUILD, NOT AGAINST REAL MULTIPLES, and the first
+ * version got this badly wrong. It paid TWELVE months, and Aaron immediately sold a working
+ * suburban restaurant for $173,276 — $167,381 of it goodwill — which is the arbitrage the
+ * comment above wrongly claimed could not happen. "You are selling the ramp" was the right
+ * idea and the wrong arithmetic: the ramp is about six months of reduced trade, and the
+ * payout was twelve months of full trade.
+ *
+ * Selling and rebuilding on the same street breaks even at roughly
+ *
+ *     sale = what a rebuild costs (~$16k) + the ramp (~3 months of earnings)
+ *
+ * which after the fit-out half lands goodwill near 4x monthly. Set there so the exit is fair
+ * and is not a business model.
+ *
+ * THE UNDERLYING REASON IT IS SO SENSITIVE IS WORTH RECORDING RATHER THAN TUNING AWAY: a
+ * restaurant that earns $5,000 a month can be rebuilt from nothing for about $16,000 and six
+ * months. Real ones cannot, which is why real ones sell for one to three times ANNUAL profit
+ * without anybody farming them. Rebuilding being that cheap and that fast is the actual
+ * imbalance; the multiple is just where it surfaces.
  */
+const GOODWILL_MONTHS = 4;   // see restaurantValue — calibrated against the rebuild, not real multiples
+
 function trailingMonthlyProfit(){
   const days = G.recent.slice(-30);
   if(days.length < 7) return null;                 // too new to be worth anything but its kit
@@ -2395,7 +2469,7 @@ function restaurantValue(i){
   try { earns = trailingMonthlyProfit(); } finally { G.active = was; }
 
   const fitOut = Math.round((s.ledger.capex || 0) * 0.45);
-  const goodwill = earns && earns > 0 ? Math.round(earns * 12) : 0;
+  const goodwill = earns && earns > 0 ? Math.round(earns * GOODWILL_MONTHS) : 0;
 
   return { fitOut, goodwill, total: fitOut + goodwill, earns };
 }
@@ -3320,7 +3394,7 @@ function panelIdentity(){
       <tr><td>On ${G.site.name}</td><td class="num">$${G.site.rent.toLocaleString()}/mo rent</td></tr>
       <tr><td>Currently</td><td class="num">${earns}</td></tr>
       <tr><td>Fit-out, second hand</td><td class="num">${money(v.fitOut)}</td></tr>
-      <tr><td title="A year of what it currently earns. A restaurant with a name and a full room is worth a great deal; a failing one is worth its cookers.">Goodwill</td><td class="num">${v.goodwill ? money(v.goodwill) : "—"}</td></tr>
+      <tr><td title="Four months of what it currently earns. Enough that building a good one is worth something when you leave, and not so much that selling and rebuilding beats simply running it.">Goodwill</td><td class="num">${v.goodwill ? money(v.goodwill) : "—"}</td></tr>
       <tr><td><b>Worth to a buyer</b></td><td class="num"><b>${money(v.total)}</b></td></tr>
     </tbody></table>`;
 
