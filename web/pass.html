@@ -1714,7 +1714,7 @@ function runDay(){
   // restaurant the moment there were two. Both the day and the monthly billing moved up into
   // `advance`, which runs once whatever the size of the group.
 
-  G.recent.push({ covers:d.covers, walkouts:d.walkouts, revenue:d.revenue, food:d.food });
+  G.recent.push({ covers:d.covers, walkouts:d.walkouts, revenue:d.revenue, food:d.food, labor:d.labor });
   if(G.recent.length > 30) G.recent.shift();
 
   if((G.day + 1) % 15 === 0 || G.applicants.length === 0){
@@ -2349,6 +2349,85 @@ function advance(days, stopOnInterrupt){
     say("warn", `Stopped after ${stoppedOn} day${stoppedOn===1?"":"s"} of ${days} — something needs you.`);
 
   render();
+}
+
+/*
+ * WHAT A RESTAURANT IS WORTH TO SOMEBODY ELSE.
+ *
+ * Two halves, kept separate on screen because they are two different facts and blending them
+ * would hide the interesting one (Binding Principle 2 — every outcome traces to a named cause):
+ *
+ *   THE FIT-OUT, at 45% — the same haircut as selling equipment piece by piece, because it is
+ *   the same second-hand market. Consistency matters here: if breaking a restaurant up for
+ *   parts paid better than selling it whole, everyone would do that instead.
+ *
+ *   GOODWILL, at a year of what it currently earns, and ONLY IF IT EARNS. This is the half
+ *   that makes selling a decision rather than a bail-out button: a restaurant with a name and
+ *   a full room is worth a great deal, and a failing one is worth its cookers. It also gives
+ *   reputation a CAPITAL value for the first time — until now standing bought footfall and
+ *   nothing else, so there was no way to realise the six months you spent earning it.
+ *
+ * The exploit to watch is sell-and-reopen. It does not pay: a new site starts unknown, at 35%
+ * awareness and a neutral name, and takes months to ramp. You are selling the ramp.
+ */
+function trailingMonthlyProfit(){
+  const days = G.recent.slice(-30);
+  if(days.length < 7) return null;                 // too new to be worth anything but its kit
+
+  let net = 0;
+  for(const d of days) net += d.revenue - d.food - (d.labor || 0);
+  net -= G.site.rent * (days.length / 30);
+  return net * (30 / days.length);
+}
+
+function restaurantValue(i){
+  const s = G.sites[i];
+  const was = G.active;
+  G.active = i;
+  let earns;
+  try { earns = trailingMonthlyProfit(); } finally { G.active = was; }
+
+  const fitOut = Math.round((s.ledger.capex || 0) * 0.45);
+  const goodwill = earns && earns > 0 ? Math.round(earns * 12) : 0;
+
+  return { fitOut, goodwill, total: fitOut + goodwill, earns };
+}
+
+/*
+ * SELLING UP. The counterpart to opening, and the way out of a bad decision.
+ *
+ * Aaron asked for it while sitting on a site that could not trade and was costing him $7,800 a
+ * month. "Hard but doable" needs an exit — a mistake should be a cost you can trade out of,
+ * not a wound that never closes. Same reasoning as equipment resale existing at all.
+ *
+ * You cannot sell the last one. That is not a business decision, it is quitting, and it wants
+ * to be a different button than this one.
+ */
+function canSellSite(i){ return G.sites.length > 1 && i >= 0 && i < G.sites.length; }
+
+function sellSite(i){
+  if(!canSellSite(i)) return false;
+
+  const s = G.sites[i];
+  const v = restaurantValue(i);
+
+  G.cash += v.total;
+  G.sites.splice(i, 1);
+  if(G.active >= G.sites.length) G.active = G.sites.length - 1;
+
+  didThat(`Sold ${s.name} for ${money(v.total)} — ${money(v.fitOut)} for the fit-out` +
+          (v.goodwill ? ` and ${money(v.goodwill)} of goodwill on what it was earning` : `, and nothing for goodwill: it was not making money`) +
+          `. ${money(G.cash)} in the bank.`);
+  return true;
+}
+
+/* A restaurant is a thing you name. Yours, and the company's. */
+function renameSite(i, name){
+  name = (name || "").trim().slice(0, 40);
+  if(!name) return false;
+  G.sites[i].name = name;
+  didThat(`Renamed to ${name}.`);
+  return true;
 }
 
 /*
@@ -3183,7 +3262,67 @@ function panelPantry(){
   c.appendChild(note);
 }
 
+/*
+ * WHAT THIS PLACE IS, AND WHAT IT IS WORTH. Naming and selling, at the top of the Build tab
+ * because they are both facts about the building rather than about tonight.
+ *
+ * The valuation is shown SPLIT — fit-out and goodwill on separate lines — because they are
+ * two different facts and the second one is the interesting one. A single number would hide
+ * that a restaurant is worth what it EARNS, which is the whole reason building a good one has
+ * a terminal value rather than only an income.
+ */
+function panelIdentity(){
+  const here = G.active;
+  const v = restaurantValue(here);
+
+  const c = card("This restaurant",
+    "What it is called, and what somebody else would pay for it.");
+
+  const wrap = document.createElement("div");
+  wrap.className = "scroll";
+
+  const earns = v.earns === null ? "too new to value on its earnings"
+              : v.earns > 0 ? money(Math.round(v.earns)) + " a month"
+              : "losing " + money(Math.round(-v.earns)) + " a month";
+
+  wrap.innerHTML = `
+    <div class="row" style="gap:8px;align-items:center;margin-bottom:10px">
+      <input id="siteName" value="${G.sites[here].name.replace(/"/g,"&quot;")}" maxlength="40"
+             style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--fg);
+                    border-radius:6px;padding:6px 9px;font:inherit">
+      <button class="btn" id="renameBtn">Rename</button>
+    </div>
+    <table><tbody>
+      <tr><td>On ${G.site.name}</td><td class="num">$${G.site.rent.toLocaleString()}/mo rent</td></tr>
+      <tr><td>Currently</td><td class="num">${earns}</td></tr>
+      <tr><td>Fit-out, second hand</td><td class="num">${money(v.fitOut)}</td></tr>
+      <tr><td title="A year of what it currently earns. A restaurant with a name and a full room is worth a great deal; a failing one is worth its cookers.">Goodwill</td><td class="num">${v.goodwill ? money(v.goodwill) : "—"}</td></tr>
+      <tr><td><b>Worth to a buyer</b></td><td class="num"><b>${money(v.total)}</b></td></tr>
+    </tbody></table>`;
+
+  c.appendChild(wrap);
+
+  wrap.querySelector("#renameBtn").onclick = () => {
+    if(renameSite(here, wrap.querySelector("#siteName").value)) render();
+  };
+
+  // Selling the last restaurant is not a business decision, it is quitting.
+  const sell = document.createElement("button");
+  sell.className = "btn";
+  sell.style.marginTop = "10px";
+  sell.disabled = !canSellSite(here);
+  sell.textContent = canSellSite(here)
+    ? `Sell ${G.sites[here].name} for ${money(v.total)}`
+    : "You cannot sell your only restaurant";
+  sell.onclick = () => {
+    if(sellSite(here)) render();
+  };
+  c.appendChild(sell);
+}
+
 function panelBuild(){
+  panelIdentity();
+
   const c = card("The building",
     `${G.floorArea.toFixed(0)} sq ft of building. Kitchen and dining room compete for the same floor — fifteen ovens is legal and leaves you nowhere to seat anyone.`);
   const stats = document.createElement("div");

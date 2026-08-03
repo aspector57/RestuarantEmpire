@@ -122,6 +122,78 @@ if(fresh){
 }
 console.log("");
 
+/*
+ * SELLING UP, and the thing that makes it a decision rather than a bail-out button:
+ * a restaurant is worth what it EARNS, so a good one is worth far more than a failing one.
+ */
+console.log("SELLING A RESTAURANT");
+(function(){
+  G = newGame(siteBy("suburban-high-street"), 20240802);
+  fitOutOpening();
+  G.cash = 200000;
+  openSite(siteBy("city-center"));
+
+  // Let the city site trade properly, and starve the suburban one of a kitchen so it loses.
+  advance(60, false);
+
+  var values = G.sites.map(function(_, i){ return restaurantValue(i); });
+  G.sites.forEach(function(st, i){
+    console.log("  " + pad(st.name, 24) +
+                "fit-out " + rpad(cash(values[i].fitOut), 10) +
+                "  goodwill " + rpad(values[i].goodwill ? cash(values[i].goodwill) : "—", 10) +
+                "  worth " + rpad(cash(values[i].total), 11) +
+                "   (" + (values[i].earns === null ? "too new"
+                          : values[i].earns > 0 ? "earning " + cash(values[i].earns) + "/mo"
+                          : "losing " + cash(-values[i].earns) + "/mo") + ")");
+  });
+
+  var before = G.cash, n = G.sites.length, worth = values[1].total;
+  var sold = sellSite(1);
+
+  console.log("");
+  if(!sold) console.log("  FAIL  sellSite refused with two restaurants open");
+  else if(G.sites.length !== n - 1) console.log("  FAIL  selling did not remove the restaurant");
+  else if(Math.abs((G.cash - before) - worth) > 1) console.log("  FAIL  the money did not match the valuation");
+  else console.log("  ok    sold, removed, and paid " + cash(worth));
+
+  // ...and you cannot sell the last one. That is quitting, not a business decision.
+  console.log(canSellSite(0) ? "  FAIL  it would let you sell your only restaurant"
+                             : "  ok    refuses to sell the only restaurant left");
+
+  // A restaurant is only worth its kit until it earns.
+  G = newGame(siteBy("suburban-high-street"), 20240802);
+  fitOutOpening();
+  var fresh = restaurantValue(0);
+  console.log(fresh.goodwill === 0 ? "  ok    a restaurant with no trading history carries no goodwill"
+                                   : "  FAIL  a brand-new restaurant was credited with goodwill");
+
+  // THE HALF THAT MAKES IT A DECISION: a place that earns is worth far more than its cookers,
+  // which is the first time reputation and a full room have had a CAPITAL value rather than
+  // only an income. Same fit-out spend either way — only the trading differs.
+  G = newGame(siteBy("suburban-high-street"), 20240802);
+  G.cash = 500000;
+  fitOut();
+  advance(60, false);
+  var good = restaurantValue(0);
+
+  G = newGame(siteBy("suburban-high-street"), 20240802);
+  G.cash = 500000;
+  fitOut();
+  G.cooks = [];                       // nobody to cook: same building, no trade
+  advance(60, false);
+  var bad = restaurantValue(0);
+
+  console.log("");
+  console.log("  a restaurant that trades   worth " + rpad(cash(good.total), 11) +
+              "  (" + cash(good.earns) + "/mo, goodwill " + cash(good.goodwill) + ")");
+  console.log("  the same one that does not worth " + rpad(cash(bad.total), 11) +
+              "  (goodwill " + (bad.goodwill ? cash(bad.goodwill) : "none") + ")");
+  console.log(good.total > bad.total * 2
+    ? "  ok    what it earns dominates what it cost — selling well is worth building well"
+    : "  FAIL  a good restaurant is worth about the same as a dead one; goodwill is not biting");
+})();
+console.log("");
+
 console.log("TWO RESTAURANTS IN THE BROWSER BUILD — " + DAYS + " days");
 console.log("");
 

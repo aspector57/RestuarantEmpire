@@ -2660,6 +2660,40 @@ its own fixture is not testing the thing the player touches, which is the same s
 missing-fridge famine and the 669% food bill. It now opens one the way a player does and
 asserts it trades: 1,106 covers in thirty days, against zero.
 
+### Selling up, and why a restaurant is worth what it EARNS
+
+Aaron, while sitting on a site that could not trade and was costing $7,800 a month: *"we also
+need to be able to sell the restaurant if we need or want to, also we need to be able to name
+the restaurant."*
+
+Selling is the counterpart to opening, and "hard but doable" needs an exit — a mistake should
+be a cost you can trade out of rather than a wound that never closes. Same reasoning that put
+equipment resale in.
+
+**The valuation is two halves, shown as two lines rather than one number**, because they are
+two different facts and a single figure would hide the interesting one:
+
+- **The fit-out at 45%** — the same haircut as selling equipment piece by piece, deliberately.
+  If breaking a restaurant up for parts paid better than selling it whole, everyone would.
+- **Goodwill at a year of what it currently earns, and only if it earns.** This is the half
+  that makes it a decision instead of a bail-out button.
+
+**It gives reputation a CAPITAL value for the first time.** Until now standing bought footfall
+and nothing else, so six months spent earning a name could never be realized. Measured, same
+building and the same fit-out spend, only the trading differing:
+
+| | worth to a buyer |
+|---|---:|
+| a restaurant that trades ($7,046/mo) | **$84,554** |
+| the same one that does not | $19,014 |
+
+**The exploit to watch is sell-and-reopen, and it does not pay:** a new site starts unknown at
+35% awareness with a neutral name and takes months to ramp. You would be selling the ramp.
+
+You cannot sell the last one — that is quitting, not a business decision, and it wants to be a
+different button. And a restaurant with under a week of trading carries no goodwill at all,
+because a week is not evidence of anything.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
