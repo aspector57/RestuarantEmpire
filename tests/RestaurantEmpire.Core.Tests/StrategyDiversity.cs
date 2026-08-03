@@ -34,40 +34,65 @@ namespace RestaurantEmpire.Core.Tests
         private sealed class Strategy
         {
             public string Name = "";
-            public string[] Menu = Array.Empty<string>();
+
+            /// <summary>Which concept from data/concepts.json this runs. The card and hours.</summary>
+            public string Concept = "";
+
             public string Supplier = "valley-produce";
-            public decimal PriceMultiplier = 1m;
+
+            /// <summary>
+            /// Where this BUILD puts the prices, when it deliberately differs from what the
+            /// concept says. Null means take the concept's own position, which is the normal
+            /// case — an override is how "the same card, run cheap" is expressed.
+            /// </summary>
+            public decimal? PriceOverride;
+
             public int Units, Seats, Cooks, Servers;
             public decimal CookSkill = 0.5m;
         }
 
+        /// <summary>
+        /// THE CARD AND THE PRICE COME FROM `data/concepts.json`; ONLY THE BUILD IS LOCAL.
+        ///
+        /// These six were hardcoded here, and once concepts became content that made two
+        /// copies of the same idea — the exact shape of every drift bug on this project, from
+        /// the C#/JS constants to Markup being ported by name. One source of truth: the
+        /// harness names a concept and supplies a way of RUNNING it.
+        ///
+        /// That split is the point rather than a tidy-up. A concept is a card, a price and
+        /// hours; a build is the supplier, the kitchen and who works it. "Cheap and cheerful"
+        /// below is not a different concept from the neighborhood standard — it is the same
+        /// card run on budget stock by a weak brigade, which is precisely the distinction
+        /// Aaron's "you should be able to win with any concept anywhere if you run the
+        /// restaurant properly" turns on.
+        /// </summary>
         private static Strategy[] Strategies()
         {
             return new[]
             {
-                new Strategy { Name = "Cheap and cheerful", Supplier = "budget-wholesale",
-                    Menu = new[] { "margherita", "house-focaccia", "caprese-salad" },
-                    PriceMultiplier = 0.9m, Units = 3, Seats = 44, Cooks = 4, Servers = 3, CookSkill = 0.35m },
+                new Strategy { Name = "Cheap and cheerful", Concept = "cheap-and-cheerful",
+                    Supplier = "budget-wholesale",
+                    Units = 3, Seats = 44, Cooks = 4, Servers = 3, CookSkill = 0.35m },
 
-                new Strategy { Name = "Neighbourhood standard", Supplier = "valley-produce",
-                    Menu = new[] { "margherita", "house-focaccia", "caprese-salad", "sea-bass" },
-                    PriceMultiplier = 1.1m, Units = 3, Seats = 36, Cooks = 4, Servers = 3, CookSkill = 0.5m },
+                new Strategy { Name = "Neighborhood standard", Concept = "neighborhood-standard",
+                    Supplier = "valley-produce",
+                    Units = 3, Seats = 36, Cooks = 4, Servers = 3, CookSkill = 0.5m },
 
-                new Strategy { Name = "Fine dining", Supplier = "premium-harvest",
-                    Menu = new[] { "truffle-risotto", "sea-bass", "caprese-salad" },
-                    PriceMultiplier = 1.35m, Units = 3, Seats = 34, Cooks = 4, Servers = 3, CookSkill = 0.85m },
+                new Strategy { Name = "Fine dining", Concept = "fine-dining",
+                    Supplier = "premium-harvest",
+                    Units = 3, Seats = 34, Cooks = 4, Servers = 3, CookSkill = 0.85m },
 
-                new Strategy { Name = "High volume", Supplier = "budget-wholesale",
-                    Menu = new[] { "margherita", "house-focaccia" },
-                    PriceMultiplier = 1m, Units = 5, Seats = 60, Cooks = 7, Servers = 5, CookSkill = 0.45m },
+                new Strategy { Name = "High volume", Concept = "pizzeria",
+                    Supplier = "budget-wholesale",
+                    Units = 5, Seats = 60, Cooks = 7, Servers = 5, CookSkill = 0.45m },
 
-                new Strategy { Name = "Coffee and counter", Supplier = "valley-produce",
-                    Menu = new[] { "flat-white", "house-focaccia", "eggs-benedict" },
-                    PriceMultiplier = 1.15m, Units = 2, Seats = 28, Cooks = 3, Servers = 2, CookSkill = 0.5m },
+                new Strategy { Name = "Coffee and counter", Concept = "coffee-counter",
+                    Supplier = "valley-produce",
+                    Units = 2, Seats = 28, Cooks = 3, Servers = 2, CookSkill = 0.5m },
 
-                new Strategy { Name = "Broad menu", Supplier = "valley-produce",
-                    Menu = new[] { "margherita", "house-focaccia", "caprese-salad", "sea-bass", "truffle-risotto", "flat-white" },
-                    PriceMultiplier = 1.1m, Units = 4, Seats = 40, Cooks = 5, Servers = 3, CookSkill = 0.55m },
+                new Strategy { Name = "Broad menu", Concept = "broad-card",
+                    Supplier = "valley-produce",
+                    Units = 4, Seats = 40, Cooks = 5, Servers = 3, CookSkill = 0.55m },
             };
         }
 
@@ -220,8 +245,8 @@ namespace RestaurantEmpire.Core.Tests
             {
                 var priced = new Strategy
                 {
-                    Name = fine.Name, Menu = fine.Menu, Supplier = fine.Supplier,
-                    PriceMultiplier = multiplier, Units = fine.Units, Seats = fine.Seats,
+                    Name = fine.Name, Concept = fine.Concept, Supplier = fine.Supplier,
+                    PriceOverride = multiplier, Units = fine.Units, Seats = fine.Seats,
                     Cooks = fine.Cooks, Servers = fine.Servers, CookSkill = fine.CookSkill
                 };
                 var d = Detail(priced, nightlife, dinnerOnly, 4242);
@@ -307,12 +332,25 @@ namespace RestaurantEmpire.Core.Tests
 
             r.Location = site;
             r.FloorArea = site.MaxFloorArea;
-            r.Menu.Add(strategy.Menu);
+
+            // The card, the hours and the price come from the concept — one source of truth,
+            // shared with the game rather than copied into this file.
+            var concept = definitions.GetConcept(strategy.Concept);
+            r.Adopt(concept);
+
             company.SupplierPolicy.AssignAll(strategy.Supplier);
             r.Reputation.Restore(Reputation.Neutral, Reputation.MealsToBecomeKnown);
 
-            foreach (var id in r.Menu.RecipeIds) company.Pricing.AdjustPrice(id, strategy.PriceMultiplier);
+            // A build may deliberately sit somewhere else on price — that is what makes
+            // "the same card, run cheap" a different strategy rather than a different concept.
+            if (strategy.PriceOverride.HasValue)
+            {
+                foreach (var recipe in r.Menu.Recipes)
+                    company.Pricing.SetPrice(recipe.Id, recipe.MenuPrice * strategy.PriceOverride.Value);
+            }
 
+            // The MARKET decides the hours here, not the concept: this harness is asking how
+            // one concept fares on four different streets, so the streets set the trading day.
             r.ServiceWindows.Clear();
             foreach (var w in hours) r.ServiceWindows.Add(w);
 

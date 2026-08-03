@@ -2555,6 +2555,42 @@ wants, not what earns most — those differ, as fine dining proves in its own ro
 scouting report. A full country-by-country profit sweep has not been run, and the labor and
 sourcing axes above will move it.
 
+### Two duplicates the new content created, and what they cost
+
+Adding countries and concepts created two second copies of things that already existed. Both
+are the shape this project keeps getting caught by, and both were found by going to look
+rather than by a failure.
+
+**1. THE FORECAST WAS STILL READING THE RAW PAYROLL.** Labor became country-priced, the
+simulation started charging the local rate, and `ServiceForecast` kept using
+`Payroll.HourlyWageBill` — so a restaurant in Lyon would have been projected at home wages and
+then billed French ones. Sixth instance of two components answering one question from
+different data. Every reader now goes through `Restaurant.HourlyWageBill`, and
+`TheForecastChargesTheSameWagesTheNightDoes` pins it (forecast $319.00 against $319.00 paid).
+
+**The only reason this was caught before shipping is that the pattern is now something to grep
+for after any change that moves a shared number.** Worth doing every time.
+
+**2. THE CONCEPTS EXISTED TWICE.** `StrategyDiversity` kept its six hardcoded while
+`data/concepts.json` held the same idea, which is how the C#/JS constants drifted and how
+`Markup` got ported by name. The harness now names a concept and supplies only a BUILD —
+supplier, kitchen, brigade — and that split is the point rather than a tidy-up: a concept is
+what you are attempting, a build is how you run it.
+
+**Consolidating changed the measurement, and the honest fix was not to accept it.** Folding
+"Cheap and cheerful" onto the standard card handed it a fourth dish and made it strictly
+stronger; distinct winners fell 3/4 -> 2/4 with one strategy winning three markets. It was
+genuinely its own concept — a short cheap card — so it became one in data, and the count went
+back to 3/4. **Collapsing two different things while consolidating is its own bug**, and the
+tell was the score moving at all.
+
+| strategy | city | business | nightlife | suburban |
+|---|---:|---:|---:|---:|
+| Cheap and cheerful | 10,692 | 847 | 19,427 | 5,327 |
+| Neighborhood standard | 34,475 | **12,109** | **42,496** | 15,527 |
+| Fine dining | **39,641** | −11,401 | 30,648 | 5,094 |
+| Broad menu | 31,480 | 11,648 | 37,254 | **16,241** |
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

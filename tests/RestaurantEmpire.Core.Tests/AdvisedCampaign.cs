@@ -488,7 +488,7 @@ namespace RestaurantEmpire.Core.Tests
             units = 0;
             foreach (var st in r.Kitchen.Stations) units += st.ConcurrentCapacity;
             crew = r.Payroll.Headcount;
-            wageBill = r.Payroll.HourlyWageBill;
+            wageBill = r.HourlyWageBill;
             gotSkill = r.Payroll.AverageSkill(StaffRole.Cook);
 
             return company.Economy.CashOnHand;

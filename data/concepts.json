@@ -17,6 +17,24 @@
   ],
   "concepts": [
     {
+      "id": "cheap-and-cheerful",
+      "name": "Cheap and cheerful",
+      "description": "A short card, priced under the odds. Nothing on it is hard to cook and nothing on it is exciting.",
+      "recipeIds": [
+        "margherita",
+        "house-focaccia",
+        "caprese-salad"
+      ],
+      "pricePosition": 0.9,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        }
+      ]
+    },
+    {
       "id": "neighborhood-standard",
       "name": "Neighborhood standard",
       "description": "A short card of things people already like, priced a shade above the obvious. Hard to love, hard to get wrong.",

@@ -154,6 +154,63 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(lyon.HourlyWageBill > home.HourlyWageBill);
         }
 
+        /// <summary>
+        /// THE FORECAST AND THE NIGHT MUST AGREE ABOUT WAGES.
+        ///
+        /// When labor became country-priced, the simulation started charging the local rate and
+        /// the forecast was still reading the raw payroll — so a restaurant in Lyon would have
+        /// been projected at home wages and then billed French ones. Sixth instance of two
+        /// components answering one question from different data, and the only reason it was
+        /// caught before shipping is that the pattern is now something to go and grep for.
+        /// </summary>
+        [Fact]
+        public void TheForecastChargesTheSameWagesTheNightDoes()
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var company = new Company("c", "C", definitions, 300000m);
+            var france = company.CreateRegion("fr", "France", definitions.GetCountry("france"));
+
+            var lyon = company.OpenRestaurant("lyon", "Lyon", LocationType.BrickAndMortar, france);
+            lyon.Location = Neighborhood.SuburbanHighStreet();
+            lyon.FloorArea = 900m;
+            lyon.Adopt(definitions.GetConcept("neighborhood-standard"));
+            company.SupplierPolicy.AssignAll("valley-produce");
+
+            lyon.BuyEquipment(definitions.EquipmentFor("oven").First(x => x.Id == "oven-secondhand"), 2);
+            lyon.BuyEquipment(definitions.EquipmentFor("garde-manger").First(x => x.Id == "gm-refrigerated"), 1);
+            lyon.BuyEquipment(definitions.EquipmentFor("saute").First(x => x.Id == "saute-commercial"), 1);
+            lyon.BuyEquipment(definitions.EquipmentFor("cold-storage").First(x => x.Id == "cold-walkin"), 1);
+            lyon.BuyEquipment(definitions.EquipmentFor("dry-storage").First(x => x.Id == "dry-stockroom"), 1);
+            lyon.BuyTables("t", "Tables", 2880m, 24);
+
+            for (var i = 0; i < 2; i++) lyon.Payroll.Hire(new Employee("c" + i, "Cook", StaffRole.Cook, 16m));
+            lyon.Payroll.Hire(new Employee("s0", "Server", StaffRole.Server, 12m));
+
+            foreach (var ing in lyon.Menu.Recipes.SelectMany(x => x.Ingredients)
+                                     .Select(x => x.IngredientId).Distinct())
+            {
+                lyon.Inventory.SetPar(ing, 60m, 400m);
+                lyon.Inventory.Receive(ing, 200m);
+            }
+
+            var clock = new GameClock();
+            var forecast = ServiceForecast.ForDay(lyon, clock.Now);
+
+            var runner = new SimulationRunner(lyon, clock, 4242, InterruptPolicy.None());
+            runner.AdvanceDays(1);
+            var actual = runner.Snapshot();
+
+            _out.WriteLine("forecast labor $" + forecast.LaborCost.ToString("N2") +
+                           " against $" + actual.LaborCost.ToString("N2") + " actually paid");
+
+            // Same hours, same staff, same market — these are the same arithmetic and should
+            // land within rounding of each other.
+            var gap = System.Math.Abs(forecast.LaborCost - actual.LaborCost);
+            Assert.True(gap <= actual.LaborCost * 0.02m + 1m,
+                "The forecast and the night disagree about the wage bill by " + gap.ToString("N2") +
+                " — one of them is not using the local rate.");
+        }
+
         private static decimal Appetite(
             Definitions.DefinitionRegistry definitions,
             Definitions.ConceptDefinition concept,

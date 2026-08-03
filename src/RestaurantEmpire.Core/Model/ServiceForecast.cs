@@ -207,7 +207,12 @@ namespace RestaurantEmpire.Core.Model
 
             var revenue = covers * AverageSpendPerCover(restaurant);
             var food = covers * AverageFoodCostPerCover(restaurant);
-            var labor = restaurant.Payroll.HourlyWageBill * ((decimal)openMinutes / 60m);
+            // The restaurant's wage bill, NOT the raw payroll — a wage in Lyon is not a wage in
+            // the suburbs, and the simulation charges the local rate. A forecast reading the
+            // other one would under-predict labor abroad and quietly disagree with the night
+            // it is forecasting, which is the two-components-one-question failure this
+            // project has hit five times.
+            var labor = restaurant.HourlyWageBill * ((decimal)openMinutes / 60m);
 
             return new ServiceForecast(
                 covers, revenue, food, labor, seatCeiling, kitchenCeiling, demandCovers, constraint);

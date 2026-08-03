@@ -163,7 +163,7 @@ namespace RestaurantEmpire.Sim
             Console.WriteLine("  open: " + string.Join(", ", restaurant.ServiceWindows.Select(w => w.ToString())));
             Console.WriteLine("  crew: " + restaurant.Payroll.CountOf(StaffRole.Cook) + " cooks, " +
                               restaurant.Payroll.CountOf(StaffRole.Server) + " servers  ·  " +
-                              restaurant.Payroll.HourlyWageBill.ToString("N0") + "/hr while open  ·  can serve " +
+                              restaurant.HourlyWageBill.ToString("N0") + "/hr while open  ·  can serve " +
                               restaurant.ServableSeats + " covers");
             Console.WriteLine("  floor: " + restaurant.UsedFloorArea.ToString("0.0") + " of " +
                               restaurant.FloorArea.ToString("0.0") + " sq ft used  ·  " +
@@ -542,7 +542,7 @@ namespace RestaurantEmpire.Sim
 
                             Console.WriteLine("    hired. " + restaurant.Payroll.CountOf(StaffRole.Cook) + " cooks, " +
                                 restaurant.Payroll.CountOf(StaffRole.Server) + " servers  ·  " +
-                                restaurant.Payroll.HourlyWageBill.ToString("N0") + "/hr  ·  can serve " +
+                                restaurant.HourlyWageBill.ToString("N0") + "/hr  ·  can serve " +
                                 restaurant.ServableSeats + " covers");
                             Console.WriteLine("    (takes effect from the next service)");
                             break;
@@ -559,7 +559,7 @@ namespace RestaurantEmpire.Sim
 
                             Console.WriteLine("    " + gone.Name + " let go. " + restaurant.Payroll.CountOf(StaffRole.Cook) +
                                 " cooks, " + restaurant.Payroll.CountOf(StaffRole.Server) + " servers  ·  " +
-                                restaurant.Payroll.HourlyWageBill.ToString("N0") + "/hr  ·  can serve " +
+                                restaurant.HourlyWageBill.ToString("N0") + "/hr  ·  can serve " +
                                 restaurant.ServableSeats + " covers");
                             Console.WriteLine("    (takes effect from the next service)");
                             break;
