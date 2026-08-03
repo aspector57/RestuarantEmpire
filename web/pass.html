@@ -1739,7 +1739,7 @@ function advise(){
       // Costs a wage, so the runway brake will silence the ASK — but never the diagnosis.
       out.push({ rank:3, id:"brigade", head:"The kitchen has more equipment than hands.",
         body:`${lim.cooks} cook${lim.cooks===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 can move about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn. Stations are standing idle. **More equipment will not touch this** — it is people, or better people.`,
-        needsWage: true });
+        needsWage: true, role: "cook" });
     } else if(perHour < roomPerHour * 0.8){
       const name = STATION_NAMES[lim.station] || lim.station;
       const model = EQUIPMENT.filter(e => e.station === lim.station).sort((x,y)=>x.cost-y.cost)[0];
@@ -1783,7 +1783,35 @@ function advise(){
       const blockAdds = 10 * (60/DWELL);      // what +10 seats does to the turn rate
       const turned = d && d.noTable ? ` Last night ${d.noTable} parties were turned away with nowhere to sit.` : "";
 
-      if(headroom >= blockAdds){
+      // CHAIRS NOBODY CAN WAIT ON ARE NOT SEATS. servableSeats() caps the room at what the
+      // floor staff can hold, and this advice did not know it — so at 12 seats and one
+      // server it offered a $600 block of ten that bought exactly two usable covers.
+      // Measured: 22 seats and 32 seats gave byte-identical results, both capped at 14.
+      const heldByFloor = Math.floor(G.servers.length * SEATS_PER_SERVER * (0.7+avgSkill(G.servers)*0.6));
+      const floorIsTheCap = heldByFloor <= G.seats + 2;
+
+      if(floorIsTheCap){
+        out.push({ rank:3, id:"floorstaff",
+          head:"More chairs would not help — there is nobody to wait on them.",
+          body:`${G.servers.length} server${G.servers.length===1?"":"s"} can hold about ${heldByFloor} covers, ` +
+               `and there are already ${G.seats} seats in the room.${turned} Buying tables before there is ` +
+               `someone to work them buys furniture, not covers — the extra chairs simply sit empty.`,
+          needsWage: true, role: "server" });
+      } else if(headroom >= blockAdds || roomPerHour < perHour * 0.9){
+        // THE GRANULARITY GUARD WAS BUILT ON BEHAVIOUR THAT NO LONGER EXISTS.
+        //
+        // It refused to offer seats unless the pass could absorb a whole block, because
+        // "adding tables made it worse" — 12 seats gave 68.8 covers and 20 gave 56.8. That
+        // was a SYMPTOM of the abandoned-plate bug: seats let more people sit down, who then
+        // walked out and burned the kitchen capacity that was already short. With plates
+        // coming back off the board, the same sweep now reads 12 -> 69.0 and 18 -> 76.1.
+        //
+        // Overshooting the pass is now merely neutral rather than harmful, so refusing to
+        // grow costs real money. Measured on Aaron's day-128 save: the seats this rule told
+        // him NOT to buy were worth $6,659 over 90 days against $3,414 for the oven it
+        // offered instead. It steered him to the option worth half as much, for 128 days.
+        //
+        // When a fix reverses the measurement a rule was built on, go and find the rule.
         const fit = FURNITURE.filter(f => freeArea() >= f.foot*10 && G.cash >= f.perSeat*10)
                              .sort((a,b)=>a.perSeat-b.perSeat)[0];
         out.push({ rank:3, id:"room", head:"The kitchen is built for more people than the room can hold.",
@@ -1797,7 +1825,7 @@ function advise(){
         const tightBrigade = lim && lim.kind === "brigade";
 
         out.push({ rank:3, id:"roomtight", head:"The room is a little smaller than the kitchen — leave it that way for now.",
-          needsWage: tightBrigade,
+          needsWage: tightBrigade, role: "cook",
           buy:     (!tightBrigade && lim && fitsNow(lim))  ? cheapestFor(lim.station) : null,
           upgrade: (!tightBrigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station)  : null,
           body:`${Math.round(roomPerHour)} covers an hour of seating against ${Math.round(perHour)} of kitchen, so there is only about ${Math.round(headroom)} an hour spare.${turned} That sounds like a reason to buy tables and it is not: the smallest block adds about ${Math.round(blockAdds)} covers an hour, which would seat people the pass cannot feed. A guest turned away at the door costs you the sale; one who sits down and gives up costs you the plate, the food, the table they held and your name. **Lift the kitchen first, then the room.**` });
@@ -1829,7 +1857,7 @@ function advise(){
                 ? `The pass is short of hands rather than equipment: ${lim.cooks} cook${lim.cooks===1?"":"s"} moving about ${Math.round(lim.allows)} covers an hour.`
                 : `The ${STATION_NAMES[lim && lim.station] || "kitchen"} is what they are waiting on.`) +
               ` Fewer seats would also fix it — a guest turned away at the door costs only the sale.`,
-        needsWage: brigade,
+        needsWage: brigade, role: "cook",
         // NAMING THE PROBLEM WITHOUT THE FIX IS HALF AN ADVISOR. The harness caught this
         // immediately: the advice fired every day for 220 days and offered nothing to do, so
         // an obedient player following it changed nothing at all. Carry whatever the actual
@@ -1911,7 +1939,7 @@ function advise(){
                    : `starting with the kitchen. A seat you cannot feed is worse than no seat at all, ` +
                      `so the pass goes first and the tables follow it.`) +
                ` You have ${money(G.cash)}.`,
-          needsWage: brigade && !roomIsAhead,
+          needsWage: brigade && !roomIsAhead, role: "cook",
           seats: fit || null,
           buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? cheapestFor(lim.station) : null,
           upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });

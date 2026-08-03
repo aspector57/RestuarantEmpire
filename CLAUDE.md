@@ -2315,6 +2315,61 @@ one class of bug, ask what else is duplicated that it is not looking at.**
 *(The site table further up this file — 110/150/140/280 sq ft — is stale prose. The real figures
 are 1400 / 1650 / 1550 / 3000.)*
 
+### Aaron's day-6,994 run: NINETEEN YEARS, $2.4M, TWELVE SEATS, "I didn't really have to change much"
+
+The most important playtest result this project has produced, and it answers the question that
+was put to him — *has the walkout fix made the game too easy?* It has, but the cause is far
+older and far bigger than that fix.
+
+He fast-forwarded to **day 6,994** on the opening restaurant. Twelve seats the whole way.
+**$2,402,611 in cash.** Standing 66, awareness 100%, **48 parties turned away with nowhere to
+sit every single night, forever**, and none of it ever became a problem.
+
+**THE GAME HAS NO FAILURE MODE AND NO REASON TO GROW.** Not a balance problem — a missing-
+systems problem, and the missing system has a name: **this is an empire game with no empire.**
+`Company -> Restaurant` has existed since M0 and multi-location is M4, so the single largest
+sink for capital does not exist. There is nothing to spend $2.4M on. Rent does not scale, no
+competitor takes your trade, nothing breaks, nobody quits, and demand is unbounded and free.
+A restaurant serving 40% of the people who want a table accumulates money forever.
+
+**Do not respond to this by making the numbers harsher.** CLAUDE.md has said since M1 that "the
+game is easy because the systems that create pressure do not exist yet"; this is that
+prediction arriving at full scale, with a number on it. The fix is the sinks and the pressures,
+not the dials.
+
+**Two real bugs the same run exposed, both measured on his save:**
+
+**1. The Advisor steered him to the worse move for 128 days.** At his day-128 position the
+`roomtight` rule said *"lift the kitchen first"* and offered an oven, while the forecast one
+panel above said `seats-bound — the dining room is the limit`. Measured over 90 days from that
+exact state: the oven was worth $3,414, and the seats it told him NOT to buy were worth
+**$6,659**. Both together, $11,896.
+
+The granularity guard behind it — refuse seats unless a whole block fits inside the headroom —
+was built on the measurement *"adding tables made it worse"* (12 seats 68.8 covers, 20 seats
+56.8). **That was a symptom of the abandoned-plate bug**, and the same sweep now reads 12 ->
+69.0 and 18 -> 76.1. The premise was measured away and the rule outlived it. **When a fix
+reverses a finding, go and find every rule and every assertion built on it** — this one had
+three descendants: the Advisor rule, a `playthrough.js` invariant, and a paragraph in this file.
+
+**2. Chairs nobody can wait on are not seats.** `servableSeats()` caps the room at what the
+floor staff can hold, and the room advice did not know. At 12 seats and one server it offered
+a $600 block of ten that bought two usable covers — and 22 seats vs 32 seats measured
+byte-identical, both capped at 14. There is now a `floorstaff` rule that says so.
+
+**And a harness bug worth more than either.** `playthrough.js` acted on `needsWage` by
+hardcoding `role: "cook"`, so the new floor-staff advice hired **seven cooks** and drove prime
+cost to 94%. Its own comment three lines above reads *"the harness must follow the advice as
+given, or it is testing my memory of the Advisor rather than the Advisor"* — and it was
+inventing the role. **Every wage ask now carries its role and the harness reads it.** A comment
+warning about a failure does not prevent the failure.
+
+| `playthrough.js`, 240 days | recorded | after the brigade fix | after these |
+|---|---:|---:|---:|
+| Cash | $86,528 | $115,346 | **$203,702** |
+| Covers/day | 76.9 | 94.1 | **194.8** |
+| Ends at | 12 seats, 1 cook | 42 seats, 2 cooks | 32 seats, 4 cooks, hearth oven |
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

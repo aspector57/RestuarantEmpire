@@ -81,10 +81,27 @@ for(var day = 1; day <= DAYS; day++){
         "recommends equipment while short of hands",
         "brigade allows " + Math.round(lim.allows) + "/hr, room turns " + Math.round(room) + "/hr");
 
-  // Never recommend seats the kitchen cannot feed.
+  // Never recommend seats that would GROSSLY outrun the kitchen.
+  //
+  // THIS ASSERTION USED TO DEMAND THAT A WHOLE BLOCK FIT INSIDE THE HEADROOM, and that was
+  // encoding a measurement the abandoned-plate fix has since reversed. When seats let people
+  // sit down and then walk out while their food was still being cooked and binned, adding
+  // tables genuinely reduced covers -- 12 seats gave 68.8 and 20 gave 56.8. With plates
+  // coming back off the board the same sweep reads 12 -> 69.0 and 18 -> 76.1, and on Aaron's
+  // day-128 save the seats this rule forbade were worth $6,659 against $3,414 for the oven
+  // recommended instead.
+  //
+  // So a marginal overshoot is now NEUTRAL, not harmful, and forbidding it froze a
+  // restaurant at twelve seats for 128 days. What is still worth catching is gross
+  // overshoot -- seats above about 1.5x what the pass can send buy nothing and cost money,
+  // which the lever sweep shows flattening hard past that point.
+  //
+  // Loosening an assertion to make a change pass is the trap; this is retiring one whose
+  // premise was measured away. When a fix reverses the finding a guard was built on, the
+  // guard is the next thing to go and read.
   var offersSeats = list.some(function(a){ return a.seats; });
-  check(day, !(offersSeats && lim && lim.allows < room + 10*(60/DWELL)),
-        "recommends seats the pass cannot feed",
+  check(day, !(offersSeats && lim && (room + 10*(60/DWELL)) > lim.allows * 1.5),
+        "recommends seats that would grossly outrun the pass",
         "pass " + Math.round(lim.allows) + "/hr vs room " + Math.round(room) + "/hr");
 
   // Shares are shares.
@@ -107,9 +124,16 @@ for(var day = 1; day <= DAYS; day++){
     else if(top.seats)            { buySeats(top.seats);          did = "added 10 seats"; }
     // Acts on anything that asks for hands, not one hard-coded code — the harness must follow
     // the advice as given, or it is testing my memory of the Advisor rather than the Advisor.
+    // ROLE COMES FROM THE ADVICE, never from here. This hardcoded "cook", so a suggestion
+    // about the FLOOR hired seven cooks and drove prime cost to 94% -- the harness testing
+    // its own assumption instead of the Advisor, which is the exact failure the comment
+    // above warns about and did not prevent.
     else if(top.needsWage && G.cash > 9000 && hiredCount < 6){
-      G.cooks.push({id:"c"+(++hiredCount), name:"Cook", role:"cook", wage:16, skill:0.5, claim:0.5, potential:0.6});
-      did = "hired a cook";
+      var role = top.role === "server" ? "server" : "cook";
+      var who = {id:role[0]+(++hiredCount), name:role, role:role,
+                 wage: role === "server" ? 12 : 16, skill:0.5, claim:0.5, potential:0.6};
+      (role === "server" ? G.servers : G.cooks).push(who);
+      did = "hired a " + role;
     }
     else if(top.id === "price")   { var s = suggestedPosition();
                                     RECIPES.forEach(function(r){ if(G.onMenu.has(r.id)) G.prices[r.id] = Math.round(r.base*s.position*100)/100; });
