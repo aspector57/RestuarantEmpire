@@ -2074,6 +2074,52 @@ feed more seats — but it never suggests growing BOTH together, so a rich resta
 opening order lands against a single night's takings. True and meaningless. It shows `—` until a
 week of trading catches up, same as the runway alarm.
 
+### Testing the whole game without playing it — four harnesses
+
+Aaron: *"we need you to be able to test like everything — price changes, hiring, adding seats,
+lowering costs, upgrading and downgrading our ingredients"* and *"simulate a year but be able to
+look at daily logs, and give the changes enough time to breathe."*
+
+| harness | question it answers |
+|---|---|
+| `probe-panels.js` | does every screen still render, licensed and unlicensed |
+| `playthrough.js` | 240 days played by the Advisor, with contradictions asserted daily |
+| `levers.js` | one lever at a time across its range — real decision, trap, or just a purchase |
+| `scenario.js` | a year of a RUNNING restaurant, changes 45 days apart, each given time to settle |
+
+**`levers.js` asks the design question, not the balance one.** A lever whose best setting is at
+the top of its range is not a choice, it is a purchase you make when you can afford it; one
+whose best is at the bottom is a trap. Only an interior optimum asks the player anything —
+"flat scaling: bigger numbers are not new decisions" is on this project's own anti-pattern list.
+
+**It found a real bug in its first run: `monthlyBurn()` charged `HOURS_PER_SHIFT` (8) for a
+five-hour dinner service**, overstating wages by 60%. The runway therefore looked far shorter
+than it was, and the brake stripped buy buttons off advice a healthy restaurant needed. `runDay`
+had it right all along — **only the estimate was wrong, which is the same shape as every other
+divergence this session.** My own harness made the identical mistake, so it now takes the labour
+the simulation booked rather than recomputing it: **a harness that recalculates what the game
+already knows is a second implementation waiting to disagree.**
+
+**FINDING, NOT YET FIXED: more cooks makes things WORSE.** 2 cooks -> 50.6 covers/day; 3 cooks ->
+43.7; 6 cooks -> 39.5, with walkouts climbing 34.8 -> 54.0. Extra hands fire more tickets into a
+station that is already the constraint, so waits grow and guests leave — and the abandoned
+plates burn the very capacity that was short. **Adding capacity should never reduce output**, so
+the pass is missing any sense of pacing. This is the largest open model defect and it is
+measurable now, which it was not before.
+
+**`scenario.js` answers what a snapshot cannot: how long before you can tell?**
+
+    hire a second cook     $340/day after a fortnight, $782/day two months on
+    Stone Hearth Oven      50 -> 74 covers, walkouts 15.9 -> 2.9
+    premium ingredients    standing 49 -> 55, profit slightly down at first
+    back to budget         standing 60 -> 53 and falling, profit up immediately
+
+**The budget/premium pair is the designed arc working**: cheap ingredients pay today and cost
+your name over months, and only a run long enough to let reputation move can show it. The
+report prints the fortnight and the two-month figure side by side and flags every change whose
+sign flips between them, because **the first answer and the eventual answer are often different
+and the fortnight is the one that lies.**
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

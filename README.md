@@ -6,6 +6,48 @@ You are a chef who opens one restaurant on a tight budget and builds it into an 
 - **Design rationale:** [`docs/design.md`](docs/design.md) — ten planning phases. Read the section you need, not the whole thing.
 - **Working rules for this repo:** [`CLAUDE.md`](CLAUDE.md) — architecture rules, scope discipline, current milestone.
 
+## Picking this up on a new laptop, or a new Claude account
+
+Everything needed is in this repository. Nothing lives in a chat.
+
+```bash
+git clone https://github.com/aspector57/RestuarantEmpire.git
+cd RestuarantEmpire
+dotnet test          # 256 tests. If these pass, the machine is ready.
+claude               # CLAUDE.md loads itself
+```
+
+**`CLAUDE.md` is the handoff.** It carries the architecture rules, the current milestone, and
+every measurement taken so far — including the reasoning behind decisions that look arbitrary
+without it (why reputation moves per *meal* rather than per night; why a seat you cannot feed is
+worse than no seat; why the browser forecast is knowingly 18% out). A new session starts knowing
+all of it.
+
+**You will need:**
+
+| | |
+|---|---|
+| **.NET SDK 10** | [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download). Without it you can read and edit but not run the tests, which is how everything here is verified. |
+| **A GitHub token** | Keychain credentials do not travel. Make a classic token with `repo` scope, then run the one-liner below in *your* terminal — never paste it into a chat. |
+
+```bash
+printf "protocol=https\nhost=github.com\nusername=aspector57\npassword=<TOKEN>\n\n" | git credential approve
+```
+
+**The browser build lives at [`web/pass.html`](web/pass.html)** and is a plain file — open it in
+any browser to play. Publishing it as a shareable artifact is tied to whichever Claude account
+does it, so a new account will mint a new URL. The file is the source of truth; the link is not.
+
+**Run these before trusting anything you change:**
+
+```bash
+dotnet test                                          # the engine
+python3 tools/headless.py tools/probe-panels.js      # does every screen still render
+python3 tools/headless.py tools/playthrough.js       # a full run, self-checked for contradictions
+python3 tools/headless.py tools/levers.js            # is each decision real, a trap, or a purchase
+python3 tools/headless.py tools/scenario.js          # a year, with changes given time to settle
+```
+
 ## Working on this from another machine
 
 The whole project is in git and self-contained — the only requirement is the .NET SDK.
