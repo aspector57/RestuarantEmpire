@@ -103,7 +103,7 @@ namespace RestaurantEmpire.Core.Model
         ///
         /// **This is what makes committing to a crowd worth doing.** Menu fit used to change
         /// only what a seated guest ORDERED, never whether they came — so a fine-dining room
-        /// and a pizzeria drew exactly the same people and specialising was strictly worse than
+        /// and a pizzeria drew exactly the same people and specializing was strictly worse than
         /// hedging. Measured across six strategies and four markets, the generalist won all
         /// four. A restaurant that knows what it is should pull its own crowd in.
         /// </summary>

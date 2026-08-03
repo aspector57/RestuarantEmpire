@@ -98,7 +98,7 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>
         /// The share of a kitchen's theoretical throughput a real service gets. Guests arrive
-        /// in clumps, so waits build long before utilisation reaches 100%.
+        /// in clumps, so waits build long before utilization reaches 100%.
         ///
         /// WAS 0.75, AND THAT NUMBER WAS BUNDLING TWO THINGS. Clumping is one; the other was
         /// the pass cooking plates for tables that had already walked out, which burned the

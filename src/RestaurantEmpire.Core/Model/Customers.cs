@@ -72,7 +72,7 @@ namespace RestaurantEmpire.Core.Model
         /// <param name="relativePrice">This dish's price over the menu's average.</param>
         /// <param name="ingredientQuality">0.2 (budget) to 1.0 (premium), from the assigned supplier.</param>
         public decimal AppetiteFor(Definitions.RecipeDefinition recipe, decimal relativePrice = 1m,
-            decimal ingredientQuality = 0m)
+            decimal ingredientQuality = 0m, Definitions.CountryDefinition country = null)
         {
             if (recipe == null) return 1m;
 
@@ -88,6 +88,23 @@ namespace RestaurantEmpire.Core.Model
             }
 
             if (taste < 1m) taste = 1m;   // never quite zero; people surprise you
+
+            // WHERE YOU ARE CHANGES WHAT THEY WANT, on top of who they are. A romantic couple
+            // is a romantic couple in Lyon and in Ohio, but the whole Lyon crowd leans harder
+            // toward refined and away from quick — so a card that won at home can be a hard
+            // sell abroad. This is what stops a restaurant in France being an American
+            // restaurant with a different rent, which is the flat-scaling trap.
+            //
+            // Applied as a multiplier on the WHOLE dish rather than per tag, so a dish with
+            // three liked tags is not triple-counted into absurdity.
+            if (country != null)
+            {
+                var pull = 1m;
+                for (var i = 0; i < recipe.Tags.Count; i++) pull *= country.TasteFor(recipe.Tags[i]);
+
+                taste *= pull;
+                if (taste < 0.2m) taste = 0.2m;
+            }
 
             return taste * PriceAppeal(relativePrice) * QualityAppeal(ingredientQuality, relativePrice);
         }

@@ -1,0 +1,143 @@
+{
+  "_comment": [
+    "RESTAURANT CONCEPTS \u2014 what you are trying to be, as content rather than code.",
+    "",
+    "These were hardcoded fixtures inside StrategyDiversity, where they were doing real work",
+    "(the whole distinct-winners measurement runs on them) while being invisible to the game",
+    "and impossible to mod. Architecture Rule 2 says content lives in data, and a concept is",
+    "content by any reading of it.",
+    "",
+    "A concept is a CARD, a PRICE POSITION and HOURS. Deliberately no staffing, no equipment",
+    "and no floor plan: it says what you are attempting, not how well you execute it. Aaron's",
+    "bar is 'you should be able to win with any concept anywhere if you run the restaurant",
+    "properly', which only means something if running it properly is still the player's job.",
+    "",
+    "Measured on tools/scout.js: these produce four distinct winners across the four US sites,",
+    "so which one suits a street is a real question rather than a cosmetic label."
+  ],
+  "concepts": [
+    {
+      "id": "neighborhood-standard",
+      "name": "Neighborhood standard",
+      "description": "A short card of things people already like, priced a shade above the obvious. Hard to love, hard to get wrong.",
+      "recipeIds": [
+        "margherita",
+        "house-focaccia",
+        "caprese-salad",
+        "sea-bass"
+      ],
+      "pricePosition": 1.1,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        }
+      ]
+    },
+    {
+      "id": "pizzeria",
+      "name": "Pizza and sharing plates",
+      "description": "Two things, done fast and cheap. Families and locals; nobody comes for the wine list.",
+      "recipeIds": [
+        "margherita",
+        "house-focaccia"
+      ],
+      "pricePosition": 0.95,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        }
+      ]
+    },
+    {
+      "id": "fine-dining",
+      "name": "Fine dining",
+      "description": "Expensive ingredients, long prep, and a price to match. Loved by more people than can afford it.",
+      "recipeIds": [
+        "sea-bass",
+        "truffle-risotto",
+        "caprese-salad"
+      ],
+      "pricePosition": 1.9,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        }
+      ]
+    },
+    {
+      "id": "coffee-counter",
+      "name": "Coffee and counter",
+      "description": "Breakfast and lunch, out fast. Lives or dies on whether anyone walks past before two.",
+      "recipeIds": [
+        "flat-white",
+        "house-focaccia",
+        "eggs-benedict"
+      ],
+      "pricePosition": 1.0,
+      "services": [
+        {
+          "name": "Breakfast",
+          "from": 7,
+          "to": 11
+        },
+        {
+          "name": "Lunch",
+          "from": 12,
+          "to": 15
+        }
+      ]
+    },
+    {
+      "id": "wine-bar",
+      "name": "Wine bar and small plates",
+      "description": "A bar that feeds you rather than a restaurant that pours. Needs a liquor license before it is anything at all.",
+      "recipeIds": [
+        "house-wine",
+        "cellar-wine",
+        "negroni",
+        "caprese-salad",
+        "house-focaccia"
+      ],
+      "pricePosition": 1.2,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        },
+        {
+          "name": "Late",
+          "from": 23,
+          "to": 2
+        }
+      ]
+    },
+    {
+      "id": "broad-card",
+      "name": "The whole card",
+      "description": "Everything on the menu. Something for everyone, and a kitchen that pays for it in ticket time and mistakes.",
+      "recipeIds": [
+        "margherita",
+        "house-focaccia",
+        "caprese-salad",
+        "sea-bass",
+        "truffle-risotto",
+        "eggs-benedict"
+      ],
+      "pricePosition": 1.1,
+      "services": [
+        {
+          "name": "Dinner",
+          "from": 18,
+          "to": 23
+        }
+      ]
+    }
+  ]
+}

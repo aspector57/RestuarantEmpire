@@ -91,7 +91,7 @@ namespace RestaurantEmpire.Core.Tests
 
         /// <summary>
         /// DRINKS ARE ADDITIVE. A guest orders one ALONGSIDE their food, never instead of it —
-        /// if a drinks list merely competed for the same order it would cannibalise the kitchen
+        /// if a drinks list merely competed for the same order it would cannibalize the kitchen
         /// rather than lift the check, which is backwards and would make the whole feature
         /// pointless.
         /// </summary>

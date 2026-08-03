@@ -249,6 +249,44 @@ namespace RestaurantEmpire.Core.Tests
             }
         }
 
+        /// <summary>
+        /// DOES OPENING NEXT DOOR TO YOURSELF NOW COST SOMETHING?
+        ///
+        /// Before cannibalization, two suburban sites earned 120,858 against 119,600 for twice
+        /// one restaurant — opening a clone next door was free. A street holds a finite number
+        /// of people and your own second restaurant drinks from the same well.
+        ///
+        /// The bar is not just "two clones earn less". It is that SPREADING OUT beats
+        /// CLUSTERING, because that is what turns a portfolio into a decision instead of a
+        /// purchase order.
+        /// </summary>
+        [Fact(Skip = "Measuring instrument, not a test. Run by removing this Skip.")]
+        public void DoesClusteringCostYouAnything()
+        {
+            const int days = 180;
+            const long seed = 20240802L;
+
+            var one = Portfolio(days, seed, ("suburban", 3, 24, 2));
+            var clustered = Portfolio(days, seed, ("suburban", 3, 24, 2), ("suburban", 3, 24, 2));
+            var spread = Portfolio(days, seed, ("suburban", 3, 24, 2), ("city", 3, 24, 2));
+
+            _out.WriteLine("ONE SITE, TWO ON THE SAME STREET, TWO ON DIFFERENT STREETS — " + days + " days");
+            _out.WriteLine("");
+            Show("one suburban restaurant", one);
+            Show("twice that, on paper", new Result { Revenue = one.Revenue * 2, Food = one.Food * 2,
+                                                      Labor = one.Labor * 2, Rent = one.Rent * 2,
+                                                      Covers = one.Covers * 2 });
+            Show("two, both suburban (clustered)", clustered);
+            Show("two, suburban + city (spread)", spread);
+
+            _out.WriteLine("");
+            _out.WriteLine("clustering against twice-one : " + (clustered.Net - one.Net * 2).ToString("N0"));
+            _out.WriteLine("spreading against clustering : " + (spread.Net - clustered.Net).ToString("N0"));
+            _out.WriteLine("");
+            _out.WriteLine("If clustering now LOSES against twice-one, a street is finite. If spreading");
+            _out.WriteLine("beats clustering, where you put the next one is a decision worth making.");
+        }
+
         private void Show(string label, Result r)
         {
             _out.WriteLine(string.Format("{0,-34} {1,12:N0} {2,10:N0} {3,12:N0}",

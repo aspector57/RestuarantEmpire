@@ -22,6 +22,8 @@ namespace RestaurantEmpire.Core.Content
     {
         public const string IngredientsFileName = "ingredients.json";
         public const string SuppliersFileName = "suppliers.json";
+        public const string ConceptsFileName = "concepts.json";
+        public const string CountriesFileName = "countries.json";
         public const string RecipesDirectoryName = "recipes";
         public const string EquipmentFileName = "equipment.json";
 
@@ -39,8 +41,102 @@ namespace RestaurantEmpire.Core.Content
             var suppliers = LoadSuppliers(Path.Combine(dataDirectory, SuppliersFileName), ingredients, warnings);
             var recipes = LoadRecipes(Path.Combine(dataDirectory, RecipesDirectoryName), ingredients, warnings);
             var equipment = LoadEquipment(Path.Combine(dataDirectory, EquipmentFileName), warnings);
+            var concepts = LoadConcepts(Path.Combine(dataDirectory, ConceptsFileName), recipes, warnings);
+            var countries = LoadCountries(Path.Combine(dataDirectory, CountriesFileName), suppliers, warnings);
 
-            return new DefinitionRegistry(ingredients.Values, suppliers, recipes, warnings, equipment);
+            return new DefinitionRegistry(ingredients.Values, suppliers, recipes, warnings, equipment,
+                concepts, countries);
+        }
+
+        /// <summary>
+        /// Concepts are optional content — a build with none simply offers no starting
+        /// templates, which is what every version before this one did. A concept naming a
+        /// recipe that does not exist drops that dish and says so, per Architecture Rule 3's
+        /// "degrade gracefully, log it, never fail the whole load".
+        /// </summary>
+        private static List<ConceptDefinition> LoadConcepts(
+            string path, List<RecipeDefinition> recipes, List<string> warnings)
+        {
+            var result = new List<ConceptDefinition>();
+            if (!File.Exists(path)) return result;
+
+            var known = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var r in recipes) known.Add(r.Id);
+
+            var file = JsonConvert.DeserializeObject<ConceptFileDto>(File.ReadAllText(path));
+            if (file == null || file.Concepts == null) return result;
+
+            foreach (var dto in file.Concepts)
+            {
+                if (string.IsNullOrWhiteSpace(dto.Id))
+                {
+                    warnings.Add("A concept has no id and was skipped.");
+                    continue;
+                }
+
+                var dishes = new List<string>();
+                if (dto.RecipeIds != null)
+                {
+                    foreach (var id in dto.RecipeIds)
+                    {
+                        if (known.Contains(id)) dishes.Add(id);
+                        else warnings.Add("Concept '" + dto.Id + "' names unknown recipe '" + id + "'; dropped it.");
+                    }
+                }
+
+                var services = new List<ConceptService>();
+                if (dto.Services != null)
+                {
+                    foreach (var w in dto.Services) services.Add(new ConceptService(w.Name, w.From, w.To));
+                }
+
+                result.Add(new ConceptDefinition(dto.Id, dto.Name, dto.Description,
+                    dishes, dto.PricePosition, services));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Optional content, like concepts — a build with no countries file simply trades at
+        /// home, which is every version before this one. A country naming a supplier that does
+        /// not exist drops it and says so rather than failing the load.
+        /// </summary>
+        private static List<CountryDefinition> LoadCountries(
+            string path, List<SupplierDefinition> suppliers, List<string> warnings)
+        {
+            var result = new List<CountryDefinition>();
+            if (!File.Exists(path)) return result;
+
+            var known = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var s in suppliers) known.Add(s.Id);
+
+            var file = JsonConvert.DeserializeObject<CountryFileDto>(File.ReadAllText(path));
+            if (file == null || file.Countries == null) return result;
+
+            foreach (var dto in file.Countries)
+            {
+                if (string.IsNullOrWhiteSpace(dto.Id))
+                {
+                    warnings.Add("A country has no id and was skipped.");
+                    continue;
+                }
+
+                var local = new List<string>();
+                if (dto.LocalSupplierIds != null)
+                {
+                    foreach (var id in dto.LocalSupplierIds)
+                    {
+                        if (known.Contains(id)) local.Add(id);
+                        else warnings.Add("Country '" + dto.Id + "' names unknown supplier '" + id + "'; dropped it.");
+                    }
+                }
+
+                result.Add(new CountryDefinition(dto.Id, dto.Name, dto.Description,
+                    dto.LaborCostMultiplier, local, dto.TastePulls, dto.NeighborhoodIds));
+            }
+
+            return result;
         }
 
         private static Dictionary<string, IngredientDefinition> LoadIngredients(string path, List<string> warnings)
@@ -266,6 +362,44 @@ namespace RestaurantEmpire.Core.Content
         private sealed class SupplierFileDto
         {
             public List<SupplierDto> Suppliers { get; set; }
+        }
+
+        private sealed class CountryFileDto
+        {
+            public List<CountryDto> Countries { get; set; }
+        }
+
+        private sealed class CountryDto
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public decimal LaborCostMultiplier { get; set; }
+            public List<string> LocalSupplierIds { get; set; }
+            public List<string> NeighborhoodIds { get; set; }
+            public Dictionary<string, decimal> TastePulls { get; set; }
+        }
+
+        private sealed class ConceptFileDto
+        {
+            public List<ConceptDto> Concepts { get; set; }
+        }
+
+        private sealed class ConceptDto
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public List<string> RecipeIds { get; set; }
+            public decimal PricePosition { get; set; }
+            public List<ConceptServiceDto> Services { get; set; }
+        }
+
+        private sealed class ConceptServiceDto
+        {
+            public string Name { get; set; }
+            public int From { get; set; }
+            public int To { get; set; }
         }
 
         private sealed class SupplierDto

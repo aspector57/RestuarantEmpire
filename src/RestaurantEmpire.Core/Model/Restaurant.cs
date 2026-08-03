@@ -42,6 +42,71 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>Which group of restaurants this one buys with, or null if it buys alone.</summary>
         public Region Region { get; }
 
+        /// <summary>The market this restaurant trades in, or null for the home market.</summary>
+        public Definitions.CountryDefinition Country { get { return Region == null ? null : Region.Country; } }
+
+        /// <summary>
+        /// What the payroll costs here. A wage in Lyon is not a wage in the suburbs, and this
+        /// is not a difficulty dial — it changes which CONCEPTS are viable, because a
+        /// prep-heavy card in an expensive labor market is a different proposition.
+        /// </summary>
+        public decimal HourlyWageBill
+        {
+            get
+            {
+                var country = Country;
+                return Payroll.HourlyWageBill * (country == null ? 1m : country.LaborCostMultiplier);
+            }
+        }
+
+        /// <summary>
+        /// How much life an ingredient has lost by the time it lands here — the supplier's own
+        /// transit, plus a long haul if they do not deliver in this country.
+        ///
+        /// THIS IS WHAT RE-OPENS THE SOURCING DECISION ABROAD. Your usual supplier is still
+        /// available in Italy and is now a bad idea, because everything they send arrives four
+        /// days older than it would at home. Meanwhile the local grower down the road is
+        /// excellent and cheap. Expansion does not scale a settled decision — it unsettles it.
+        /// </summary>
+        public int TransitDaysFor(string ingredientId)
+        {
+            var days = SupplierPolicy.DaysInTransitFor(ingredientId);
+            var country = Country;
+            if (country == null) return days;
+
+            var supplier = SupplierPolicy.ResolveSupplierId(ingredientId);
+            return country.SuppliesLocally(supplier) ? days : days + country.ImportTransitDays;
+        }
+
+        /// <summary>
+        /// Sets this restaurant up as a concept describes it: the card, the hours, and where
+        /// the prices sit.
+        ///
+        /// ONE CODE PATH FOR EVERY CONCEPT, which is the whole of Architecture Rule 2's claim
+        /// — a new concept is a JSON file and nothing here changes. It reads the definition
+        /// and does what it says; it does not know a pizzeria from a wine bar.
+        ///
+        /// Deliberately does NOT staff, equip or seat the restaurant. A concept says what you
+        /// are attempting; running it properly stays the player's job, or picking a concept
+        /// would pick the whole restaurant and solve the strategy for them.
+        /// </summary>
+        public void Adopt(Definitions.ConceptDefinition concept)
+        {
+            if (concept == null) throw new ArgumentNullException(nameof(concept));
+
+            foreach (var existing in new List<string>(Menu.RecipeIds)) Menu.Remove(existing);
+            foreach (var id in concept.RecipeIds) Menu.Add(id);
+
+            ServiceWindows.Clear();
+            foreach (var service in concept.Services)
+                ServiceWindows.Add(new ServiceWindow(service.Name, service.From, service.To));
+
+            // Prices are set against what each dish was DESIGNED to sell for, so a position
+            // means the same thing on every card. Per-dish overrides remain the player's move.
+            foreach (var recipe in Menu.Recipes)
+                Pricing.SetPrice(recipe.Id, recipe.MenuPrice * concept.PricePosition);
+        }
+
         public string Id { get; }
         public string Name { get; }
 
@@ -95,7 +160,64 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public double TrafficAt(DateTime now)
         {
-            return Location == null ? 0.0 : Location.TrafficAt(now);
+            return Location == null ? 0.0 : Location.TrafficAt(now) * (double)ShareOfTheStreet;
+        }
+
+        /// <summary>
+        /// A STREET ONLY HOLDS SO MANY PEOPLE, AND YOUR OWN SECOND RESTAURANT IS DRINKING
+        /// FROM THE SAME WELL.
+        ///
+        /// Measured before this existed: two restaurants under one company earned 131,903
+        /// against 131,439 for the two of them run separately — 0.4% apart. A second site was
+        /// arithmetic, which is exactly the flat-scaling anti-pattern. Nothing anywhere made
+        /// two restaurants on one street contend for the same crowd, so opening next door to
+        /// yourself was free.
+        ///
+        /// The split is BY APPEAL, not down the middle, and that is what makes it a decision
+        /// rather than a tax. Put a second restaurant on a street and it takes the share its
+        /// card and its name deserve — so a strong new site mostly eats a rival's trade, and
+        /// a weak one mostly eats your own. Cloning your best restaurant next door to itself
+        /// is the worst possible use of the money, and spreading out is what expansion is FOR.
+        ///
+        /// Only restaurants sharing a neighborhood contend. Two sites in different
+        /// neighborhoods do not see each other at all, which is the whole point of a map.
+        /// </summary>
+        public decimal ShareOfTheStreet
+        {
+            get
+            {
+                if (Location == null || Company == null) return 1m;
+
+                var mine = Pull;
+                var total = 0m;
+
+                foreach (var other in Company.Restaurants)
+                {
+                    if (other.Location == null) continue;
+                    if (!string.Equals(other.Location.Id, Location.Id, StringComparison.Ordinal)) continue;
+
+                    total += other.Pull;
+                }
+
+                if (total <= 0m) return 1m;
+
+                // A street that is not saturated is not divided. One restaurant alone keeps
+                // the whole crowd; the division only bites once somebody else is on it.
+                var contenders = total / (mine <= 0m ? 1m : mine);
+                if (contenders <= 1m) return 1m;
+
+                return mine / total;
+            }
+        }
+
+        /// <summary>
+        /// How much of a street's attention this restaurant commands — its standing and how
+        /// well its card suits the people walking past. Never zero, because even a bad
+        /// restaurant on a good street takes some trade.
+        /// </summary>
+        public decimal Pull
+        {
+            get { return 0.25m + Reputation.Standing; }
         }
 
         /// <summary>Everything installed out front: tables, chairs, decor.</summary>
@@ -369,7 +491,7 @@ namespace RestaurantEmpire.Core.Model
             // What arrives is as old as the journey made it. A local grower drops fresh; a
             // national contract ships through a depot and a four-day fish lands with two days
             // left. That single number is what stops bulk sourcing being a free discount.
-            Inventory.Receive(ingredientId, quantity, SupplierPolicy.DaysInTransitFor(ingredientId));
+            Inventory.Receive(ingredientId, quantity, TransitDaysFor(ingredientId));
             return cost;
         }
 

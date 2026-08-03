@@ -2,9 +2,14 @@
 
 A restaurant management/tycoon game. Full design rationale lives in `docs/design.md` — read the relevant section before implementing anything, but do not load the whole document unless you need to.
 
-**Setting: American.** US spellings throughout (`Neighborhood`, `labor`, `center`), dollars,
-and square feet — including in identifiers and data IDs, not just prose. Overseas expansion is
-a later feature, not a reason to write British English now.
+**American English.** US spellings throughout (`Neighborhood`, `labor`, `center`,
+`cannibalize`, `specialize`), dollars, and square feet — including in identifiers and data IDs,
+not just prose.
+
+**THIS IS A LANGUAGE RULE, NOT A SETTING RULE.** An earlier wording said "Setting: American...
+overseas expansion is a later feature", and it was read (by me) as deferring non-US content on
+purpose. Aaron: *"I meant to use like american english."* Restaurants in Lyon or Florence are
+fine and always were — they are simply written with US spellings, like everything else here.
 
 **Genre framing (this governs every judgment call):** this is a **tycoon/empire management game, cooking-themed** — not a cooking game. The player is a chef who opens one restaurant on a tight budget and builds it into an empire. Business and strategic decisions carry more weight than culinary execution.
 
@@ -2478,6 +2483,77 @@ place only if it changes what you can DO: a card that does not travel, sourcing 
 (local excellent and cheap, imports dear and old — which `daysInTransit` already models), and
 labour that works differently. Note also that CLAUDE.md's "Setting: American" rule defers
 overseas expansion deliberately, so this is a decision to take rather than drift into.
+
+### Cannibalization, concepts as content, and countries — all three, measured
+
+**1. A STREET IS FINITE, AND YOUR OWN SECOND RESTAURANT DRINKS FROM IT.**
+
+This is what made a second site arithmetic. Nothing made two restaurants on one street contend,
+so opening next door to yourself was free. `Restaurant.ShareOfTheStreet` splits footfall **by
+appeal, not down the middle** — a strong new site takes the share its card and name deserve,
+so cloning your best restaurant beside itself is the worst use of the money and spreading out
+is what expansion is FOR.
+
+| 180 days | net | covers | turned away |
+|---|---:|---:|---:|
+| one suburban restaurant | 59,800 | 15,598 | 3,260 |
+| *twice that, on paper* | *119,600* | — | — |
+| two, both suburban | **23,615** | 19,763 | 527 |
+| two, suburban + city | **131,903** | 35,703 | 9,076 |
+
+Spreading beats clustering by **108,287**. The clustered pair does capture the overflow
+(turn-aways 3,260 -> 527) and only buys 27% more covers for double the fixed costs, which is
+the right answer rather than a punishment. **Single-site play is untouched** — one restaurant
+alone keeps the whole street, so the division only bites once somebody else is on it.
+
+**2. CONCEPTS WERE FIXTURES IN A TEST FILE.** Six of them, hardcoded in `StrategyDiversity`,
+doing real work (the whole distinct-winners measurement runs on them) while being invisible to
+the game and unmoddable. They are `data/concepts.json` now, and `Restaurant.Adopt` applies any
+of them through **one code path that does not know a pizzeria from a wine bar**.
+
+A concept is a **card, a price position and hours — deliberately no staffing, equipment or
+floor plan.** It says what you are attempting, not how well you execute it. Aaron's bar is
+*"you should be able to win with any concept anywhere if you run the restaurant properly"*,
+which only means something if running it properly stays the player's job; bundling a build in
+would make picking a concept pick the whole restaurant.
+
+**A data bug the tests caught immediately:** the wine bar's late service was written `23->26`,
+the browser build's convention. The engine expresses a midnight wrap as `23->2`. Two builds,
+two conventions for the same idea — worth watching when porting content rather than code.
+
+**3. COUNTRIES — USA, FRANCE, ITALY, ENGLAND.** A country **is** a Region; nothing needed
+inventing. What earns it a place is that it changes what you can DO on three axes:
+
+- **The card does not travel.** `tastePulls` shifts the whole local crowd by tag.
+- **Sourcing re-opens.** Your usual supplier is still available abroad and is now a bad idea —
+  anything not local ships in and lands **4 days older**, straight through the `daysInTransit`
+  machinery built for the national distributor. Measured: budget-wholesale tomato is 0 days old
+  at home and 4 in Florence, and switching to the local grower fixes it.
+- **Labor costs what the market charges.** The same three cooks are $48/hr at home and
+  **$69.60 in Lyon** — not a difficulty dial, a reason a prep-heavy card is a different
+  proposition there.
+
+| concept | USA | France | Italy | England |
+|---|---:|---:|---:|---:|
+| Neighborhood standard | 2.45 | 2.44 | 3.14 | 2.24 |
+| Pizza and sharing plates | **2.73** | 1.43 | **3.79** | 2.65 |
+| Fine dining | 2.12 | **3.38** | 2.32 | 1.84 |
+| Coffee and counter | 2.54 | 1.74 | 2.61 | **2.72** |
+| Wine bar and small plates | 2.27 | 3.27 | 2.61 | 2.28 |
+
+**3 distinct winners across 4 markets.** France wants fine dining, Italy wants pizza, England
+wants the counter.
+
+**England only became a real market when drinks got a culture.** On the first pass it read
+almost identically to the US — pizza won both — because taste pulls covered food tags and not
+`beer`, `wine`, `cocktail`, so the one thing England is actually known for was invisible. Each
+country now has an opinion about the bar, written from what the places are like rather than
+fitted to the scoreboard.
+
+**Stated honestly: this is measured on APPETITE ALONE, not on money.** It says what a crowd
+wants, not what earns most — those differ, as fine dining proves in its own row on the site
+scouting report. A full country-by-country profit sweep has not been run, and the labor and
+sourcing axes above will move it.
 
 ## Architecture Rules (violating these is a bug, not a style choice)
 

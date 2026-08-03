@@ -31,6 +31,8 @@ namespace RestaurantEmpire.Core.Definitions
         private readonly Dictionary<string, SupplierDefinition> _suppliers;
         private readonly Dictionary<string, RecipeDefinition> _recipes;
         private readonly Dictionary<string, EquipmentDefinition> _equipment;
+        private readonly Dictionary<string, ConceptDefinition> _concepts;
+        private readonly Dictionary<string, CountryDefinition> _countries;
         private readonly List<string> _loadWarnings;
 
         public DefinitionRegistry(
@@ -38,12 +40,16 @@ namespace RestaurantEmpire.Core.Definitions
             IEnumerable<SupplierDefinition> suppliers,
             IEnumerable<RecipeDefinition> recipes,
             IEnumerable<string> loadWarnings = null,
-            IEnumerable<EquipmentDefinition> equipment = null)
+            IEnumerable<EquipmentDefinition> equipment = null,
+            IEnumerable<ConceptDefinition> concepts = null,
+            IEnumerable<CountryDefinition> countries = null)
         {
             _ingredients = new Dictionary<string, IngredientDefinition>();
             _suppliers = new Dictionary<string, SupplierDefinition>();
             _recipes = new Dictionary<string, RecipeDefinition>();
             _equipment = new Dictionary<string, EquipmentDefinition>();
+            _concepts = new Dictionary<string, ConceptDefinition>();
+            _countries = new Dictionary<string, CountryDefinition>();
             _loadWarnings = loadWarnings == null ? new List<string>() : new List<string>(loadWarnings);
 
             if (ingredients != null)
@@ -57,6 +63,48 @@ namespace RestaurantEmpire.Core.Definitions
 
             if (equipment != null)
                 foreach (var e in equipment) _equipment[e.Id] = e;
+
+            if (concepts != null)
+                foreach (var c in concepts) _concepts[c.Id] = c;
+
+            if (countries != null)
+                foreach (var c in countries) _countries[c.Id] = c;
+        }
+
+        /// <summary>Markets you can trade in. A country is a Region with a market attached.</summary>
+        public IEnumerable<CountryDefinition> Countries { get { return _countries.Values; } }
+
+        public int CountryCount { get { return _countries.Count; } }
+
+        public bool HasCountry(string id) { return id != null && _countries.ContainsKey(id); }
+
+        public CountryDefinition GetCountry(string id)
+        {
+            CountryDefinition found;
+            if (id == null || !_countries.TryGetValue(id, out found))
+                throw new DefinitionNotFoundException("country", id);
+
+            return found;
+        }
+
+        /// <summary>
+        /// Restaurant concepts the player can start from — a card, a price position and the
+        /// hours. Data rather than code, so a new one is a JSON file. See ConceptDefinition
+        /// for why these stop short of prescribing a build.
+        /// </summary>
+        public IEnumerable<ConceptDefinition> Concepts { get { return _concepts.Values; } }
+
+        public int ConceptCount { get { return _concepts.Count; } }
+
+        public bool HasConcept(string id) { return id != null && _concepts.ContainsKey(id); }
+
+        public ConceptDefinition GetConcept(string id)
+        {
+            ConceptDefinition found;
+            if (id == null || !_concepts.TryGetValue(id, out found))
+                throw new DefinitionNotFoundException("concept", id);
+
+            return found;
         }
 
         public IEnumerable<IngredientDefinition> Ingredients { get { return _ingredients.Values; } }

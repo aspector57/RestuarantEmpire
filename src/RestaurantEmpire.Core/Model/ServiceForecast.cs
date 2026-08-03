@@ -39,7 +39,7 @@ namespace RestaurantEmpire.Core.Model
         /// The share of a kitchen's theoretical throughput a real service actually gets.
         ///
         /// A pass running flat out has an unbounded queue in front of it — guests arrive in
-        /// clumps, not on a metronome, so waits build long before utilisation reaches 100% and
+        /// clumps, not on a metronome, so waits build long before utilization reaches 100% and
         /// people balk. This is the standard "practical capacity" haircut, and it is a real
         /// property of queues rather than a fudge factor: without it the forecast promises
         /// covers that only a perfectly smoothed arrival stream could deliver.

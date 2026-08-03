@@ -1,0 +1,129 @@
+{
+  "_comment": [
+    "COUNTRIES \u2014 Aaron: 'we should be able to buy or build anywhere we want... maybe we can",
+    "limit it to USA, France, Italy, and England'.",
+    "",
+    "A country IS a Region, the sourcing tier that already existed. What earns it a place is",
+    "NOT that it has different rents: expansion was measured and a second restaurant came out",
+    "0.4% from pure arithmetic, so more places to put a restaurant fixes nothing by itself.",
+    "A country has to change what you can DO.",
+    "",
+    "Three axes, each one a decision that did not exist at home:",
+    "  tastePulls    - your card does not travel. A concept that won at home can be a hard",
+    "                  sell abroad, which is what makes scouting a country worth doing.",
+    "  localSuppliers- your usual supplier is still available abroad and is now a bad idea,",
+    "                  because it ships in and arrives four days older. Sourcing re-opens.",
+    "  laborCost     - not a difficulty dial. It decides which concepts are viable, since a",
+    "                  prep-heavy card is a different proposition in an expensive labor market.",
+    "",
+    "Written in American English throughout, per the project's language rule."
+  ],
+  "countries": [
+    {
+      "id": "usa",
+      "name": "United States",
+      "description": "Home. Cheap labor, wide supply, and a crowd that will try anything once.",
+      "laborCostMultiplier": 1.0,
+      "localSupplierIds": [
+        "budget-wholesale",
+        "valley-produce",
+        "premium-harvest",
+        "atlantic-national"
+      ],
+      "neighborhoodIds": [
+        "city-center",
+        "business-district",
+        "suburban-high-street",
+        "nightlife-quarter"
+      ],
+      "tastePulls": {
+        "sharing": 1.15,
+        "quick": 1.15,
+        "classic": 1.05,
+        "luxury": 0.95,
+        "beer": 1.15,
+        "cocktail": 1.2,
+        "wine": 0.9
+      }
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "description": "Dear to staff and unforgiving about food. They will pay for refinement and will not forgive a shortcut.",
+      "laborCostMultiplier": 1.45,
+      "localSupplierIds": [
+        "valley-produce",
+        "premium-harvest"
+      ],
+      "neighborhoodIds": [
+        "city-center",
+        "nightlife-quarter",
+        "suburban-high-street"
+      ],
+      "tastePulls": {
+        "refined": 1.45,
+        "rich": 1.25,
+        "seafood": 1.2,
+        "luxury": 1.2,
+        "quick": 0.65,
+        "sharing": 0.8,
+        "wine": 1.5,
+        "cocktail": 0.85,
+        "beer": 0.7
+      }
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "description": "Superb produce on your doorstep and almost no tolerance for anything fancy done badly. Cheap to source, hard to impress.",
+      "laborCostMultiplier": 1.1,
+      "localSupplierIds": [
+        "valley-produce",
+        "premium-harvest"
+      ],
+      "neighborhoodIds": [
+        "city-center",
+        "suburban-high-street",
+        "nightlife-quarter"
+      ],
+      "tastePulls": {
+        "classic": 1.5,
+        "sharing": 1.3,
+        "vegetarian": 1.15,
+        "seafood": 1.15,
+        "luxury": 0.8,
+        "quick": 0.85,
+        "wine": 1.3,
+        "beer": 0.9,
+        "cocktail": 0.8
+      }
+    },
+    {
+      "id": "england",
+      "name": "England",
+      "description": "A late crowd, a drinking crowd, and rents that punish a big room. The bar carries the kitchen here more than anywhere.",
+      "laborCostMultiplier": 1.25,
+      "localSupplierIds": [
+        "budget-wholesale",
+        "valley-produce",
+        "atlantic-national"
+      ],
+      "neighborhoodIds": [
+        "city-center",
+        "business-district",
+        "nightlife-quarter"
+      ],
+      "tastePulls": {
+        "quick": 1.25,
+        "classic": 1.15,
+        "sharing": 1.1,
+        "refined": 0.85,
+        "luxury": 0.85,
+        "beer": 1.6,
+        "wine": 1.15,
+        "cocktail": 1.25,
+        "pizza": 0.85
+      }
+    }
+  ]
+}

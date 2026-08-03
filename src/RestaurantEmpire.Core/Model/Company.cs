@@ -100,7 +100,7 @@ namespace RestaurantEmpire.Core.Model
         /// A group of restaurants that buy together — the tier that makes sourcing at ten
         /// sites a different decision from sourcing at one. See <see cref="Region"/>.
         /// </summary>
-        public Region CreateRegion(string id, string name)
+        public Region CreateRegion(string id, string name, Definitions.CountryDefinition country = null)
         {
             foreach (var existing in _regions)
             {
@@ -108,7 +108,7 @@ namespace RestaurantEmpire.Core.Model
                     throw new InvalidOperationException("This company already has a region with id '" + id + "'.");
             }
 
-            var region = new Region(this, id, name);
+            var region = new Region(this, id, name, country);
             _regions.Add(region);
 
             return region;

@@ -30,12 +30,13 @@ namespace RestaurantEmpire.Core.Model
     {
         private readonly List<Restaurant> _restaurants = new List<Restaurant>();
 
-        internal Region(Company company, string id, string name)
+        internal Region(Company company, string id, string name, Definitions.CountryDefinition country = null)
         {
             if (company == null) throw new ArgumentNullException(nameof(company));
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Region id is required.", nameof(id));
 
             Company = company;
+            Country = country;
             Id = id;
             Name = string.IsNullOrWhiteSpace(name) ? id : name;
 
@@ -45,6 +46,15 @@ namespace RestaurantEmpire.Core.Model
         }
 
         public Company Company { get; }
+
+        /// <summary>
+        /// Which market this region trades in, or null for the home market.
+        ///
+        /// A COUNTRY IS A REGION. That is not a shortcut — a country is exactly "a group of
+        /// restaurants that buy together and share a market", which is what this tier already
+        /// was. Nothing needed inventing for it.
+        /// </summary>
+        public Definitions.CountryDefinition Country { get; }
         public string Id { get; }
         public string Name { get; }
 
