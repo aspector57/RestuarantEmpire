@@ -2429,6 +2429,56 @@ both sides share it, but the absolute numbers are not a balance finding.
 restaurants compete for the same crowd. Two suburban sites should cannibalise and do not.
 That is the other half of making a portfolio a decision, and it is next.
 
+### The scouting report — "would people be excited about this concept?" (Aaron, via NBA 2K)
+
+Aaron on 2K's relocation screen: *"you can see if people would be excited about your concept
+or team."* The uniform designer is not the interesting half; the market readout is.
+
+**Nearly all of it already existed.** `menuAppealTo` scores a card against a sort of guest,
+`likelyAt` says who is out on a street at an hour, `wouldConsider` says whether they would set
+off at that price — and the browser build already prints the answer as *"card suits the street
+116%"*, pointed at the site you own. **A scouting report is those three functions pointed at a
+site you do NOT own, before you have spent anything.** `tools/scout.js`.
+
+It also extends the loop this project already decided is good. Forecast, commit, autopsy —
+you commit to a belief and then find out how wrong you were. **Choosing a site is the largest
+commitment in the game and was the one made with the least information.**
+
+| street | what it wants | who is excited |
+|---|---|---|
+| City Center | Neighborhood standard (130%) | Families |
+| Business District | Coffee and counter (137%) | Business lunchers |
+| Suburban High Street | Wine bar and small plates (121%) | Locals |
+| Nightlife Quarter | Fine dining (136%) | Influencers |
+
+**Four distinct winners across four sites**, so a site is a real choice rather than a rent
+bill. That is the same anti-pattern check that failed for a second restaurant (0.4% from
+arithmetic) and passes here.
+
+**The second column is the good part.** Fine dining reads 136% appeal in the nightlife quarter
+and **27% would actually come**, because the price gate filters who sets off. Appeal and
+affordability are separate numbers and the gap between them IS the fine-dining problem —
+visible before signing a lease rather than six months after. A single blended score would have
+hidden exactly the thing worth knowing, which is Binding Principle 2 again.
+
+**What it is not: a profit forecast.** It surveys the market, and the concept a street likes
+best is not automatically the one that earns most — fine dining proves that in its own row.
+Keep the two separate; blending them would solve the strategy for the player, which Binding
+Principle 5 forbids.
+
+**Concepts are fixtures in `StrategyDiversity` and should become content.** "Select a concept
+or build your own" is Aaron's other half, and the data-driven loader already supports the
+first part. Not built.
+
+**On countries (USA / France / Italy / England), raised in the same breath and NOT built:** a
+country is a Region, so the tier now exists for it. But the expansion measurement is the
+warning — **more places to put a restaurant does not fix flat scaling.** A site in Lyon that
+is only "different rent, different footfall" is another arithmetic restaurant. It earns its
+place only if it changes what you can DO: a card that does not travel, sourcing that flips
+(local excellent and cheap, imports dear and old — which `daysInTransit` already models), and
+labour that works differently. Note also that CLAUDE.md's "Setting: American" rule defers
+overseas expansion deliberately, so this is a decision to take rather than drift into.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
