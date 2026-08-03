@@ -1831,7 +1831,14 @@ function advise(){
    lasts at the CURRENT rate of loss; a restaurant that is not losing money has no runway
    problem however large its wage bill. */
 function monthlyBurn(){
-  const outgoing = wageBill() * HOURS_PER_SHIFT * 30 + G.site.rent + (G.licence ? LICENCE_RENEWAL : 0);
+  // WAGES ARE PAID FOR THE HOURS YOU ACTUALLY OPEN, not a notional eight-hour shift. Charging
+  // eight for a five-hour dinner service overstated the wage bill by 60%, which made the
+  // runway look far shorter than it is — and the runway brake then stripped buy buttons off
+  // advice a perfectly healthy restaurant needed. `runDay` had this right all along; only the
+  // estimate was wrong, which is the same shape as every other divergence this session: one
+  // question, two answers.
+  const openHours = G.windows.reduce((a,w)=>a + (w.to > w.from ? w.to-w.from : (24-w.from)+w.to), 0);
+  const outgoing = wageBill() * openHours * 30 + G.site.rent + (G.licence ? LICENCE_RENEWAL : 0);
 
   // Measured from what it has actually been taking lately, not from hope.
   const days = Math.min(14, G.recent.length);
@@ -2907,7 +2914,7 @@ function panelTeam(){
   const bill = document.createElement("p");
   bill.className = "hint";
   bill.style.marginTop = "10px";
-  bill.textContent = `$${Math.round(wageBill()*HOURS_PER_SHIFT*30).toLocaleString()} a month at these hours. `
+  bill.textContent = `$${Math.round(wageBill()*G.windows.reduce((a,w)=>a + (w.to > w.from ? w.to-w.from : (24-w.from)+w.to), 0)*30).toLocaleString()} a month at these hours. `
     + `The kitchen averages ${(avgSkill(G.cooks)*5).toFixed(1)}/5, which decides how many plates move and how often one goes wrong.`;
   c.appendChild(bill);
 
