@@ -359,6 +359,21 @@ namespace RestaurantEmpire.Core.Model
             GetOrCreate(ingredientId).Receive(quantity, Today);
         }
 
+        /// <summary>
+        /// Takes a delivery that has already spent part of its life getting here.
+        ///
+        /// A national distributor ships bulk through a depot, so what lands is days older
+        /// than what a local grower drops off — see SupplierDefinition.DaysInTransit. Dating
+        /// the batch BACKWARDS is the whole mechanism: FIFO then draws it first, freshness
+        /// reads it as older on the plate, and spoilage claims it sooner. All three fall out
+        /// of the one line rather than needing rules of their own.
+        /// </summary>
+        public void Receive(string ingredientId, decimal quantity, int daysAlreadySpent)
+        {
+            if (daysAlreadySpent < 0) daysAlreadySpent = 0;
+            GetOrCreate(ingredientId).Receive(quantity, Today - daysAlreadySpent);
+        }
+
         /// <summary>Returns false rather than throwing when stock is short — an 86'd dish, not a crash.</summary>
         public bool TryConsume(string ingredientId, decimal quantity)
         {

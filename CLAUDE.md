@@ -2370,6 +2370,65 @@ warning about a failure does not prevent the failure.
 | Covers/day | 76.9 | 94.1 | **194.8** |
 | Ends at | 12 seats, 1 cook | 42 seats, 2 cooks | 32 seats, 4 cooks, hearth oven |
 
+### Expansion, measured before it was built: a second restaurant was ARITHMETIC
+
+Aaron chose multi-location as the answer to the day-6,994 problem — nineteen years and $2.4M
+with nothing to spend it on. Before building any of it, `SecondRestaurant` asked the only
+question that decides what the feature should be: **is a second restaurant a new decision, or
+a bigger number?**
+
+| portfolio, 180 days | net |
+|---|---:|
+| suburban alone | 59,800 |
+| city alone | 71,638 |
+| **the two together** | **131,903** |
+| *the two run separately, added up* | *131,439* |
+
+**0.4%.** And two SUBURBAN sites came to 120,858 against 119,600 for twice one — so sites do
+not even compete for the same street. Expansion as it stood was pure flat scaling, the exact
+anti-pattern, and building the UI first would have shipped a spreadsheet with a theme.
+**Measuring first is what stopped a week of work going into the wrong feature.**
+
+### The Region tier, finally built, and the decision it unlocks
+
+`SupplierPolicy` has resolved up a parent chain since M0 specifically so this could slot in,
+and it did: `Company -> Region -> Restaurant`, with **no read site changing anywhere**. That
+is the M0 architecture bet paying off exactly as written.
+
+`Atlantic National Foodservice` is the point of it. Two new fields on a supplier, both data:
+
+- **`daysInTransit: 3`** — bulk ships through a depot, so what lands has already spent three
+  days of its life. `Inventory.Receive` dates the batch backwards and FIFO, freshness and
+  spoilage all follow from that one line without a rule of their own.
+- **`minimumWeeklyVolume: 1000`** — they will not open an account for less. Measured on
+  USAGE, not stock, so you cannot qualify by filling a walk-in once; that would make it a cash
+  test, and cash is not what expansion is supposed to prove.
+
+| four restaurants, 180 days | local | national |
+|---|---:|---:|
+| a card built on things that keep | 238,930 | **256,562** |
+| a card built on fish | −625,038 | **−886,329**, covers 32,628 -> 11,956 |
+
+**So it is a genuine decision and not a discount** — cheaper and lower grade is free on flour
+and fatal on sea bass, and the right answer depends on the menu you chose. And the gate lands
+where expansion reaches it: refused at one and two sites, **open at four**.
+
+**The first gate was set to 3,000 and NOBODY could ever reach it** — six restaurants shift
+about 1,600 a week. Measured rather than guessed, which is how a piece of dead content was
+caught before it shipped rather than after Aaron found it.
+
+**Architecture Rule 2 got a free exit test out of it:** the whole supplier arrived as a JSON
+edit, and 263 tests passed with no code change.
+
+**Known bad fixture, recorded rather than tuned away:** the perishable-card rows lose money
+heavily on BOTH sides, because the probe stocks sea bass to a par of 400 on a four-day fish —
+the over-ordering the spoilage system exists to punish. The comparison is still valid since
+both sides share it, but the absolute numbers are not a balance finding.
+
+**Still not built, and still the reason two sites are arithmetic:** nothing makes nearby
+restaurants compete for the same crowd. Two suburban sites should cannibalise and do not.
+That is the other half of making a portfolio a decision, and it is next.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

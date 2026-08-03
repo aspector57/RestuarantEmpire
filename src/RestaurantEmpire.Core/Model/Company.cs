@@ -65,9 +65,20 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public Economy Economy { get; }
 
+        private readonly List<Region> _regions = new List<Region>();
+
         public IReadOnlyList<Restaurant> Restaurants { get { return _restaurants; } }
 
         public Restaurant OpenRestaurant(string id, string name, LocationType locationType)
+        {
+            return OpenRestaurant(id, name, locationType, null);
+        }
+
+        /// <summary>
+        /// Opens a restaurant inside a <see cref="Region"/>, so it sources with its neighbours
+        /// rather than straight off the company default.
+        /// </summary>
+        public Restaurant OpenRestaurant(string id, string name, LocationType locationType, Region region)
         {
             foreach (var existing in _restaurants)
             {
@@ -75,11 +86,35 @@ namespace RestaurantEmpire.Core.Model
                     throw new InvalidOperationException("This company already has a restaurant with id '" + id + "'.");
             }
 
-            var restaurant = new Restaurant(id, name, locationType, this);
+            if (region != null && region.Company != this)
+                throw new InvalidOperationException("Region '" + region.Id + "' belongs to a different company.");
+
+            var restaurant = new Restaurant(id, name, locationType, this, region);
             _restaurants.Add(restaurant);
+            if (region != null) region.Add(restaurant);
 
             return restaurant;
         }
+
+        /// <summary>
+        /// A group of restaurants that buy together — the tier that makes sourcing at ten
+        /// sites a different decision from sourcing at one. See <see cref="Region"/>.
+        /// </summary>
+        public Region CreateRegion(string id, string name)
+        {
+            foreach (var existing in _regions)
+            {
+                if (existing.Id == id)
+                    throw new InvalidOperationException("This company already has a region with id '" + id + "'.");
+            }
+
+            var region = new Region(this, id, name);
+            _regions.Add(region);
+
+            return region;
+        }
+
+        public IReadOnlyList<Region> Regions { get { return _regions; } }
 
         public Restaurant GetRestaurant(string id)
         {

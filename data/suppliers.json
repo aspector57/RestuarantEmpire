@@ -89,6 +89,47 @@
         "vermouth": 24.0,
         "citrus": 4.8
       }
+    },
+    {
+      "id": "atlantic-national",
+      "name": "Atlantic National Foodservice",
+      "qualityTier": 2,
+      "daysInTransit": 3,
+      "minimumWeeklyVolume": 1000,
+      "_comment": [
+        "THE DECISION EXPANSION UNLOCKS, and the one that cannot exist at a single restaurant.",
+        "About 18% under Valley per unit and a grade below it, which on its own would just be",
+        "a cheaper option anyone would take. What makes it a trade is daysInTransit: bulk",
+        "ships through a depot, so a four-day fish lands with one day left while the store",
+        "cupboard is untouched. Measured over 180 days at four sites: a card built on things",
+        "that keep earns 256,562 against 238,930 local, and a card built on fish collapses.",
+        "",
+        "minimumWeeklyVolume was set to 3000 first and NOBODY could ever reach it -- six",
+        "restaurants shift about 1,600 a week. Measured rather than guessed: one site does",
+        "~250, so 1000 opens the account at four sites, which is the intended moment."
+      ],
+      "prices": {
+        "flour": 1.48,
+        "tomato": 2.46,
+        "mozzarella": 7.38,
+        "basil": 1.31,
+        "olive-oil": 9.02,
+        "arborio-rice": 3.69,
+        "parmesan": 14.76,
+        "truffle": 2.13,
+        "coffee-beans": 12.3,
+        "eggs": 2.95,
+        "butter": 6.56,
+        "sea-bass": 14.76,
+        "lemon": 1.97,
+        "house-red": 13.12,
+        "house-white": 12.3,
+        "fine-red": 34.44,
+        "draught-beer": 3.61,
+        "gin": 21.32,
+        "vermouth": 13.12,
+        "citrus": 2.79
+      }
     }
   ]
 }

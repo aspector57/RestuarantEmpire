@@ -13,7 +13,7 @@ namespace RestaurantEmpire.Core.Model
     /// </summary>
     public sealed class Restaurant
     {
-        internal Restaurant(string id, string name, LocationType locationType, Company company)
+        internal Restaurant(string id, string name, LocationType locationType, Company company, Region region = null)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Restaurant id is required.", nameof(id));
             if (company == null) throw new ArgumentNullException(nameof(company));
@@ -30,9 +30,17 @@ namespace RestaurantEmpire.Core.Model
             Payroll = new Payroll();
             Location = Neighborhood.SuburbanHighStreet();
             ServiceWindows = new List<ServiceWindow>(ServiceWindow.DefaultDay());
-            SupplierPolicy = new SupplierPolicy(company.Definitions, Name, company.SupplierPolicy);
+            // Company -> (Region) -> Restaurant. A site with no region inherits straight from
+            // the company, which is every restaurant until the group is big enough to have one.
+            Region = region;
+
+            SupplierPolicy = new SupplierPolicy(company.Definitions, Name,
+                region == null ? company.SupplierPolicy : region.SupplierPolicy);
             Pricing = new PricingPolicy(company.Definitions, Name, company.Pricing);
         }
+
+        /// <summary>Which group of restaurants this one buys with, or null if it buys alone.</summary>
+        public Region Region { get; }
 
         public string Id { get; }
         public string Name { get; }
@@ -358,7 +366,10 @@ namespace RestaurantEmpire.Core.Model
             Company.Economy.Record(tick, LedgerCategory.FoodCost, cost,
                 "Ingredients — " + ingredientId, Id);
 
-            Inventory.Receive(ingredientId, quantity);
+            // What arrives is as old as the journey made it. A local grower drops fresh; a
+            // national contract ships through a depot and a four-day fish lands with two days
+            // left. That single number is what stops bulk sourcing being a free discount.
+            Inventory.Receive(ingredientId, quantity, SupplierPolicy.DaysInTransitFor(ingredientId));
             return cost;
         }
 

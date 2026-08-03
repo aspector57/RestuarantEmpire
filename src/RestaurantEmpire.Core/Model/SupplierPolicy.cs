@@ -178,6 +178,17 @@ namespace RestaurantEmpire.Core.Model
             return ResolveSupplier(ingredientId).UnitPriceFor(ingredientId);
         }
 
+        /// <summary>
+        /// How much of this ingredient's life is already gone when it lands, from whoever is
+        /// currently assigned to supply it. Resolved live up the chain like everything else —
+        /// switch to a national contract and every delivery afterwards arrives older, with no
+        /// refresh step and nothing cached.
+        /// </summary>
+        public int DaysInTransitFor(string ingredientId)
+        {
+            return ResolveSupplier(ingredientId).DaysInTransit;
+        }
+
         /// <summary>Ingredients nothing in the chain has assigned — these block costing.</summary>
         public IEnumerable<string> UnassignedIngredientIds
         {

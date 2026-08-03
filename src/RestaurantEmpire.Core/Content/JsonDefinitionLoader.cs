@@ -116,7 +116,8 @@ namespace RestaurantEmpire.Core.Content
                     }
                 }
 
-                result.Add(new SupplierDefinition(dto.Id, dto.Name, dto.QualityTier, prices));
+                result.Add(new SupplierDefinition(dto.Id, dto.Name, dto.QualityTier, prices,
+                    dto.DaysInTransit, dto.MinimumWeeklyVolume));
             }
 
             return result;
@@ -272,6 +273,8 @@ namespace RestaurantEmpire.Core.Content
             public string Id { get; set; }
             public string Name { get; set; }
             public int QualityTier { get; set; }
+            public int DaysInTransit { get; set; }
+            public decimal MinimumWeeklyVolume { get; set; }
             public Dictionary<string, decimal> Prices { get; set; }
         }
 
