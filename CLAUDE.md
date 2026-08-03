@@ -2246,18 +2246,48 @@ game is one.** Swept alone, sourcing reads as a flat trap: budget wholesale beat
 $20,816 over 120 days and the verdict is "always buy the cheapest", in the system Architecture
 Rule 1 exists entirely to serve.
 
-Swept against price, over 240 days with a kitchen that can actually cook:
+**A FIRST VERSION OF THIS NOTE CLAIMED PREMIUM WINS ONCE YOU CHARGE FOR IT. THAT WAS WRONG,
+AND THE WAY IT WAS WRONG IS THE INSTRUCTIVE PART.** It compared every supplier AT 1.5x —
+premium's optimum, and well past budget's cliff — from a two-point sweep of 1.0x and 1.5x.
+Two points is evidence that 1.5 beat 1.0, which is not the same claim as an optimum. It is
+also exactly the error already recorded against `StrategyDiversity` one section up: *"hands
+every strategy a fixed price multiplier... compares concepts run at arbitrary settings rather
+than concepts run well."* **The written rule did not stop the same mistake being made again,
+so: when comparing concepts, sweep each one to ITS OWN optimum before reporting a winner.**
 
-| | Budget | Valley | **Premium** |
-|---|---:|---:|---:|
-| at 1.0x | **$151,125** | $142,041 | $96,966 |
-| at 1.5x | $53,801 | $96,613 | **$106,703** |
+Swept finely, 240 days, each supplier at its own best price:
 
-**Premium holds 94.1 covers a day at 1.5x where budget collapses to 67.3**, because a standing
-of 79 is what lets you charge for it. The arc is real and working. But it needs **two levers
-moved together and the game never says they are coupled** — a player who upgrades their
-supplier and leaves prices alone loses money and correctly concludes good ingredients are a
-scam. That is the top open finding, and the fix is advice rather than balance.
+| | small kitchen (capacity-bound) | big kitchen (demand-bound) |
+|---|---:|---:|
+| Budget | **$98,239** at 1.4x | $165,107 at 1.2x |
+| Valley | $92,297 at 1.4x | **$168,665** at 1.3x |
+| Premium | $77,247 at 1.5x | $151,583 at 1.3x |
+
+**Premium never wins, at any capacity, run properly.** Mid-tier edges budget once the kitchen
+is big enough to convert the extra footfall ($168,665 against $165,107), so a hint of the
+intended arc exists — but it does not reach the top tier. **Sourcing is a genuine trap, not a
+coupling problem**, and an Advisor change would have been solving a problem that is not there.
+
+Note also the optimum MOVES with capacity — 1.4x when capacity-bound, 1.2-1.3x when
+demand-bound — because covers lost to a price rise are free while you are turning people away
+and expensive once you are not. Nothing in the game says this.
+
+**And a separate defect the same sweep isolated: `suggestedPosition()` is far too timid.**
+It suggests 1.04x / 1.12x / 1.20x for budget / valley / premium where the measured optima are
+1.4x / 1.4x / 1.5x. The direction is right and the magnitude is not, and a player following it
+leaves a great deal on the table. **The cause is that it scores a lost cover as a real loss
+even when the kitchen was full and would have turned that guest away anyway** — it has no
+concept of the capacity ceiling, which is why its answer does not move between the two regimes
+above when the true answer does.
+
+**One attempt at this was made and REVERTED, and the failure is worth keeping.** Clamping
+served covers to `min(demand x conversion, ceiling)` is correct arithmetic and produced a
+suggestion of 1.54x for BUDGET — because once you are over the ceiling the score rises
+monotonically with price, so the model recommends pushing until you fall off the cliff. In a
+static snapshot that is right; over 240 days it is ruinous, because falling off costs the
+price-sensitive archetypes, the crowd composition and the reputation with them. **A capacity
+term is needed and it must not be a hard clamp.** Left measured and unfixed rather than
+shipped at a third attempt.
 
 Also found, and left as findings rather than acted on:
 
