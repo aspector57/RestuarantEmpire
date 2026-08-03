@@ -81,6 +81,47 @@ function portfolio(ids){
   return group;
 }
 
+/*
+ * THE ONE THAT MATTERED MOST, AND WAS NOT HERE.
+ *
+ * `openSite` used to hand back a bare shell — no stations, no seats, nobody on the payroll,
+ * an empty pantry. Aaron opened a City Center site for $12,000 and it served ZERO covers in
+ * sixty-five days while paying $7,800 a month in rent. Every check below passed the whole
+ * time, because they all fitted their sites out by hand and never used the button the player
+ * uses.
+ *
+ * A HARNESS THAT SETS UP ITS OWN FIXTURE IS NOT TESTING THE THING THE PLAYER TOUCHES. That is
+ * the same shape as the fixture bugs that produced a famine and a 669% food bill.
+ */
+function openSiteTheWayThePlayerDoes(){
+  G = newGame(siteBy("suburban-high-street"), 20240802);
+  fitOutOpening();
+  G.cash = 200000;                       // affordability is not what is being tested here
+
+  var opened = openSite(siteBy("city-center"));
+  if(!opened){ console.log("  FAIL  openSite refused with $200,000 in the bank"); return null; }
+
+  advance(30, false);
+  return opened;
+}
+
+console.log("A RESTAURANT OPENED THE WAY THE PLAYER OPENS ONE");
+var fresh = openSiteTheWayThePlayerDoes();
+if(fresh){
+  var covers = fresh.recent.reduce(function(a,x){ return a+x.covers; }, 0);
+  console.log("  stations " + Object.keys(fresh.stations).length +
+              ", seats " + fresh.seats +
+              ", cooks " + fresh.cooks.length +
+              ", servers " + fresh.servers.length +
+              ", covers in 30 days " + covers);
+
+  if(covers <= 0)
+    console.log("  FAIL  a restaurant opened through the UI served NOTHING — it is a rent bill, not a restaurant");
+  else
+    console.log("  ok    it trades from the day it opens");
+}
+console.log("");
+
 console.log("TWO RESTAURANTS IN THE BROWSER BUILD — " + DAYS + " days");
 console.log("");
 

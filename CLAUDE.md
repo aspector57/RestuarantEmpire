@@ -2638,6 +2638,28 @@ plainest form.
 starting choice. The browser build can run a portfolio; it cannot yet source for one or trade
 abroad.
 
+### A new restaurant was a rent bill, not a restaurant
+
+Aaron opened a City Center site for $12,000 and it served **zero covers in sixty-five days**
+while paying $7,800 a month, which is what took him to −$11,377. *"I couldn't get service to
+start at the new location, idk if I missed anything."* He missed nothing.
+
+`start()` fitted the first restaurant out — oven, garde-manger, twelve seats, a cook, a
+server, storage, stock. `openSite()` handed back a **bare shell**: `stations: {}`, `seats: 0`,
+nobody on the payroll, an empty pantry. It could never serve anybody. The Advisor even said
+*"nothing on the card suits dinner"*, which was true and useless — there was no kitchen to
+cook any of it.
+
+There is one `fitOutOpening()` now, used by both, and `canOpenSite` asks for key money plus
+what the fit-out actually costs rather than a made-up $4,000.
+
+**THE REASON THE HARNESS MISSED IT IS THE LESSON.** `probe-multisite.js` had five checks and
+all five passed while this was broken, because every one of them **built its sites by hand**
+and never touched `openSite` — the button the player actually presses. A harness that sets up
+its own fixture is not testing the thing the player touches, which is the same shape as the
+missing-fridge famine and the 669% food bill. It now opens one the way a player does and
+asserts it trades: 1,106 covers in thirty days, against zero.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

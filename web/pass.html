@@ -2359,7 +2359,9 @@ function advance(days, stopOnInterrupt){
  * a city pitch leaves far less to trade with than a suburban one.
  */
 function canOpenSite(site){
-  return G.cash >= site.key + 4000;   // key money, and enough left to fit out at all
+  // Key money AND the fit-out, because a restaurant you cannot trade from is not a
+  // restaurant. The old gate asked for a flat $4,000 on top and then handed over a shell.
+  return G.cash >= site.key + fitOutCost();
 }
 
 function openSite(site){
@@ -2371,7 +2373,11 @@ function openSite(site){
   G.sites.push(s);
   G.active = G.sites.length - 1;
 
-  didThat(`Opened a second restaurant on ${site.name} — $${site.key.toLocaleString()} in key money, ${money(G.cash)} left.`);
+  // FIT IT OUT, or you have bought a lease and nothing else.
+  fitOutOpening();
+
+  didThat(`Opened on ${site.name} — $${site.key.toLocaleString()} in key money and a starting ` +
+          `fit-out, twelve covers, ${money(G.cash)} left.`);
   return s;
 }
 
@@ -3483,20 +3489,47 @@ function buildSetup(){
   }
 }
 
+/*
+ * THE OPENING FIT-OUT — a kitchen, a room, one of each on the payroll, and food.
+ *
+ * SHARED BY EVERY RESTAURANT, and it did not used to be. `start` fitted the first one out and
+ * `openSite` handed you a bare shell: no stations, no seats, nobody on the payroll and an
+ * empty pantry. Aaron opened a City Center site for $12,000 and it served **zero covers in
+ * sixty-five days** while paying $7,800 a month in rent, which is what took him to -$11,377.
+ * The Advisor even said "nothing on the card suits dinner" — true, because there was no
+ * kitchen to cook any of it.
+ *
+ * A restaurant you cannot trade from is not a restaurant, it is a standing order to a
+ * landlord. Same lesson as everywhere else on this project: two places doing the same job
+ * from different code will eventually disagree, so there is one of them now.
+ */
+const FIT_OUT_KIT = ["oven-secondhand", "gm-basic", "cold-underbar", "dry-shelving"];
+const FIT_OUT_TABLES = 1400;
+
+function fitOutCost(){
+  let total = FIT_OUT_TABLES;
+  for(const id of FIT_OUT_KIT) total += EQUIPMENT.find(x=>x.id===id).cost;
+  return total;
+}
+
+function fitOutOpening(){
+  for(const id of FIT_OUT_KIT) buyEquipSilent(id);
+
+  G.seats = 12; G.seatSpend = 180; G.fittings.push({seats:12, comfort:0.55});
+  G.cooks.push(makeStaff("cook", 0.5));
+  G.servers.push(makeStaff("server", 0.5));
+  for(let i=0;i<5;i++) G.applicants.push(makeStaff(i%2===0 ? "cook" : "server"));
+
+  G.cash -= FIT_OUT_TABLES; G.ledger.capex += FIT_OUT_TABLES;
+
+  // And something to cook. An empty pantry is the same problem one layer down.
+  for(const id of menuIngredients()) orderStock(id, 30);
+}
+
 function start(site){
   const seed = (Date.now() ^ 0x9e3779b9) >>> 0;
   G = newGame(site, seed);
-  // a starting kitchen, deliberately minimal
-  buyEquipSilent("oven-secondhand");
-  buyEquipSilent("gm-basic");
-  G.seats = 12; G.seatSpend = 180; G.fittings.push({seats:12, comfort:0.55});
-  G.cooks.push(makeStaff("cook", 0.5)); G.servers.push(makeStaff("server", 0.5));
-  for(let i=0;i<5;i++) G.applicants.push(makeStaff(i%2===0 ? "cook" : "server"));
-  G.cash -= 1400; G.ledger.capex += 1400;
-  // The fit-out includes somewhere to put the food.
-  buyEquipSilent("cold-underbar");
-  buyEquipSilent("dry-shelving");
-  for(const id of menuIngredients()) orderStock(id, 30);
+  fitOutOpening();
   say("", `Opened on the ${site.name} with ${money(G.cash)} and twelve covers.`);
 
   $("#setup").hidden = true;
