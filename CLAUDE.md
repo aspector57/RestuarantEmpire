@@ -2016,6 +2016,64 @@ around and which nothing had ever pointed at:
 while every readout pointed at buying another cheap box. Offered as one action, since selling
 and re-buying is two moves the player would have to infer.
 
+### The rail is an audit log, and `tools/playthrough.js` replaces most of the playtesting
+
+> *"we should have literally everything in here, price changes, food added, etc, this way you
+> have a complete audit log."*
+> *"we need a way for you to see everything and how it impacts the gameplay so we can reduce
+> testing time."*
+
+**The rail recorded what the NIGHT did and never what the PLAYER did.** Price changes and menu
+edits went into `G.decisions` for the sales-trend attribution and surfaced nowhere the player
+reads — **a log of consequences without their causes cannot be audited.** Every decision now
+lands there too, the cap went 90 -> 400 entries, and four filters make it usable:
+*Everything / What I did / Trade lost / Money*.
+
+**`tools/playthrough.js` is the bigger one.** It plays a full 240-day run acting only on what
+the Advisor says, prints a transcript, and **asserts invariants every single day** — each one a
+bug that actually shipped this session:
+
+- the forecast and the Build tab must not disagree about what is binding
+- every button offered must be affordable AND fit on the floor
+- never recommend equipment while the brigade is what is short
+- never recommend seats the pass cannot feed
+- a share cannot exceed 1
+- a solvent trading restaurant must not be told it is dying
+
+**Six of the last eight defects were of exactly these shapes**, and none were simulation bugs.
+They are mechanically checkable, so a machine should find them rather than Aaron losing an
+evening. Current state: **no contradictions across 240 days.**
+
+**It immediately found something worse than the bugs it was built for.** The Advisor said
+*"nothing needs you"* for two hundred of those days while the restaurant sat on 12 seats, one
+cook and **14.6 walkouts a night**, standing sliding to 38. Every capacity rule was inside its
+threshold, so nobody spoke — **while a seventh of the guests were leaving without eating.**
+
+`walkouts` now fires on what is HAPPENING rather than on ratios: *"about 24 in every 100 who sit
+down are leaving before they eat."* **Thresholds describe the shape of a restaurant; walkouts
+describe what is going on inside it, and when they disagree, believe the walkouts.**
+
+It also had to carry the FIX, not just the diagnosis — the harness showed it firing for 220 days
+straight with no action attached, so an obedient player following it changed nothing.
+
+**Result, same seed, same opening, following the advice:**
+
+| 240 days | before | after |
+|---|---:|---:|
+| Cash | $46,841 | **$86,528** |
+| Covers/day | 48.6 | **76.9** |
+| Walkouts/day | 14.6 | **5.1** |
+| Standing | 38 | **56** |
+
+**Still open, and the harness names it:** the run says `[roomtight]` for 220 consecutive days
+and finishes on 12 seats with $86,528 in the bank. The advice is correct — the kitchen cannot
+feed more seats — but it never suggests growing BOTH together, so a rich restaurant stays tiny.
+**The Advisor can only ever recommend one lever, and some problems need two.**
+
+**Also fixed:** prime cost read **346% on day one**, because food is paid on delivery and the
+opening order lands against a single night's takings. True and meaningless. It shows `—` until a
+week of trading catches up, same as the runway alarm.
+
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
 ## Architecture Rules (violating these is a bug, not a style choice)

@@ -140,6 +140,7 @@ button{font:inherit; color:inherit; cursor:pointer}
 .trendnum.up{color:var(--good)}
 .trendnum.down{color:var(--bad)}
 .trendwhy{font-style:italic}
+.rail .you .t{color:var(--heat)}
 .repnote.falling{color:var(--bad)}
 
 .controls{display:grid; gap:7px}
@@ -1581,7 +1582,16 @@ function runDay(){
 
 function say(kind, text){
   G.log.unshift({ kind, text, day:G.day });
-  if(G.log.length > 90) G.log.pop();
+  if(G.log.length > 400) G.log.pop();   // a real audit log, not the last few nights
+}
+
+/* THE RAIL IS AN AUDIT LOG, so it has to contain what the PLAYER did and not only what the
+   night did. Aaron: *"we should have literally everything in here, price changes, food added,
+   etc, this way you have a complete audit log."* Right, and the gap was structural — decisions
+   were recorded into `G.decisions` for the sales-trend attribution and never surfaced anywhere
+   the player reads. A log of consequences without their causes cannot be audited. */
+function didThat(text){
+  say("you", text);
 }
 
 /* ---------- interrupts: named problem, named action, named price ---------- */
@@ -1605,6 +1615,24 @@ function say(kind, text){
       an oven two suggestions later. Sorted by urgency.
    3. IT IS ALLOWED TO SAY NOTHING. An advisor that always has an opinion stops being read.
    ========================================================================= */
+
+/* What to actually DO about a station that is short, shared so two pieces of advice about the
+   same bottleneck cannot recommend different things. */
+function cheapestFor(station){
+  const m = EQUIPMENT.filter(e => e.station === station).sort((a,b)=>a.cost-b.cost)[0];
+  return m && G.cash >= m.cost && freeArea() >= m.foot ? m : null;
+}
+function fitsNow(lim){
+  return lim && lim.kind === "station" && cheapestFor(lim.station) !== null;
+}
+function upgradeFor(station){
+  const owned = (G.stations[station] || [])[0];
+  if(!owned) return null;
+  const better = EQUIPMENT.filter(e => e.station === station &&
+                   e.speed > owned.speed && e.foot < owned.foot && G.cash >= e.cost)
+                 .sort((a,b)=>b.speed-a.speed)[0];
+  return better ? { from: owned, to: better, station } : null;
+}
 
 function advise(){
   const out = [];
@@ -1698,6 +1726,40 @@ function advise(){
         out.push({ rank:3, id:"roomtight", head:"The room is a little smaller than the kitchen — leave it that way for now.",
           body:`${Math.round(roomPerHour)} covers an hour of seating against ${Math.round(perHour)} of kitchen, so there is only about ${Math.round(headroom)} an hour spare.${turned} That sounds like a reason to buy tables and it is not: the smallest block adds about ${Math.round(blockAdds)} covers an hour, which would seat people the pass cannot feed. A guest turned away at the door costs you the sale; one who sits down and gives up costs you the plate, the food, the table they held and your name. **Lift the kitchen first, then the room.**` });
       }
+    }
+  }
+
+  // --- 3b. PEOPLE ARE LEAVING, whatever the ratios say. ---
+  //
+  // The autoplay harness found this: 240 days, the Advisor said "nothing needs you" for two
+  // hundred of them, and the restaurant finished on 12 seats, one cook, 14.6 walkouts a night
+  // and a standing that had FALLEN to 38. Every capacity rule was inside its threshold, so
+  // nobody spoke — while a seventh of the guests left without eating.
+  //
+  // Thresholds describe the shape of a restaurant. Walkouts describe what is happening in it.
+  // When those disagree, believe the walkouts: a cover paid for and lost is not a ratio.
+  if(G.recent.length >= 10){
+    const recent = G.recent.slice(-10);
+    const covers = recent.reduce((a,x)=>a+x.covers, 0);
+    const lost   = recent.reduce((a,x)=>a+x.walkouts, 0);
+    const share  = covers + lost > 0 ? lost / (covers + lost) : 0;
+
+    if(share > 0.12){
+      const brigade = lim && lim.kind === "brigade";
+      out.push({ rank:3, id:"walkouts",
+        head: `About ${Math.round(share*100)} in every 100 who sit down are leaving before they eat.`,
+        body: `${Math.round(lost/10)} a night, on average, over the last ten. They waited, gave up, and you had already cooked for them — that is the food, the table they held and a mark against your name, for nothing. ` +
+              (brigade
+                ? `The pass is short of hands rather than equipment: ${lim.cooks} cook${lim.cooks===1?"":"s"} moving about ${Math.round(lim.allows)} covers an hour.`
+                : `The ${STATION_NAMES[lim && lim.station] || "kitchen"} is what they are waiting on.`) +
+              ` Fewer seats would also fix it — a guest turned away at the door costs only the sale.`,
+        needsWage: brigade,
+        // NAMING THE PROBLEM WITHOUT THE FIX IS HALF AN ADVISOR. The harness caught this
+        // immediately: the advice fired every day for 220 days and offered nothing to do, so
+        // an obedient player following it changed nothing at all. Carry whatever the actual
+        // move is — the same one the kitchen advice would offer.
+        buy: (!brigade && fitsNow(lim)) ? cheapestFor(lim.station) : null,
+        upgrade: (!brigade && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
     }
   }
 
@@ -1876,7 +1938,7 @@ function sellEquip(e){
   const back = Math.round(e.cost * RESALE_RATE);
   G.cash += back;
   G.ledger.capex -= back;
-  say("money", `Sold a ${e.name} — $${back.toLocaleString()} back, ${e.foot} sq ft free. You paid $${e.cost.toLocaleString()}.`);
+  didThat(`Sold a ${e.name} — $${back.toLocaleString()} back of the $${e.cost.toLocaleString()} you paid, ${e.foot} sq ft freed.`);
 }
 
 /* Ten more covers. Shared, so the Advisor's button and the Build tab's cannot drift on price,
@@ -1887,14 +1949,14 @@ function buySeats(f){
   if(G.cash < cost || freeArea() < area) return;
   G.cash -= cost; G.ledger.capex += cost; G.seats += 10; G.seatSpend += area;
   G.fittings.push({ seats:10, comfort:f.comfort });
-  say("money", `Ten more covers — ${f.name.toLowerCase()}.`);
+  didThat(`Ten more seats — ${f.name.toLowerCase()}, $${(f.perSeat*10).toLocaleString()}. ${G.seats} seats now (about ${tablesFrom(G.seats)} tables).`);
 }
 
 function buyEquip(e){
   if(G.cash < e.cost || freeArea() < e.foot) return;
   G.cash -= e.cost; G.ledger.capex += e.cost;
   (G.stations[e.station] = G.stations[e.station]||[]).push({ id:e.id, speed:e.speed, foot:e.foot, capacity:e.capacity||0 });
-  say("money", `Bought a ${e.name} — $${e.cost.toLocaleString()}.`);
+  didThat(`Bought a ${e.name} for $${e.cost.toLocaleString()} — ${stationUnits(e.station)} on that station now, ${money(G.cash)} left.`);
 }
 
 /* ---------- advancing ---------- */
@@ -2077,10 +2139,17 @@ function render(){
   $("#cash").textContent = money(G.cash);
   $("#cash").className = "v " + (G.cash<0?"bad":G.cash<3000?"warn":"");
   $("#covers").textContent = G.today.covers;
+  // NOT WORTH QUOTING IN THE FIRST WEEK. Food is paid on DELIVERY, so the opening stock order
+  // lands entirely on day one against a single night's takings — Aaron's first screen read
+  // "Prime cost 346%", which is arithmetically true and completely meaningless. It settles as
+  // trading catches up (346% -> 93% -> 75% over a fortnight). Same shape as the day-one runway
+  // alarm: a ratio measured over too short a window is not a fact, it is an artefact.
   const rev = G.ledger.revenue;
-  const prime = rev>0 ? (G.ledger.food+G.ledger.labor)/rev : 0;
-  $("#prime").textContent = rev>0 ? Math.round(prime*100)+"%" : "—";
-  $("#prime").className = "v " + (prime===0?"":prime<0.55?"good":prime<0.65?"":prime<0.70?"warn":"bad");
+  const settled = G.day >= 7 && rev > 0;
+  const prime = settled ? (G.ledger.food+G.ledger.labor)/rev : 0;
+  $("#prime").textContent = settled ? Math.round(prime*100)+"%" : "—";
+  $("#prime").title = settled ? "" : "Food is paid for when it arrives, so the opening order distorts this until about a week of trading has caught up with it.";
+  $("#prime").className = "v " + (!settled?"":prime<0.55?"good":prime<0.65?"":prime<0.70?"warn":"bad");
 
   $("#standing").textContent = Math.round(G.rep.standing*100)+"/100";
   $("#repbar").style.width = (G.rep.standing*100)+"%";
@@ -2149,18 +2218,53 @@ function card(title, note){
   return c;
 }
 
+// Which slice of the log is showing. Kept outside the render so it survives a redraw.
+let RAIL_FILTER = "all";
+
 function panelService(){
-  const c = card("The rail", "Everything that happened, newest first. Walkouts and balks are the ones worth reading — they are trade you never got.");
+  const c = card("The rail",
+    "Every night, and every decision you made. Newest first. Walkouts and balks are trade you never got — and your own moves are marked, so you can see what you did just before the numbers turned.");
+
+  // FOUR HUNDRED ENTRIES IS ONLY AN AUDIT LOG IF YOU CAN FIND ANYTHING IN IT. "What did I
+  // change before this went wrong" is the question the log exists to answer, and it is
+  // unanswerable while your three price changes are buried under three hundred service lines.
+  const filters = document.createElement("div");
+  filters.className = "seg";
+  filters.style.marginBottom = "10px";
+  const views = [["all","Everything"],["you","What I did"],["bad","Trade lost"],["money","Money"]];
+  for(const [key, label] of views){
+    const b = document.createElement("button");
+    b.className = "btn" + (RAIL_FILTER === key ? " on" : "");
+    b.textContent = label;
+    b.onclick = ()=>{ RAIL_FILTER = key; render(); };
+    filters.appendChild(b);
+  }
+  c.appendChild(filters);
+
+  const shown = G.log.filter(e =>
+    RAIL_FILTER === "all" ? true :
+    RAIL_FILTER === "you" ? e.kind === "you" :
+    RAIL_FILTER === "bad" ? (e.kind === "bad" || e.kind === "warn") :
+    e.kind === "money" || e.kind === "you");
+
   const rail = document.createElement("div");
   rail.className = "rail";
-  if(!G.log.length) rail.innerHTML = `<div class="ticket"><time>—</time><span>Nothing yet. Advance a day.</span></div>`;
-  for(const e of G.log){
+  if(!shown.length)
+    rail.innerHTML = `<div class="ticket"><time>—</time><span>${G.log.length ? "Nothing under that heading yet." : "Nothing yet. Advance a day."}</span></div>`;
+
+  for(const e of shown){
     const t = document.createElement("div");
     t.className = "ticket " + e.kind;
     t.innerHTML = `<time>d${String(e.day).padStart(3,"0")}</time><span>${e.text}</span>`;
     rail.appendChild(t);
   }
   c.appendChild(rail);
+
+  const count = document.createElement("p");
+  count.className = "hint";
+  count.style.marginTop = "10px";
+  count.textContent = `${shown.length} of ${G.log.length} entries. The log keeps the last 400.`;
+  c.appendChild(count);
 }
 
 /* THE LICENCE HAS TO BE WHERE THE PLAYER IS LOOKING. Twice now Aaron could not find it —
@@ -2175,6 +2279,9 @@ function panelService(){
 function noteDecision(dishId, what){
   G.decisions.push({ day: G.day, dish: dishId, what });
   if(G.decisions.length > 200) G.decisions.shift();
+
+  const dish = RECIPES.filter(r => r.id === dishId)[0];
+  didThat(`${dish ? dish.name : dishId} — ${what}.`);
 }
 
 /* What happened to this dish lately, and what you did to it. */
@@ -2233,7 +2340,7 @@ function licenceCard(){
       G.cash -= LICENCE_FEE;
       G.ledger.capex += LICENCE_FEE;
       G.licence = true;
-      say("money", `Liquor licence granted — $${LICENCE_FEE.toLocaleString()} out. You can sell alcohol now.`);
+      didThat(`Liquor licence granted — $${LICENCE_FEE.toLocaleString()} out, $${LICENCE_RENEWAL} a month from here. You can sell alcohol now.`);
       render();
     };
     lrow.appendChild(buy);
@@ -2458,7 +2565,12 @@ function panelMenu(){
     const b = document.createElement("button");
     b.className = "btn" + (sup.id===G.supplier?" on":"");
     b.innerHTML = `${sup.name} · tier ${sup.tier}`;
-    b.onclick = ()=>{ G.supplier = sup.id; say("", `Sourcing switched to ${sup.name}.`); render(); };
+    b.onclick = ()=>{
+      const was = SUPPLIERS.filter(s=>s.id===G.supplier)[0];
+      G.supplier = sup.id;
+      didThat(`Sourcing switched from ${was ? was.name : "nobody"} to ${sup.name} (tier ${sup.tier}).`);
+      render();
+    };
     seg.appendChild(b);
   }
   s.appendChild(seg);
@@ -2594,7 +2706,11 @@ function panelPantry(){
   const standing = document.createElement("button");
   standing.className = "btn" + (G.standingOrder ? " on" : "");
   standing.textContent = G.standingOrder ? "Standing order: ON" : "Standing order: off";
-  standing.onclick = ()=>{ G.standingOrder = !G.standingOrder; render(); };
+  standing.onclick = ()=>{
+    G.standingOrder = !G.standingOrder;
+    didThat(G.standingOrder ? "Standing order switched on." : "Standing order switched off — ordering by hand now.");
+    render();
+  };
   acts.appendChild(standing);
 
   const need = ids.reduce((a,id)=>a + suggestedOrder(id)*unitPrice(id), 0);
@@ -2847,7 +2963,11 @@ function panelTeam(){
     const b = document.createElement("button");
     b.className = "btn" + (JSON.stringify(p.w)===JSON.stringify(G.windows)?" on":"");
     b.textContent = p.name;
-    b.onclick = ()=>{ G.windows = p.w; say("",`Hours changed to ${p.name.toLowerCase()}.`); render(); };
+    b.onclick = ()=>{
+      G.windows = p.w;
+      didThat(`Hours changed to ${p.name.toLowerCase()} — ${p.w.map(w=>`${w.name} ${w.from}:00-${w.to}:00`).join(", ")}.`);
+      render();
+    };
     seg2.appendChild(b);
   }
   w.appendChild(seg2);
