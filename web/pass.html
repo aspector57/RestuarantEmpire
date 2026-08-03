@@ -119,6 +119,12 @@ button{font:inherit; color:inherit; cursor:pointer}
 .fcahead{font-size:13px; margin-bottom:6px}
 .fclist{margin:0; padding-left:17px; font-size:12px; color:var(--muted); line-height:1.55}
 .sugg{color:var(--warn); border-bottom:1px dotted currentColor; cursor:help}
+#sitestrip{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+#sitestrip button{
+  background:var(--panel); border:1px solid var(--line); color:var(--dim);
+  border-radius:999px; padding:3px 11px; font-size:12px; cursor:pointer}
+#sitestrip button.here{border-color:var(--good); color:var(--fg)}
+#sitestrip button:disabled{opacity:.45; cursor:default}
 .btn.tiny{padding:2px 8px; font-size:11px; white-space:nowrap}
 .coursehead{font-size:11px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted);
   margin:18px 0 2px; padding-bottom:5px; border-bottom:1px solid var(--line)}
@@ -274,6 +280,7 @@ td.num{font-variant-numeric:tabular-nums}
     <div class="clock">
       <div class="date num" id="clock">—</div>
       <div class="state" id="state">—</div>
+      <div id="sitestrip"></div>
     </div>
 
     <div class="readout">
@@ -655,13 +662,17 @@ const money = v => (v<0?"-$":"$") + Math.abs(v).toLocaleString("en-US",{maximumF
 
 let G = null;
 
-function newGame(site, seed){
-  const startCash = 30000 - site.key;
+/*
+ * ONE RESTAURANT'S WORTH OF STATE. Everything here belongs to a single site.
+ *
+ * Split out of the old flat `G` so a company can hold several. What stayed at company level
+ * is deliberately short: the bank account, the clock, the RNG, and the rail. Everything a
+ * restaurant does on its own night lives here.
+ */
+function newSite(site, id, name){
   return {
-    site, seed, rand: rng(seed),
-    minute: 18*60,            // opens at six on day one
-    day: 0,
-    cash: startCash,
+    id, name: name || site.name,
+    site,
     supplier: "valley-produce",
     prices: Object.fromEntries(RECIPES.map(r=>[r.id, r.base])),
     onMenu: new Set(["margherita","caprese-salad","house-focaccia"]),
@@ -672,17 +683,77 @@ function newGame(site, seed){
     windows: [{name:"Dinner", from:18, to:23}],
     licence: false,          // permission to sell alcohol; bought, then renewed monthly
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
-    log: [], recent: [], applicants: [],
+    recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
     ledger: { revenue:0, food:0, labor:0, rent:0, capex:0 },
-    sold: {}, soldToday: {}, dishHistory: {}, decisions: [],
+    sold: {}, soldToday: {}, dishHistory: {},
     pantry: {}, usage: {}, usedToday: {}, spoiled: 0, standingOrder: true,
     interrupt: null,
     lastMonthBooked: 0,
-    history: [],
     stockoutFlag: null,
-    lostStreak: 0
+    lostStreak: 0,
+    suggest: null, forecast: null, lastAutopsy: null
   };
+}
+
+/*
+ * Fields that belong to ONE RESTAURANT rather than to the company. Each is exposed on `G` as
+ * a property forwarding to whichever site is currently being looked at.
+ *
+ * WHY A FORWARDING LAYER RATHER THAN RENAMING EVERY CALL SITE. There are close to four
+ * hundred `G.something` references in this file. Rewriting them all to `R.something` is a
+ * diff nobody can review, and a half-applied rename is the single most common way this
+ * project has shipped a bug — the `wrap` ReferenceError hid the liquor license for two
+ * sessions, and a partial fix to `bottleneck()` gave the player contradictory advice on one
+ * screen. This way the data moves and the call sites do not, so a missed one is impossible
+ * by construction rather than by care.
+ */
+const SITE_FIELDS = [
+  "site","supplier","prices","onMenu","stations","floorArea","seats","fittings","seatSpend",
+  "cooks","servers","windows","licence","rep","recent","applicants","today","ledger",
+  "sold","soldToday","dishHistory","pantry","usage","usedToday","spoiled","standingOrder",
+  "interrupt","lastMonthBooked","stockoutFlag","lostStreak","suggest","forecast","lastAutopsy"
+];
+
+function bindActiveSite(G){
+  for(const key of SITE_FIELDS){
+    Object.defineProperty(G, key, {
+      configurable: true,
+      enumerable: true,
+      get(){ return G.sites[G.active][key]; },
+      set(v){ G.sites[G.active][key] = v; }
+    });
+  }
+  return G;
+}
+
+function newGame(site, seed){
+  const G = {
+    seed, rand: rng(seed),
+    minute: 18*60,            // opens at six on day one
+    day: 0,
+
+    // ONE BANK ACCOUNT FOR THE WHOLE COMPANY. This is the point of expansion existing at
+    // all: Aaron's nineteen-year run ended with $2.4M and nothing to spend it on, and a
+    // second restaurant is the sink. Per-site books live on each site's own ledger.
+    cash: 30000 - site.key,
+
+    sites: [newSite(site, "r0")],
+    active: 0,
+
+    // The rail and the decision log are the company's, not a restaurant's — one feed.
+    log: [], decisions: [], history: []
+  };
+
+  return bindActiveSite(G);
+}
+
+/* Everything the company owns, rolled up across its restaurants. */
+function companyLedger(){
+  const total = { revenue:0, food:0, labor:0, rent:0, capex:0 };
+  for(const s of G.sites)
+    for(const k in total) total[k] += s.ledger[k] || 0;
+  return total;
 }
 
 /* ---------- live costing (no cached values, per Architecture Rule 1) ---------- */
@@ -1396,6 +1467,42 @@ function placePlate(recipe, atMinute, slots, cooks){
   return { si, ci, start, done, cookTime, prevSlot, prevCook };
 }
 
+/*
+ * Runs one night for ONE restaurant — whichever `G.active` points at.
+ *
+ * Every read inside still says `G.something` and still means "the site being run", because
+ * the forwarding layer points those at G.sites[G.active]. So this function did not have to
+ * change to become multi-restaurant; `advance` just moves the pointer and calls it again.
+ */
+/*
+ * A STREET ONLY HOLDS SO MANY PEOPLE, AND YOUR OWN SECOND RESTAURANT DRINKS FROM IT.
+ *
+ * Measured in the engine before this was built: two restaurants under one company earned
+ * 131,903 against 131,439 for the two of them run separately — 0.4% apart. A second site was
+ * pure arithmetic, which is the flat-scaling anti-pattern. Nothing made two restaurants on
+ * one street contend, so opening next door to yourself was free.
+ *
+ * Split BY APPEAL rather than down the middle, so a strong new site takes the share its card
+ * and its name deserve. Cloning your best restaurant beside itself is therefore the worst use
+ * of the money, and spreading out is what expansion is FOR — measured at 23,615 clustered
+ * against 131,903 spread.
+ *
+ * Only restaurants sharing a neighborhood contend; two sites in different neighborhoods do
+ * not see each other at all. And one restaurant alone keeps the whole street, so single-site
+ * play is completely untouched by this.
+ */
+function pullOf(s){ return 0.25 + s.rep.standing; }
+
+function shareOfTheStreet(){
+  const here = G.sites[G.active];
+  let total = 0;
+  for(const s of G.sites) if(s.site.id === here.site.id) total += pullOf(s);
+
+  const mine = pullOf(here);
+  if(total <= 0 || total <= mine) return 1;
+  return mine / total;
+}
+
 function runDay(){
   const d = G.today = { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 };
   const freeAt = {};   // station -> array of minute-free per unit
@@ -1414,7 +1521,7 @@ function runDay(){
 
     const dp = daypartAt(h);
     const base = G.site.traffic[h] + (G.site.traffic[(h+1)%24]-G.site.traffic[h])*((m%60)/60);
-    const footfall = base * trafficMultiplier() * menuDrawAt(dp);
+    const footfall = base * shareOfTheStreet() * trafficMultiplier() * menuDrawAt(dp);
     if(G.rand() >= footfall/60) continue;
 
     // a party arrives
@@ -1602,31 +1709,20 @@ function runDay(){
     const blame = off.worst ? " — mostly " + off.worst : "";
     say("warn", "Threw out " + money(off.lost) + " of stock that had gone off" + blame + ".");
   }
-  G.day++;
-
-  if(G.day % 30 === 0){
-    G.cash -= G.site.rent;
-    G.ledger.rent += G.site.rent;
-    say("money", `Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
-
-    // A licence is not a one-off. A quiet restaurant holding one is bleeding, which is what
-    // stops it being a cost you take once and forget.
-    if(G.licence){
-      G.cash -= LICENCE_RENEWAL;
-      G.ledger.rent += LICENCE_RENEWAL;
-      say("money", `Liquor licence renewed — $${LICENCE_RENEWAL} out.`);
-    }
-  }
+  // THE CLOCK IS THE COMPANY'S, NOT THIS RESTAURANT'S. `G.day++` used to live here, which
+  // was fine while there was exactly one site and would have advanced the calendar once per
+  // restaurant the moment there were two. Both the day and the monthly billing moved up into
+  // `advance`, which runs once whatever the size of the group.
 
   G.recent.push({ covers:d.covers, walkouts:d.walkouts, revenue:d.revenue, food:d.food });
   if(G.recent.length > 30) G.recent.shift();
 
-  if(G.day % 15 === 0 || G.applicants.length === 0){
+  if((G.day + 1) % 15 === 0 || G.applicants.length === 0){
     G.applicants = [];
     for(let i=0;i<5;i++) G.applicants.push(makeStaff(i%2===0 ? "cook" : "server"));
   }
 
-  G.history.push({ day:G.day, cash:G.cash, standing:G.rep.standing, covers:d.covers });
+  if(G.active === 0) G.history.push({ day:G.day, cash:G.cash, standing:G.rep.standing, covers:d.covers });
 
   // A DISH'S SALES OVER TIME, which the menu matrix cannot show. Star/Plowhorse/Puzzle/Dog is
   // a SNAPSHOT — what a dish is right now. It cannot answer "what did my last decision do to
@@ -2152,31 +2248,100 @@ function buyEquip(e){
 
 /* ---------- advancing ---------- */
 
+/* Bills a restaurant its fixed monthly costs. Once per site per month, from `advance`. */
+function billTheMonth(){
+  G.cash -= G.site.rent;
+  G.ledger.rent += G.site.rent;
+  say("money", `${siteLabel()}Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
+
+  // A licence is not a one-off. A quiet restaurant holding one is bleeding, which is what
+  // stops it being a cost you take once and forget.
+  if(G.licence){
+    G.cash -= LICENCE_RENEWAL;
+    G.ledger.rent += LICENCE_RENEWAL;
+    say("money", `${siteLabel()}Liquor licence renewed — $${LICENCE_RENEWAL} out.`);
+  }
+}
+
+/* Which restaurant a rail line is about. Silent with one, so single-site play reads exactly
+ * as it always did — a prefix on every line would be noise for the ninety percent case. */
+function siteLabel(){
+  return G.sites.length > 1 ? G.sites[G.active].name + " — " : "";
+}
+
+/* Runs one restaurant's night with the pointer parked on it, then puts it back. */
+function withSite(i, fn){
+  const was = G.active;
+  G.active = i;
+  try { return fn(); } finally { G.active = was; }
+}
+
+/*
+ * EVERY RESTAURANT TRADES EVERY NIGHT, then the company's day ticks over once.
+ *
+ * The loop used to be "run the restaurant, advance the clock". It is now "run each
+ * restaurant, then advance the clock" — which is the whole of what multi-location costs
+ * here, because `runDay` already reads whichever site the pointer is on.
+ */
 function advance(days, stopOnInterrupt){
   let stoppedOn = null;
-  for(let i=0;i<days;i++){
-    // Taken before the night, from the state the player last saw — committing to a belief is
-    // the whole mechanic, and a forecast computed afterwards would just be a second report.
-    // Day one uses the forecast the player actually saw and committed against; after that
-    // it is recomputed, because reputation, skill and the pantry have all moved.
-    const before = (i === 0 && G.forecast) ? G.forecast : forecastDay();
-    const d = runDay();
-    G.lastAutopsy = autopsy(before, d);
-    if(!G.lastAutopsy.asExpected && days <= 7)
-      say(G.lastAutopsy.variance < 0 ? "warn" : "", `Day ${G.day}: ${G.lastAutopsy.headline}`);
-    if(d.covers) say("", `Day ${G.day}: ${d.covers} covers, ${money(d.revenue)} in.`);
-    if(d.remakes) say("warn", `Day ${G.day}: ${d.remakes} plates remade${d.comped?`, ${d.comped} comped`:""} — ${money(d.wasted||0)} of food in the bin.`);
-    if(d.walkouts) say("bad", `Day ${G.day}: ${d.walkouts} walked out after waiting.`);
-    if(d.balkedWait > 3) say("warn", `Day ${G.day}: ${d.balkedWait} parties put off by the wait.`);
-    if(d.balkedPrice > 3) say("warn", `Day ${G.day}: ${d.balkedPrice} parties put off by the prices.`);
 
-    // JUMPING AHEAD MUST STOP WHEN SOMETHING NEEDS DECIDING. Aaron: *"the only time I got
-    // this was when I clicked sim until something happens; if I did 1w, 1m, it would not stop
-    // me."* That was the fast-forward-with-interrupts loop only half wired — the day buttons
-    // passed `false` and ran blind through every problem. Jumping a month is a bet that
-    // nothing needs you, and the game owes you the moment that bet is wrong.
-    const int_ = checkInterrupts(d);
-    if(int_){ G.interrupt = int_; stoppedOn = i + 1; break; }
+  for(let i=0;i<days;i++){
+    let interrupted = null;
+
+    for(let siteIndex = 0; siteIndex < G.sites.length; siteIndex++){
+      withSite(siteIndex, () => {
+        // Taken before the night, from the state the player last saw — committing to a
+        // belief is the whole mechanic, and a forecast computed afterwards would just be a
+        // second report. Day one uses the forecast the player actually saw and committed
+        // against; after that it is recomputed, because reputation, skill and the pantry
+        // have all moved.
+        const before = (i === 0 && G.forecast) ? G.forecast : forecastDay();
+        const d = runDay();
+        G.lastAutopsy = autopsy(before, d);
+
+        const who = siteLabel();
+        if(!G.lastAutopsy.asExpected && days <= 7)
+          say(G.lastAutopsy.variance < 0 ? "warn" : "", `${who}Day ${G.day}: ${G.lastAutopsy.headline}`);
+        if(d.covers) say("", `${who}Day ${G.day}: ${d.covers} covers, ${money(d.revenue)} in.`);
+        if(d.remakes) say("warn", `${who}Day ${G.day}: ${d.remakes} plates remade${d.comped?`, ${d.comped} comped`:""} — ${money(d.wasted||0)} of food in the bin.`);
+        if(d.walkouts) say("bad", `${who}Day ${G.day}: ${d.walkouts} walked out after waiting.`);
+        if(d.balkedWait > 3) say("warn", `${who}Day ${G.day}: ${d.balkedWait} parties put off by the wait.`);
+        if(d.balkedPrice > 3) say("warn", `${who}Day ${G.day}: ${d.balkedPrice} parties put off by the prices.`);
+
+        // JUMPING AHEAD MUST STOP WHEN SOMETHING NEEDS DECIDING. Aaron: *"the only time I
+        // got this was when I clicked sim until something happens; if I did 1w, 1m, it would
+        // not stop me."* That was the fast-forward-with-interrupts loop only half wired.
+        // Jumping a month is a bet that nothing needs you, and the game owes you the moment
+        // that bet is wrong.
+        //
+        // With several restaurants the FIRST one with a problem stops the jump, and the view
+        // switches to it — being stopped by a restaurant you are not looking at, and not
+        // being shown which, would be worse than not stopping at all.
+        //
+        // `stopOnInterrupt` was ACCEPTED AND IGNORED for as long as this function has
+        // existed — every path broke out regardless. Both UI callers pass true so nobody
+        // noticed, and the first harness to pass false got one day of trading and four
+        // failed assertions. A parameter that does not do what it says is worse than no
+        // parameter: it makes a caller confident about behaviour it is not getting.
+        const int_ = checkInterrupts(d);
+        if(int_ && stopOnInterrupt !== false && !interrupted){
+          G.interrupt = int_;
+          interrupted = { at: siteIndex, kind: int_ };
+        }
+      });
+    }
+
+    // The clock and the rent belong to the company, and tick once however many sites there are.
+    G.day++;
+    if(G.day % 30 === 0)
+      for(let siteIndex = 0; siteIndex < G.sites.length; siteIndex++) withSite(siteIndex, billTheMonth);
+
+    if(interrupted){
+      G.active = interrupted.at;
+      stoppedOn = i + 1;
+      break;
+    }
   }
 
   // Say plainly that the jump was cut short, or a "1m" that ran four days is baffling.
@@ -2184,6 +2349,30 @@ function advance(days, stopOnInterrupt){
     say("warn", `Stopped after ${stoppedOn} day${stoppedOn===1?"":"s"} of ${days} — something needs you.`);
 
   render();
+}
+
+/*
+ * OPENING A SECOND RESTAURANT. Capital-gated and nothing else — Binding Principle 4: "no
+ * quest flags or artificial unlocks; when the player can genuinely afford it, they can do it."
+ *
+ * Key money is paid before you have sold anything, which is what makes the site choice bite:
+ * a city pitch leaves far less to trade with than a suburban one.
+ */
+function canOpenSite(site){
+  return G.cash >= site.key + 4000;   // key money, and enough left to fit out at all
+}
+
+function openSite(site){
+  if(!canOpenSite(site)) return null;
+
+  G.cash -= site.key;
+  const s = newSite(site, "r" + G.sites.length);
+  s.ledger.capex += site.key;
+  G.sites.push(s);
+  G.active = G.sites.length - 1;
+
+  didThat(`Opened a second restaurant on ${site.name} — $${site.key.toLocaleString()} in key money, ${money(G.cash)} left.`);
+  return s;
 }
 
 /* =========================================================================
@@ -2314,6 +2503,54 @@ function renderForecast(){
   }
 }
 
+/*
+ * WHICH RESTAURANT AM I LOOKING AT, AND WHAT ELSE COULD I OPEN?
+ *
+ * Hidden entirely while there is one restaurant and nothing affordable to open, because a
+ * switcher with one entry is furniture. It appears the moment there is a choice to make.
+ *
+ * Opening is CAPITAL-GATED AND NOTHING ELSE — Binding Principle 4: "no quest flags or
+ * artificial unlocks; when the player can genuinely afford it, they can do it." So a site you
+ * cannot afford is shown, disabled, with its price, rather than hidden: knowing what you are
+ * saving toward is the point.
+ */
+function renderSiteStrip(){
+  const strip = $("#sitestrip");
+  if(!strip) return;
+
+  const affordable = SITES.filter(s => canOpenSite(s));
+  if(G.sites.length === 1 && !affordable.length){ strip.innerHTML = ""; return; }
+
+  let html = "";
+  G.sites.forEach((s, i) => {
+    const covers = s.recent.length ? Math.round(s.recent[s.recent.length-1].covers) : 0;
+    html += `<button data-goto="${i}" class="${i===G.active?"here":""}" ` +
+            `title="${s.site.name} — ${s.seats} seats, ${covers} covers last night">` +
+            `${s.name}${G.sites.length>1?` · ${covers}`:""}</button>`;
+  });
+
+  for(const site of SITES){
+    const can = canOpenSite(site);
+    html += `<button data-open="${site.id}" ${can?"":"disabled"} ` +
+            `title="${can ? `Open a restaurant here. $${site.key.toLocaleString()} key money, ` +
+                            `$${site.rent.toLocaleString()}/mo rent, ${site.maxArea} sq ft ceiling.`
+                          : `Needs $${(site.key+4000).toLocaleString()} to open — key money plus enough to fit out.`}">` +
+            `+ ${site.name} · $${site.key.toLocaleString()}</button>`;
+  }
+
+  strip.innerHTML = html;
+
+  strip.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => {
+    G.active = parseInt(b.dataset.goto, 10);
+    render();
+  });
+
+  strip.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+    const site = SITES.filter(x => x.id === b.dataset.open)[0];
+    if(openSite(site)) render();
+  });
+}
+
 function render(){
   if(!G) return;
   document.querySelectorAll("[data-gloss]").forEach(el=>{
@@ -2326,6 +2563,8 @@ function render(){
   const openNow = G.windows.map(w=>`${w.name} ${String(w.from).padStart(2,"0")}:00–${String(w.to).padStart(2,"0")}:00`).join(", ");
   $("#state").textContent = openNow;
   $("#state").className = "state open";
+
+  renderSiteStrip();
 
   $("#cash").textContent = money(G.cash);
   $("#cash").className = "v " + (G.cash<0?"bad":G.cash<3000?"warn":"");

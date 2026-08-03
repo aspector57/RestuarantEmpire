@@ -2591,6 +2591,53 @@ tell was the score moving at all.
 | Fine dining | **39,641** | −11,401 | 30,648 | 5,094 |
 | Broad menu | 31,480 | 11,648 | 37,254 | **16,241** |
 
+### The multi-restaurant port, and the trick that made it reviewable
+
+The browser build had a single-restaurant assumption threaded through 3,000 lines — close to
+**four hundred `G.something` references**, all meaning "the restaurant". Rewriting them to
+`R.something` is a diff nobody can review, and **a half-applied rename is the single most
+common way this project has shipped a bug**: the `wrap` ReferenceError hid the liquor license
+for two sessions, and a partial fix to `bottleneck()` put contradictory advice on one screen.
+
+**So the data moved and the call sites did not.** `G` now holds the company — cash, the clock,
+the RNG, the rail — plus `G.sites[]` and `G.active`. Every per-restaurant field is a
+**property on `G` forwarding to the active site**, so `G.seats` still reads and writes, and it
+is now impossible to miss one by construction rather than by care. `runDay` did not change at
+all to become multi-restaurant; `advance` moves the pointer and calls it again.
+
+**What genuinely had to move is the DAY.** `G.day++` and the monthly rent lived inside
+`runDay`, which would have advanced the calendar once per restaurant and billed rent N times
+over. Both went up into `advance`, which ticks once whatever the size of the group. There is a
+check for exactly this in `probe-multisite.js`, because it is the kind of thing that looks
+fine and silently triples your rent.
+
+**A latent bug the port surfaced: `stopOnInterrupt` had been ACCEPTED AND IGNORED** for as
+long as `advance` existed — every path broke out regardless. Both UI callers pass `true`, so
+nobody noticed until the first harness passed `false` and got one day of trading and four
+failed assertions. **A parameter that does not do what it says is worse than no parameter**,
+because a caller is confident about behavior it is not getting.
+
+Cannibalization came across with it, and the browser numbers mirror the engine's shape:
+
+| 120 days | net |
+|---|---:|
+| one suburban | $33,104 |
+| *twice that, on paper* | *$66,208* |
+| two, both suburban | $40,175 |
+| two, suburban + city | **$72,867** |
+
+**Single-site play is untouched** — one restaurant keeps the whole street, and `playthrough.js`
+still finishes with no contradictions across 240 days.
+
+**The site strip** appears only when there is a choice to make, and shows sites you cannot
+afford **disabled with their price** rather than hidden — knowing what you are saving toward
+is the point, and it is Binding Principle 4's "capital-gated, not milestone-gated" in its
+plainest form.
+
+**Not ported yet:** the Region tier and national sourcing, countries, and concepts as a
+starting choice. The browser build can run a portfolio; it cannot yet source for one or trade
+abroad.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
