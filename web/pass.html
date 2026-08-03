@@ -119,6 +119,7 @@ button{font:inherit; color:inherit; cursor:pointer}
 .fcahead{font-size:13px; margin-bottom:6px}
 .fclist{margin:0; padding-left:17px; font-size:12px; color:var(--muted); line-height:1.55}
 .sugg{color:var(--warn); border-bottom:1px dotted currentColor; cursor:help}
+#company{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:2px}
 #sitestrip{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
 #sitestrip button{
   background:var(--panel); border:1px solid var(--line); color:var(--dim);
@@ -278,6 +279,7 @@ td.num{font-variant-numeric:tabular-nums}
 <div id="game" class="console" hidden>
   <aside class="pass">
     <div class="clock">
+      <div id="company"></div>
       <div class="date num" id="clock">—</div>
       <div class="state" id="state">—</div>
       <div id="sitestrip"></div>
@@ -740,6 +742,11 @@ function newGame(site, seed){
 
     sites: [newSite(site, "r0")],
     active: 0,
+
+    // A GROUP HAS A NAME OF ITS OWN. Not a restaurant field — you can sell every site you
+    // started with and the company is still the company, which is the whole difference
+    // between an empire game and a restaurant game.
+    name: "",
 
     // The rail and the decision log are the company's, not a restaurant's — one feed.
     log: [], decisions: [], history: []
@@ -2422,6 +2429,13 @@ function sellSite(i){
 }
 
 /* A restaurant is a thing you name. Yours, and the company's. */
+function renameCompany(name){
+  name = (name || "").trim().slice(0, 40);
+  G.name = name;
+  didThat(name ? `The group is now ${name}.` : `Dropped the group name.`);
+  return true;
+}
+
 function renameSite(i, name){
   name = (name || "").trim().slice(0, 40);
   if(!name) return false;
@@ -2648,6 +2662,9 @@ function render(){
   const openNow = G.windows.map(w=>`${w.name} ${String(w.from).padStart(2,"0")}:00–${String(w.to).padStart(2,"0")}:00`).join(", ");
   $("#state").textContent = openNow;
   $("#state").className = "state open";
+
+  const co = $("#company");
+  if(co) co.textContent = (G.sites.length > 1 && G.name) ? G.name : "";
 
   renderSiteStrip();
 
@@ -3286,6 +3303,13 @@ function panelIdentity(){
               : "losing " + money(Math.round(-v.earns)) + " a month";
 
   wrap.innerHTML = `
+    <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+      <input id="coName" value="${(G.name||"").replace(/"/g,"&quot;")}" maxlength="40"
+             placeholder="Name the group — shown once you have more than one"
+             style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--dim);
+                    border-radius:6px;padding:6px 9px;font:inherit">
+      <button class="btn" id="coRenameBtn">Rename group</button>
+    </div>
     <div class="row" style="gap:8px;align-items:center;margin-bottom:10px">
       <input id="siteName" value="${G.sites[here].name.replace(/"/g,"&quot;")}" maxlength="40"
              style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--fg);
@@ -3304,6 +3328,9 @@ function panelIdentity(){
 
   wrap.querySelector("#renameBtn").onclick = () => {
     if(renameSite(here, wrap.querySelector("#siteName").value)) render();
+  };
+  wrap.querySelector("#coRenameBtn").onclick = () => {
+    if(renameCompany(wrap.querySelector("#coName").value)) render();
   };
 
   // Selling the last restaurant is not a business decision, it is quitting.
