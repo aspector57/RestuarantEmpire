@@ -99,7 +99,22 @@ namespace RestaurantEmpire.Core.Model
         /// <summary>
         /// The share of a kitchen's theoretical throughput a real service gets. Guests arrive
         /// in clumps, so waits build long before utilisation reaches 100%.
+        ///
+        /// WAS 0.75, AND THAT NUMBER WAS BUNDLING TWO THINGS. Clumping is one; the other was
+        /// the pass cooking plates for tables that had already walked out, which burned the
+        /// constraint and never reached anybody. Once abandoned plates come back off the
+        /// board (KitchenPass.Abandon), that second loss is gone, and charging for it twice
+        /// made the forecast under-predict every kitchen-bound night by 17-30%.
+        ///
+        /// Measured rather than picked: the pass now converts about 94% of its theoretical
+        /// station ceiling. This is deliberately set BELOW that. Sweeping the constant, error
+        /// keeps falling to about 0.95 and then goes flat — flat because past that the
+        /// kitchen stops being the binding ceiling at all, so a value in there would be
+        /// fitted to the test rather than to the model. 0.90 keeps a real clumping haircut,
+        /// lands median forecast error at 11% (it was 12% before any of this work), and
+        /// leaves the projection slightly conservative, which is the right direction to be
+        /// wrong in for a number the player plans against.
         /// </summary>
-        public const decimal PracticalCapacity = 0.75m;
+        public const decimal PracticalCapacity = 0.90m;
     }
 }

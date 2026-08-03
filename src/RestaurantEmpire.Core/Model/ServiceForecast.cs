@@ -174,8 +174,16 @@ namespace RestaurantEmpire.Core.Model
                 demandCovers += wanted;
 
                 // A table is held for the whole sitting, so the room turns a finite number
-                // of times an hour.
-                var seatsThisHour = restaurant.SeatingCapacity * ((decimal)minutesThisHour / SimulationRunner.DwellMinutes);
+                // of times an hour — and the sitting starts when they sit down, NOT when
+                // the food lands. A guest waiting twenty minutes for a pizza is holding the
+                // table for those twenty minutes just as surely as while they eat it.
+                //
+                // Counting the dwell alone was over-predicting a small room by a third: a
+                // twelve-seat dinner was forecast at 88 covers against 62 served. The room
+                // does not turn every DwellMinutes, it turns every dwell PLUS whatever the
+                // kitchen took, which is why a slow pass shows up as a seat shortage.
+                var turnMinutes = SimulationRunner.DwellMinutes + prepMinutes;
+                var seatsThisHour = restaurant.SeatingCapacity * ((decimal)minutesThisHour / turnMinutes);
 
                 // And the pass can only send so many plates in that time.
                 var kitchenThisHour = KitchenThroughput(restaurant, minutesThisHour, plates, prepMinutes);

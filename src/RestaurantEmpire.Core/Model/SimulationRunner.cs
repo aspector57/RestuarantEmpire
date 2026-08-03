@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using RestaurantEmpire.Core.Definitions;
 
 namespace RestaurantEmpire.Core.Model
@@ -244,14 +245,24 @@ namespace RestaurantEmpire.Core.Model
                 _recentWalkoutStations.Clear();
             }
 
-            // 1. Guests who have run out of patience give up and leave. Their food is
-            //    already in the oven and will still be cooked, and still be binned.
+            // 1. Guests who have run out of patience give up and leave. Whatever is already
+            //    in the pan will still be cooked and still be binned — but the plates that
+            //    had not gone on yet come straight back off the board, and the tables
+            //    queued behind them move up.
+            //
+            //    That second half is not a nicety. Cooking for people who have left burns
+            //    the scarcest thing in the building at exactly the moment it is scarcest,
+            //    which is a loop that feeds itself: the busier the pass, the more plates it
+            //    wastes, so the busier it gets. It is why hiring a cook used to make a
+            //    restaurant WORSE.
             foreach (var table in _tables)
             {
                 if (table.WalkedOut || table.Settled) continue;
                 if (tick - table.Party.ArrivalTick <= table.Party.PatienceMinutes) continue;
 
                 table.WalkedOut = true;
+
+                _pass.Abandon(table.Orders.Where(x => !x.Resolved).Select(x => x.Ticket), tick);
 
                 foreach (var order in table.Orders)
                 {
@@ -518,26 +529,56 @@ namespace RestaurantEmpire.Core.Model
 
             // Two things a guest can judge from the doorway, before committing to anything.
             var costing = _restaurant.Costing;
-            var totalWait = 0L;
             var totalValue = 0m;
 
-            foreach (var recipeId in wanted)
+            // THE WAIT IS WEIGHTED BY WHAT THEY WILL ACTUALLY ORDER.
+            //
+            // A flat average across the card was hiding a buried station behind a free one.
+            // On a menu of two oven dishes and one salad, a jammed oven and an idle
+            // garde-manger averaged out to a comfortable quote — so the party sat down,
+            // ordered the pizza they came for, and walked out. The wider the gap between
+            // the busiest station and the quietest, the bigger the lie, and that gap opens
+            // up precisely when the brigade is large enough to stop being the common
+            // constraint. Measured: it was most of why hiring made the restaurant worse.
+            //
+            // `appetites` already says how likely each dish is. It decided which dish they
+            // ordered and was not consulted about the wait for it — the same half-wired
+            // shape as PriceSensitivity, IngredientQuality, PartiesTurnedAway,
+            // Employee.Skill and PartiesLostToMenu before it.
+            var weightedWait = 0m;
+            var totalAppetite = 0m;
+
+            for (var i = 0; i < wanted.Count; i++)
             {
-                totalWait += _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick, party.Size);
-                totalValue += SatisfactionModel.ScoreValue(costing.Markup(recipeId),
-                    party.PriceSensitivity, costing.IngredientQuality(recipeId),
+                var appetite = appetites[i] < 0m ? 0m : appetites[i];
+
+                weightedWait += appetite *
+                    _pass.EstimatedWaitMinutes(_definitions.GetRecipe(wanted[i]), tick, party.Size);
+                totalAppetite += appetite;
+
+                totalValue += SatisfactionModel.ScoreValue(costing.Markup(wanted[i]),
+                    party.PriceSensitivity, costing.IngredientQuality(wanted[i]),
                     _restaurant.Reputation.Standing);
             }
 
-            // The typical wait for whatever they end up ordering, not the luckiest case —
-            // they pick at random, so an optimistic estimate just seats people who will walk.
-            //
+            // A card nobody has any appetite for at all falls back to the flat average
+            // rather than dividing by zero.
+            if (totalAppetite <= 0m)
+            {
+                foreach (var recipeId in wanted)
+                {
+                    weightedWait += _pass.EstimatedWaitMinutes(_definitions.GetRecipe(recipeId), tick, party.Size);
+                }
+
+                totalAppetite = wanted.Count;
+            }
+
             // Then it is quoted OPTIMISTICALLY, because that is what actually happens: the
             // host says twenty minutes and means it, and the kitchen disagrees. Without this
             // nobody ever walks out at all — with a perfect quote a guest either waits
             // happily or never sits down, and "the kitchen is losing the room" becomes
             // impossible. Over-promising is the mechanism that makes walkouts real.
-            var expectedWait = (totalWait / wanted.Count) * QuotedWaitOptimism / 100;
+            var expectedWait = (long)(weightedWait / totalAppetite) * QuotedWaitOptimism / 100;
 
             if (expectedWait > party.PatienceMinutes)
             {

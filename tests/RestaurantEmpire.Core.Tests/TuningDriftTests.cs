@@ -96,6 +96,63 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         /// <summary>
+        /// THE SITES MUST BE THE SAME SITES IN BOTH BUILDS.
+        ///
+        /// Found by a sweep, not by reading: City Center's floor cap was 1,400 sq ft in the
+        /// engine and 15,500 in the browser build. An eleven-fold typo, and it inverted the
+        /// design's central tension — "the best traffic comes with the least room to grow"
+        /// — so in the build a human actually plays, the city had by far the MOST room. A
+        /// sweep looking for degenerate strategies read "more ovens is always better" partly
+        /// off the back of it.
+        ///
+        /// Rent and key money are here for the same reason: they decide how much capital
+        /// survives opening day, which is a quarter of the location decision.
+        /// </summary>
+        [Fact]
+        public void TheBrowserBuildHasTheSameSitesAsTheEngine()
+        {
+            var path = BrowserBuildPath();
+            Assert.True(path != null, "web/pass.html not found");
+
+            var source = File.ReadAllText(path);
+            var wrong = new List<string>();
+
+            var sites = new[]
+            {
+                Neighborhood.CityCenter(), Neighborhood.BusinessDistrict(),
+                Neighborhood.SuburbanHighStreet(), Neighborhood.NightlifeQuarter()
+            };
+
+            foreach (var site in sites)
+            {
+                var match = Regex.Match(source,
+                    @"id:""" + Regex.Escape(site.Id) + @""".*?key:\s*(-?[0-9.]+).*?rent:\s*(-?[0-9.]+).*?maxArea:\s*(-?[0-9.]+)");
+
+                if (!match.Success)
+                {
+                    wrong.Add(site.Id + " — not found in the browser build");
+                    continue;
+                }
+
+                Check(wrong, site.Id, "key money", match.Groups[1].Value, site.LeasePremium);
+                Check(wrong, site.Id, "monthly rent", match.Groups[2].Value, site.MonthlyRent);
+                Check(wrong, site.Id, "floor cap", match.Groups[3].Value, site.MaxFloorArea);
+
+                _out.WriteLine($"  {site.Id,-20} key {site.LeasePremium,-8} rent {site.MonthlyRent,-8} cap {site.MaxFloorArea}");
+            }
+
+            Assert.True(wrong.Count == 0,
+                "The browser build's sites have drifted from the engine's:\n  " + string.Join("\n  ", wrong));
+        }
+
+        private static void Check(List<string> wrong, string site, string field, string text, decimal expected)
+        {
+            var actual = decimal.Parse(text, CultureInfo.InvariantCulture);
+            if (actual != expected)
+                wrong.Add($"{site} {field} — browser says {actual}, engine says {expected}");
+        }
+
+        /// <summary>
         /// The satisfaction weights must sum to exactly one, in both builds. They are shares of
         /// a single judgement, and a set that sums to 0.98 silently makes every meal worse.
         /// </summary>

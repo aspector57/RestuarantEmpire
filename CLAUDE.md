@@ -2122,6 +2122,169 @@ and the fortnight is the one that lies.**
 
 **Still open:** cuisine (the other half of the structure), and the bulk content itself.
 
+### FIXED: hiring a cook made the restaurant worse — and it was two bugs, in both builds
+
+The largest open model defect, and it broke Binding Principle 2 outright: the player took an
+action, output fell, and nothing named a cause. Measured on the browser build at 24 seats and
+two second-hand ovens, only the brigade moving:
+
+| cooks | covers/day | walkouts/day | balked at door |
+|---:|---:|---:|---:|
+| 1 | 43.1 | 28.0 | 41.6 |
+| **2** | **51.6** | 34.0 | 35.1 |
+| 6 | 39.6 | **54.9** | **26.9** |
+
+**The middle columns were the diagnosis and they were not in the original finding.** Door-balks
+FALL as walkouts RISE. Extra hands were not creating trade, they were **converting cheap losses
+into expensive ones** — a balk costs you the sale, a walkout costs the sale plus the plate you
+cooked, the table they held while waiting, and a mark against your name.
+
+**The engine had it too.** 1 cook 1,090 covers, 6 cooks 1,043. So not a port bug — a shared
+root cause, found only because the C# side was measured before anything was changed rather
+than reasoned about. `BrigadeScalingTests` is that instrument, kept.
+
+**Cause 1: the quote was a SECOND IMPLEMENTATION of the scheduler, and it drifted the way that
+hurt.** `EstimatedWaitMinutes` approximated — earliest free slot, plus a guess at how many
+"rounds" of plates a party needed — where `Fire` did the real thing. The guess divided the
+party by how many plates could run at once, so a big brigade quoted a table of four two rounds
+where a small one quoted four. **Half the wait, from the same kitchen, on the strength of hands
+that were not the constraint.** The browser build had the same disease in a different spot:
+`Math.min(...slots, ...cookFree)` quoted against whichever resource was MORE available, so with
+twelve cook-slots against two ovens the quote stopped seeing the oven queue at all.
+
+Both now deal plates through one shared `Place` / `placePlate`, against clones of the boards to
+ask and the real boards to commit. **It cannot drift, because it is the same code.**
+
+**Cause 2: a flat average across the card hid a buried station behind a free one.** A jammed
+oven and an idle garde-manger averaged to a comfortable quote, so the party sat down, ordered
+the pizza they came for, and walked out. The quote is now weighted by `appetites` — which
+already decided which dish they order and **was never consulted about the wait for it.** Sixth
+instance of the recurring shape, after `PriceSensitivity`, `IngredientQuality`,
+`PartiesTurnedAway`, `Employee.Skill` and `PartiesLostToMenu`. **Assume there is a seventh.**
+
+**Cause 3: plates for a table that walked were still cooked.** That burns the scarcest thing in
+the building at the moment it is scarcest, and it is a loop that feeds itself — the busier the
+pass, the more it wastes, so the busier it gets. `KitchenPass.Abandon` takes unstarted plates
+back off the board and re-deals everything queued behind them. **A plate already in the pan is
+NOT recovered**, deliberately: the ingredients and the minutes are spent, only the queue is
+refundable, and that is what keeps the loss real.
+
+**Aaron's Sims framing is why this one matters more than the numbers say.** The game is to be
+*watched*, not fast-forwarded — so a chef plating food for a table that left five minutes ago
+would have been glaring on screen and was invisible in a text log. Worth applying as a standing
+test: **would this look absurd if you could see it happen?**
+
+Result — covers now rise and hold flat instead of sliding, on both builds, and
+`probe-capacity-monotonic.js` pins it across cooks, ovens, seats and equipment tier.
+
+**IT ALSO REVERSED A RECORDED FINDING, and the old one was a symptom of this bug.** "A seat you
+cannot feed is worse than no seat at all" measured 12 seats -> 68.8 covers and 20 -> 56.8.
+It is now 12 -> 69.0, 18 -> 76.1, flat above that. Adding tables no longer hurts; it simply
+stops helping. **The granularity guard in the Advisor is still right** — seats above what the
+pass can feed buy nothing and cost money — but the harsh version of that claim is gone.
+
+**Knock-on: `PracticalCapacity` 0.75 -> 0.90, and this is calibration rather than tuning.** That
+number was bundling two things: clumped arrivals, and the pass cooking for people who had left.
+The second is gone, and charging for it twice made the forecast under-predict every
+kitchen-bound night by 17-30%. All three failing cases were wrong in the SAME direction, which
+is the signature of a mis-calibrated constant rather than a modelling error — as against
+fitting one constant across cases that fail in different directions, which is the trap this
+project has been caught in twice. Median forecast error 28% -> **11%** (it was 12% before any
+of this). Set below the measured 94% conversion on purpose: error keeps falling to ~0.95 and
+then goes flat, and flat means the kitchen has stopped binding, so a value in there would be
+fitted to the test rather than to the model.
+
+**And the seat ceiling was wrong for a nameable reason:** the room turns every dwell PLUS the
+wait for food, not every dwell. A guest waiting twenty minutes for a pizza is holding the table
+just as surely as while they eat it. Twelve seats forecast 88 covers against 62 served; now 76.
+
+### The Advisor went quiet exactly when the restaurant could afford to grow
+
+**A regression this session caused, caught by `playthrough.js`, and worth recording because the
+cause generalises.** Every capacity rule detects IMBALANCE — the kitchen fires below 80% of the
+room, the room fires below 80% of the pass — so a restaurant sitting between them is declared
+healthy. **A place perfectly balanced at twelve seats is perfectly balanced and far too small.**
+The walkouts rule used to drag such a restaurant forward by accident; once abandoned plates
+stopped burning the pass, walkouts fell under its threshold and the last voice telling anyone
+to grow went silent. 240 days, **$72,009 in the bank, still 12 seats and one cook**, and the
+forecast said `seats-bound` on every one of those days.
+
+**The forecast already knew.** It reports `constraint` from the same state and had been saying
+so all along — two components answering the same question from different data, again. Rule `3c`
+now defers to it: if a ceiling binds and no other rule found anything, the forecast wins.
+
+**Two lessons in how it had to be built:**
+
+- **It offers ONE button, not two.** The first version offered tables and a cooker together and
+  let the player choose. The harness took the tables every time, finished on 42 seats and one
+  cook, and tripped its own invariant four times. **Two buttons where only one gets pressed is
+  a coin flip with a wrong side.** So the ORDER is the advice: lift the kitchen, and the
+  ordinary room rule buys the tables once the pass is genuinely a whole block ahead.
+- **`roomtight` said "lift the kitchen first, then the room" for 235 days and offered nothing to
+  do it with.** Same lesson the walkouts rule already learned and it did not carry across.
+  Naming the move without offering it is half an Advisor.
+
+| `playthrough.js`, 240 days | recorded | now |
+|---|---:|---:|
+| Cash | $86,528 | **$115,346** |
+| Covers/day | 76.9 | **94.1** |
+| Walkouts/day | 5.1 | **1.4** |
+| Ends at | 12 seats, 1 cook | 42 seats, 2 cooks |
+
+Still no contradictions across 240 days. And a `ReferenceError` on the way — hoisting two
+locals out of an `if` — which `probe-panels.js` did NOT catch because that path only runs mid-
+game. **A brace-balanced file is not a file that runs**, and panel coverage is not run coverage.
+
+### `tools/matrix.js` — every lever against every other, and the stupid patterns it found
+
+Aaron: *"try simulations of every scenario possible... we're looking for stupid patterns, for
+example, its better to stay with 12 seats rather than grow."*
+
+**Why `levers.js` was not enough, and this is the methodological point:** it moves ONE thing at
+a time, which structurally cannot see an interaction — **and the most important decision in the
+game is one.** Swept alone, sourcing reads as a flat trap: budget wholesale beats premium by
+$20,816 over 120 days and the verdict is "always buy the cheapest", in the system Architecture
+Rule 1 exists entirely to serve.
+
+Swept against price, over 240 days with a kitchen that can actually cook:
+
+| | Budget | Valley | **Premium** |
+|---|---:|---:|---:|
+| at 1.0x | **$151,125** | $142,041 | $96,966 |
+| at 1.5x | $53,801 | $96,613 | **$106,703** |
+
+**Premium holds 94.1 covers a day at 1.5x where budget collapses to 67.3**, because a standing
+of 79 is what lets you charge for it. The arc is real and working. But it needs **two levers
+moved together and the game never says they are coupled** — a player who upgrades their
+supplier and leaves prices alone loses money and correctly concludes good ingredients are a
+scam. That is the top open finding, and the fix is advice rather than balance.
+
+Also found, and left as findings rather than acted on:
+
+- **Sourcing cannot pay while the kitchen binds.** At 2 ovens all three suppliers serve within
+  1% of the same covers (68.3 / 68.6 / 69.2), so a 26-point standing gap buys nothing. Standing
+  buys footfall, and footfall needs somewhere to sit.
+- **Seats above 18 are a pure cash sink** on this build — 18/24/32/48 give identical covers.
+  Growing does not hurt any more, but nothing tells you where it stops helping.
+- **Servers are a trap**, 1 beating 2/3/4. Real, small, and worth a look.
+- **Menu breadth and oven count still read "more is always better"** inside the ranges swept.
+  Breadth does turn over at 6 dishes, so the optimum is real and the grid was too short.
+- **A sign flip**: 4 cooks x 2 ovens reads −$1,551 over 30 days and +$11,829 over 240.
+
+### A port bug the sweep found: the city had ELEVEN TIMES the floor it should
+
+`City Center` caps at **1,400 sq ft** in the engine and was **15,500** in the browser build.
+That inverts the design's central tension — *"the best traffic comes with the least room to
+grow"* — so in the build a human actually plays, the city had by far the most room, and a sweep
+hunting degenerate strategies read "more ovens is always better" partly off the back of it.
+
+`TuningDriftTests` now checks **key money, rent and floor cap for all four sites**, not just the
+tuning scalars. The drift guard existed and was watching the wrong list. **When a guard catches
+one class of bug, ask what else is duplicated that it is not looking at.**
+
+*(The site table further up this file — 110/150/140/280 sq ft — is stale prose. The real figures
+are 1400 / 1650 / 1550 / 3000.)*
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

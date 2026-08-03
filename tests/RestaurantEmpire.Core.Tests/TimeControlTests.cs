@@ -138,7 +138,16 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void AnInterruptStopsMidService_AndTheNextAdvanceResumesFromThatExactMinute()
         {
-            var restaurant = Build(slots: 1);
+            // A MARGINAL kitchen, not a hopeless one — two slots rather than one.
+            //
+            // This fixture used to be slots:1, and it stopped producing walkouts once the
+            // door quote became honest. That is the model working, not the test rotting: a
+            // kitchen that is hopelessly behind now sheds its queue AT THE DOOR, because
+            // guests can see the wait and go elsewhere before sitting down. Losing the room
+            // is what happens to a kitchen that is only just behind — it seats people on a
+            // wait it nearly meets, and then does not meet it. Measured: slots:1 at this
+            // demand no longer streaks, slots:2 does.
+            var restaurant = Build(slots: 2);
             var runner = Dinner.Runner(restaurant, 30, 4242,
                 new InterruptPolicy { WalkoutStreakThreshold = 3, CashFloor = null, StopOnStockout = false });
 
@@ -215,7 +224,16 @@ namespace RestaurantEmpire.Core.Tests
         [Fact]
         public void AStreakOfWalkouts_StopsTheSim()
         {
-            var runner = Dinner.Runner(Build(slots: 1), 30, 4242,
+            // A MARGINAL kitchen, not a hopeless one — two slots rather than one.
+            //
+            // This fixture used to be slots:1, and it stopped producing walkouts once the
+            // door quote became honest. That is the model working, not the test rotting: a
+            // kitchen that is hopelessly behind now sheds its queue AT THE DOOR, because
+            // guests can see the wait and go elsewhere before sitting down. Losing the room
+            // is what happens to a kitchen that is only just behind — it seats people on a
+            // wait it nearly meets, and then does not meet it. Measured: slots:1 at this
+            // demand no longer streaks, slots:2 does.
+            var runner = Dinner.Runner(Build(slots: 2), 30, 4242,
                 new InterruptPolicy { WalkoutStreakThreshold = 3, StopOnStockout = false, CashFloor = null });
 
             var step = runner.Advance(6 * 60);
@@ -348,7 +366,16 @@ namespace RestaurantEmpire.Core.Tests
             // is true and useless. A stop has to carry WHY and WHAT CAN BE DONE, which is
             // the design's Tier-2 Advisor pattern. All of this was already known when the
             // alarm fired; it simply was not said.
-            var runner = Dinner.Runner(Build(slots: 1), 30, 4242,
+            // A MARGINAL kitchen, not a hopeless one — two slots rather than one.
+            //
+            // This fixture used to be slots:1, and it stopped producing walkouts once the
+            // door quote became honest. That is the model working, not the test rotting: a
+            // kitchen that is hopelessly behind now sheds its queue AT THE DOOR, because
+            // guests can see the wait and go elsewhere before sitting down. Losing the room
+            // is what happens to a kitchen that is only just behind — it seats people on a
+            // wait it nearly meets, and then does not meet it. Measured: slots:1 at this
+            // demand no longer streaks, slots:2 does.
+            var runner = Dinner.Runner(Build(slots: 2), 30, 4242,
                 new InterruptPolicy { WalkoutStreakThreshold = 3, CashFloor = null, StopOnStockout = false });
 
             var step = runner.Advance(6 * 60);

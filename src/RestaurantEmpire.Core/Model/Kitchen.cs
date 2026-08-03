@@ -123,8 +123,15 @@ namespace RestaurantEmpire.Core.Model
         public string StationId { get; }
 
         public long PlacedTick { get; }
-        public long StartedTick { get; }
-        public long CompletedTick { get; }
+
+        /// <summary>
+        /// When this plate goes on. Not readonly, because the queue in front of it can get
+        /// shorter: when a table gives up and leaves, its unstarted plates come off the
+        /// board and everything behind them moves up. See <see cref="KitchenPass.Abandon"/>.
+        /// </summary>
+        public long StartedTick { get; internal set; }
+
+        public long CompletedTick { get; internal set; }
 
         public TicketOutcome Outcome { get; }
 
@@ -258,13 +265,29 @@ namespace RestaurantEmpire.Core.Model
         public const int PlatesPerCook = Tuning.PlatesPerCook;
 
 
+        /// <summary>
+        /// One plate's place on the board: which slot, which pair of hands, and when.
+        /// Kept so a plate can be taken back OFF the board — see <see cref="Abandon"/>.
+        /// </summary>
+        private sealed class Booking
+        {
+            public Ticket Ticket;
+            public KitchenStation Station;
+            public RecipeDefinition Recipe;
+            public int SlotIndex;
+            public int CookIndex;
+        }
+
         private readonly Kitchen _kitchen;
         private readonly Dictionary<string, long[]> _slotFreeAt;
         private readonly long[] _cookFreeAt;
+        private readonly List<Booking> _board = new List<Booking>();
+        private readonly long _serviceStartTick;
 
         internal KitchenPass(Kitchen kitchen, long serviceStartTick, int plates = 0)
         {
             _kitchen = kitchen;
+            _serviceStartTick = serviceStartTick;
             _slotFreeAt = new Dictionary<string, long[]>(StringComparer.Ordinal);
 
             // A plate needs a free machine AND somebody to work it. Equipment you have not
@@ -306,36 +329,197 @@ namespace RestaurantEmpire.Core.Model
             KitchenStation station;
             if (!_kitchen.TryGet(recipe.StationId, out station)) return int.MaxValue;
 
-            var slots = _slotFreeAt[station.Id];
-            var earliest = slots[0];
+            if (plates < 1) plates = 1;
 
+            // THE QUOTE IS THE SCHEDULER, RUN WITHOUT COMMITTING.
+            //
+            // This used to approximate: the earliest free slot, plus a guess at how many
+            // "rounds" of plates a party needed. It was a SECOND IMPLEMENTATION of Place
+            // below, and the two disagreed in the direction that hurt most — the guess
+            // divided the party by how many plates could run at once, so a bigger brigade
+            // quoted a party of four two rounds where a small one quoted four. Half the
+            // wait, from the same kitchen, on the strength of hands that were not the
+            // constraint.
+            //
+            // The measured effect was that hiring made the restaurant WORSE: the host got
+            // blinder as the brigade grew, so parties who should have been turned away at
+            // the door were seated and then lost. A walkout costs strictly more than a
+            // balk — the plate is cooked and binned, the table is held for the wait, and
+            // the reputation takes the hit. 1 cook served 1,090 covers against 6 cooks
+            // serving 1,043, and nothing anywhere could name the cause.
+            //
+            // So: deal the plates onto copies of the real boards. Same routing, same
+            // contention, same arithmetic as Fire — it cannot drift, because it is the
+            // same code.
+            var slots = (long[])_slotFreeAt[station.Id].Clone();
+            var cooks = (long[])_cookFreeAt.Clone();
+
+            // It is the LAST plate landing that decides whether the table stayed, not the
+            // first — a party eats together.
+            var last = atTick;
+
+            for (var i = 0; i < plates; i++)
+            {
+                long startedTick;
+                var completed = Place(station, recipe, atTick, slots, cooks, out startedTick);
+                if (completed > last) last = completed;
+            }
+
+            return (int)(last - atTick);
+        }
+
+        /// <summary>
+        /// Deals one plate onto a station board and a brigade board: earliest free slot,
+        /// earliest free pair of hands, and it cannot start until both are ready.
+        ///
+        /// Both the quote and the fire go through here, against the real arrays or clones
+        /// of them. Any question worth answering twice should be answered once and shared —
+        /// two components answering the same question from different data will eventually
+        /// disagree, and on this project they always have.
+        /// </summary>
+        private long Place(KitchenStation station, RecipeDefinition recipe, long placedTick,
+            long[] slots, long[] cooks, out long startedTick, out int slotIndex, out int cookIndex)
+        {
+            // Earliest-available slot. With capacity 1 this is a plain queue.
+            var chosen = 0;
             for (var i = 1; i < slots.Length; i++)
             {
-                if (slots[i] < earliest) earliest = slots[i];
+                if (slots[i] < slots[chosen]) chosen = i;
             }
 
-            var startsAt = earliest > atTick ? earliest : atTick;
+            startedTick = slots[chosen] > placedTick ? slots[chosen] : placedTick;
 
-            // A guest at the door is waiting on whichever is scarcer, the machine or the cook.
-            for (var i = 0; i < _cookFreeAt.Length; i++)
+            // ...and the earliest free pair of hands, when the brigade is being modeled.
+            // A plate needs a free machine AND somebody to work it, so it waits on
+            // whichever is later.
+            var cook = -1;
+            if (cooks.Length > 0)
             {
-                if (i == 0 || _cookFreeAt[i] < earliest) earliest = _cookFreeAt[i];
+                cook = 0;
+                for (var i = 1; i < cooks.Length; i++)
+                {
+                    if (cooks[i] < cooks[cook]) cook = i;
+                }
+
+                if (cooks[cook] > startedTick) startedTick = cooks[cook];
             }
 
-            if (_cookFreeAt.Length > 0 && earliest > startsAt) startsAt = earliest;
+            var completedTick = startedTick + station.MinutesFor(recipe, ComplexityLoad);
 
-            // A table of four puts FOUR plates in the queue, and it is the last one landing
-            // that decides whether they stayed. Quoting the wait for a single dish is an
-            // optimistic promise that seats parties who then walk out — which showed up in
-            // a balance sweep as more walkouts than covers served.
-            var atOnce = station.ConcurrentCapacity;
-            if (_cookFreeAt.Length > 0 && _cookFreeAt.Length < atOnce) atOnce = _cookFreeAt.Length;
-            if (atOnce < 1) atOnce = 1;
+            slots[chosen] = completedTick;
+            if (cook >= 0) cooks[cook] = completedTick;
 
-            var rounds = (plates + atOnce - 1) / atOnce;
-            if (rounds < 1) rounds = 1;
+            slotIndex = chosen;
+            cookIndex = cook;
 
-            return (int)(startsAt - atTick) + (rounds * station.MinutesFor(recipe, ComplexityLoad));
+            return completedTick;
+        }
+
+        private long Place(KitchenStation station, RecipeDefinition recipe, long placedTick,
+            long[] slots, long[] cooks, out long startedTick)
+        {
+            int slotIndex, cookIndex;
+            return Place(station, recipe, placedTick, slots, cooks, out startedTick, out slotIndex, out cookIndex);
+        }
+
+        /// <summary>
+        /// A table gave up and left. Take their plates back off the board — the ones that
+        /// have not gone on yet — and move everything queued behind them up.
+        ///
+        /// WITHOUT THIS, ADDING CAPACITY REDUCES OUTPUT. A guest who walks costs the sale;
+        /// a guest who walks while the kitchen goes on cooking food nobody will pay for
+        /// costs the sale AND the scarcest thing in the building, which is time at the
+        /// station that was already the constraint. That is a positive feedback loop: the
+        /// busier the pass, the more plates it wastes, which makes it busier. Measured
+        /// across a brigade sweep it was the difference between hiring helping and hiring
+        /// hurting.
+        ///
+        /// A plate already cooking is NOT recovered, deliberately. It is in the pan; the
+        /// ingredients and the minutes are spent whatever the guest does. Only the queue
+        /// is refundable, which is also why the loss is real rather than free.
+        /// </summary>
+        /// <returns>How many plates came off the board.</returns>
+        public int Abandon(IEnumerable<Ticket> tickets, long now)
+        {
+            if (tickets == null) return 0;
+
+            var dropping = new HashSet<Ticket>();
+
+            foreach (var ticket in tickets)
+            {
+                if (ticket == null || !ticket.WasServed) continue;
+                if (ticket.StartedTick <= now) continue;   // already in the pan
+
+                dropping.Add(ticket);
+            }
+
+            if (dropping.Count == 0) return 0;
+
+            var kept = new List<Booking>(_board.Count);
+            foreach (var booking in _board)
+            {
+                if (!dropping.Contains(booking.Ticket)) kept.Add(booking);
+            }
+
+            _board.Clear();
+            _board.AddRange(kept);
+
+            Recompact(now);
+
+            return dropping.Count;
+        }
+
+        /// <summary>
+        /// Re-deals every plate that has not started yet, in the order it was fired.
+        ///
+        /// Work already under way keeps its slot and its timings — you cannot un-cook a
+        /// half-cooked plate. Everything still queued is dealt again by the ordinary rule,
+        /// so the board stays self-consistent: no two plates in one slot at once, and no
+        /// plate starting before the hands to work it are free. Replaying rather than
+        /// subtracting a duration is what keeps that true, since a plate is booked against
+        /// a station AND a cook and the two do not free up together.
+        /// </summary>
+        private void Recompact(long now)
+        {
+            foreach (var pair in _slotFreeAt)
+            {
+                var slots = pair.Value;
+                for (var i = 0; i < slots.Length; i++) slots[i] = _serviceStartTick;
+            }
+
+            for (var i = 0; i < _cookFreeAt.Length; i++) _cookFreeAt[i] = _serviceStartTick;
+
+            // First, everything already on: it holds the slot it is actually using.
+            foreach (var booking in _board)
+            {
+                if (booking.Ticket.StartedTick > now) continue;
+
+                var slots = _slotFreeAt[booking.Station.Id];
+                if (booking.Ticket.CompletedTick > slots[booking.SlotIndex])
+                    slots[booking.SlotIndex] = booking.Ticket.CompletedTick;
+
+                if (booking.CookIndex >= 0 && booking.Ticket.CompletedTick > _cookFreeAt[booking.CookIndex])
+                    _cookFreeAt[booking.CookIndex] = booking.Ticket.CompletedTick;
+            }
+
+            // Then everything still waiting, in the order it was fired.
+            foreach (var booking in _board)
+            {
+                if (booking.Ticket.StartedTick <= now) continue;
+
+                // It cannot go on before it was ordered, and it cannot go on before now.
+                var earliest = booking.Ticket.PlacedTick > now ? booking.Ticket.PlacedTick : now;
+
+                long startedTick;
+                int slotIndex, cookIndex;
+                var completedTick = Place(booking.Station, booking.Recipe, earliest,
+                    _slotFreeAt[booking.Station.Id], _cookFreeAt, out startedTick, out slotIndex, out cookIndex);
+
+                booking.Ticket.StartedTick = startedTick;
+                booking.Ticket.CompletedTick = completedTick;
+                booking.SlotIndex = slotIndex;
+                booking.CookIndex = cookIndex;
+            }
         }
 
         /// <summary>
@@ -373,36 +557,21 @@ namespace RestaurantEmpire.Core.Model
                 }
             }
 
-            var slots = _slotFreeAt[station.Id];
+            // The same dealing the quote does, against the real boards this time.
+            long startedTick;
+            int slotIndex, cookIndex;
+            var completedTick = Place(station, recipe, placedTick, _slotFreeAt[station.Id], _cookFreeAt,
+                out startedTick, out slotIndex, out cookIndex);
 
-            // Earliest-available slot. With capacity 1 this is a plain queue.
-            var chosen = 0;
-            for (var i = 1; i < slots.Length; i++)
+            var ticket = new Ticket(recipe.Id, station.Id, placedTick, startedTick, completedTick);
+
+            _board.Add(new Booking
             {
-                if (slots[i] < slots[chosen]) chosen = i;
-            }
+                Ticket = ticket, Station = station, Recipe = recipe,
+                SlotIndex = slotIndex, CookIndex = cookIndex
+            });
 
-            var startedTick = slots[chosen] > placedTick ? slots[chosen] : placedTick;
-
-            // ...and the earliest free pair of hands, when the brigade is being modeled.
-            var cook = -1;
-            if (_cookFreeAt.Length > 0)
-            {
-                cook = 0;
-                for (var i = 1; i < _cookFreeAt.Length; i++)
-                {
-                    if (_cookFreeAt[i] < _cookFreeAt[cook]) cook = i;
-                }
-
-                if (_cookFreeAt[cook] > startedTick) startedTick = _cookFreeAt[cook];
-            }
-
-            var completedTick = startedTick + station.MinutesFor(recipe, ComplexityLoad);
-
-            slots[chosen] = completedTick;
-            if (cook >= 0) _cookFreeAt[cook] = completedTick;
-
-            return new Ticket(recipe.Id, station.Id, placedTick, startedTick, completedTick);
+            return ticket;
         }
     }
 }

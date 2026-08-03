@@ -539,7 +539,7 @@ const GLOSSARY = {
 const MENU_AT_DOOR = { "city-center":1.0, "nightlife-quarter":0.75, "business-district":0.5, "suburban-high-street":0.2 };
 
 const SITES = [
-  { id:"city-center", name:"City Center", key:12000, rent:7800, maxArea:15500, landPer:88,
+  { id:"city-center", name:"City Center", key:12000, rent:7800, maxArea:1400, landPer:88,
     blurb:"The most footfall in the game, and the least room to ever grow into. Rent is brutal.",
     traffic:[2,1,0,0,0,1,4,10,16,10,7,12,24,26,16,8,7,12,20,26,24,18,11,5] },
   { id:"business-district", name:"Business District", key:8000, rent:6400, maxArea:1650, landPer:67,
@@ -1112,7 +1112,7 @@ function drinkChance(arch, dp){
    hard capacity ceilings. The gap between it and the night is the information.
    ========================================================================= */
 
-const PRACTICAL_CAPACITY = 0.75;   // queues build long before a pass hits 100% utilisation
+const PRACTICAL_CAPACITY = 0.90;   // clumping only; abandoned plates no longer burn the pass (see Tuning.cs)
 
 /* KNOWN LIMIT, measured and left standing rather than tuned away. This forecast is a faithful
    port of the C# one, which lands within 12% of the C# service. Against the BROWSER service it
@@ -1366,6 +1366,36 @@ function autopsy(f, d){
   return { variance, err, asExpected, surprises, headline, forecast:f, actual:d };
 }
 
+/*
+ * DEALS ONE PLATE ONTO A STATION BOARD AND A BRIGADE BOARD.
+ *
+ * Earliest free slot, earliest free pair of hands, and it cannot start until BOTH are
+ * ready. Ported from KitchenPass.Place — and the point of it being one function is that
+ * the quote and the fire go through the same code. They used to be two implementations
+ * and they drifted in the direction that hurt: the quote got more optimistic the bigger
+ * the brigade got, so hiring a cook made the restaurant WORSE.
+ *
+ * Any question worth answering twice should be answered once and shared. Pass a copy of
+ * the arrays to ask without committing.
+ *
+ * `prevSlot`/`prevCook` come back so the booking can be taken off the board again — see
+ * the walkout branch in runDay.
+ */
+function placePlate(recipe, atMinute, slots, cooks){
+  let si = 0; for(let i=1;i<slots.length;i++) if(slots[i]<slots[si]) si = i;
+  let ci = 0; for(let i=1;i<cooks.length;i++) if(cooks[i]<cooks[ci]) ci = i;
+
+  const prevSlot = slots[si], prevCook = cooks.length ? cooks[ci] : 0;
+  const start = Math.max(atMinute, prevSlot, cooks.length ? prevCook : atMinute);
+  const cookTime = Math.max(1, Math.round(recipe.prep*complexityLoad()/stationSpeed(recipe.station)));
+  const done = start + cookTime;
+
+  slots[si] = done;
+  if(cooks.length) cooks[ci] = done;
+
+  return { si, ci, start, done, cookTime, prevSlot, prevCook };
+}
+
 function runDay(){
   const d = G.today = { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 };
   const freeAt = {};   // station -> array of minute-free per unit
@@ -1412,17 +1442,48 @@ function runDay(){
     // what the kitchen would quote
     const avgPrice = options.reduce((a,r)=>a+G.prices[r.id],0)/options.length;
     const q = ingredientQuality();
-    let totalWait = 0, totalValue = 0;
-    for(const r of options){
-      const sp = stationSpeed(r.station);
-      const slots = freeAt[r.station];
-      const soonest = Math.min(...slots, ...cookFree);
-      const start = Math.max(soonest, m);
-      const cap = Math.max(1, slots.length);
-      totalWait += (start - m) + Math.ceil(r.prep*complexityLoad()/sp) * Math.ceil(size/cap);
+
+    // How much they fancy each dish. Hoisted out of the per-cover loop below, because it
+    // does not vary by cover — and because the QUOTE needs it too. See below.
+    const weights = options.map(r=>{
+      let t = 2;
+      for(const tag of r.tags){
+        t += (A.pull[tag]||0);
+        if(taste===tag) t += 3;
+      }
+      if(t<1) t = 1;
+      const rel = avgPrice>0 ? G.prices[r.id]/avgPrice : 1;
+      return t * priceAppeal(rel, sens) * qualityAppeal(q, rel, sens);
+    });
+    const totalWeight = weights.reduce((a,b)=>a+b,0);
+
+    // THE QUOTE IS THE SCHEDULER, RUN WITHOUT COMMITTING — see KitchenPass.EstimatedWaitMinutes.
+    //
+    // This used to be `Math.min(...slots, ...cookFree)` plus a rounds guess, which was wrong
+    // twice over. A plate needs a free station AND a free cook, so taking one min across
+    // both pools quoted against whichever was MORE available; with twelve cook-slots against
+    // two ovens a cook is always idle, so the quote stopped seeing the oven queue entirely.
+    // The more hands you hired, the blinder the host got.
+    //
+    // And it is WEIGHTED BY WHAT THEY WILL ACTUALLY ORDER. A flat average across the card
+    // hid a buried station behind a free one: a jammed oven and an idle garde-manger
+    // averaged to a comfortable quote, so the party sat down, ordered the pizza they came
+    // for, and walked out. `weights` already decided which dish they order and was never
+    // consulted about the wait for it.
+    let weightedWait = 0, totalValue = 0;
+    for(let i=0;i<options.length;i++){
+      const r = options[i];
+      const slots = freeAt[r.station].slice();      // deal onto a copy of the board
+      const cooks = cookFree.slice();
+      let last = m;
+      for(let p=0; p<size; p++){
+        const done = placePlate(r, m, slots, cooks).done;
+        if(done > last) last = done;
+      }
+      weightedWait += weights[i] * (last - m);
       totalValue += scoreValue(markup(r), sens, q, G.rep.standing);
     }
-    const quoted = Math.round((totalWait/options.length) * QUOTE_OPTIMISM);
+    const quoted = Math.round((totalWeight>0 ? weightedWait/totalWeight : 0) * QUOTE_OPTIMISM);
 
     if(quoted > patience){ d.balkedWait++; G.lostStreak += size; continue; }
     if(G.rand() < walkAwayChance(totalValue/options.length) * (MENU_AT_DOOR[G.site.id]||0.5)){ d.balkedPrice++; G.lostStreak += size; continue; }
@@ -1430,30 +1491,14 @@ function runDay(){
     // choose dishes by appetite
     let sat = 0, longest = 0;
     for(let g=0; g<size; g++){
-      const weights = options.map(r=>{
-        let t = 2;
-        for(const tag of r.tags){
-          t += (A.pull[tag]||0);
-          if(taste===tag) t += 3;
-        }
-        if(t<1) t = 1;
-        const rel = avgPrice>0 ? G.prices[r.id]/avgPrice : 1;
-        return t * priceAppeal(rel, sens) * qualityAppeal(q, rel, sens);
-      });
-      const total = weights.reduce((a,b)=>a+b,0);
-      let pick = options[options.length-1], roll2 = G.rand()*total, run = 0;
+      let pick = options[options.length-1], roll2 = G.rand()*totalWeight, run = 0;
       for(let i=0;i<options.length;i++){ run += weights[i]; if(roll2<run){ pick = options[i]; break; } }
 
-      // fire it
-      const sp = stationSpeed(pick.station);
+      // fire it — the same dealing the quote just did, against the real board this time
       const slots = freeAt[pick.station];
-      let si = 0; for(let i=1;i<slots.length;i++) if(slots[i]<slots[si]) si = i;
-      let ci = 0; for(let i=1;i<cookFree.length;i++) if(cookFree[i]<cookFree[ci]) ci = i;
-      const start = Math.max(m, slots[si], cookFree[ci]);
-      const cookTime = Math.max(1, Math.round(pick.prep*complexityLoad()/sp));
-      slots[si] = start + cookTime;
-      cookFree[ci] = start + cookTime;
-      const wait = (start + cookTime) - m;
+      const booked = placePlate(pick, m, slots, cookFree);
+      const start = booked.start;
+      const wait = booked.done - m;
       if(wait > longest) longest = wait;
 
       // Ingredients come off the shelf, oldest first. No charge here — this food was paid
@@ -1470,7 +1515,7 @@ function runDay(){
       if(G.rand() < mistake){
         for(const k in pick.ing) consume(k, pick.ing[k]);
         d.food += cost; d.wasted = (d.wasted||0) + cost; d.remakes = (d.remakes||0) + 1;
-        slots[si] += cookTime;
+        slots[booked.si] += booked.cookTime;
         if(G.rand() < 0.35){
           d.comped = (d.comped||0) + 1;
           d.revenue -= G.prices[pick.id];
@@ -1482,6 +1527,22 @@ function runDay(){
         d.walkouts++;
         G.lostStreak++;
         recordMeal(0);
+
+        // THEY LEFT — SO TAKE THE PLATE BACK OFF THE BOARD, if it had not gone on yet.
+        //
+        // Cooking for people who have already walked burns the scarcest thing in the
+        // building at exactly the moment it is scarcest, and that is a loop that feeds
+        // itself: the busier the pass, the more plates it wastes, so the busier it gets.
+        // It is the other half of why hiring used to make a restaurant worse.
+        //
+        // A plate already in the pan is NOT recovered. It is cooked and binned, the
+        // ingredients are spent either way, and that is what keeps the loss real. Only
+        // the queue is refundable. See KitchenPass.Abandon.
+        if(start > m + patience){
+          slots[booked.si] = booked.prevSlot;
+          if(cookFree.length) cookFree[booked.ci] = booked.prevCook;
+          d.recovered = (d.recovered||0) + 1;
+        }
         continue;
       }
 
@@ -1665,9 +1726,15 @@ function advise(){
   // Does not wait for trading. On day one the forecast can already see the pass is short, and
   // that is exactly when the player can still do something cheap about it.
   const lim = passLimit(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+
+  // Hoisted, because rule 3c below compares the same two numbers. They were scoped inside
+  // the `if(lim)` and reading them from outside threw a ReferenceError that rendered the
+  // whole Advisor blank — the same shape as the `wrap` bug that hid the liquor licence for
+  // two sessions. A brace-balanced file is not a file that runs.
+  const perHour     = lim ? lim.allows : 0;
+  const roomPerHour = servableSeats() * (60/DWELL);
+
   if(lim){
-    const perHour = lim.allows;
-    const roomPerHour = servableSeats() * (60/DWELL);
     if(perHour < roomPerHour * 0.8 && lim.kind === "brigade"){
       // Costs a wage, so the runway brake will silence the ASK — but never the diagnosis.
       out.push({ rank:3, id:"brigade", head:"The kitchen has more equipment than hands.",
@@ -1723,7 +1790,16 @@ function advise(){
           body:`About ${Math.round(roomPerHour)} covers an hour of seating against a kitchen that could send ${Math.round(perHour)}.${turned} There is room to seat more without outrunning the pass.`,
           seats: fit || null });
       } else {
+        // NAMING THE MOVE WITHOUT OFFERING IT IS HALF AN ADVISOR — the same lesson the
+        // walkouts rule learned. This said "lift the kitchen first, then the room" for 235
+        // straight days while the restaurant sat on $109,309 and never lifted anything,
+        // because the sentence had no button on it. It carries the kitchen move now.
+        const tightBrigade = lim && lim.kind === "brigade";
+
         out.push({ rank:3, id:"roomtight", head:"The room is a little smaller than the kitchen — leave it that way for now.",
+          needsWage: tightBrigade,
+          buy:     (!tightBrigade && lim && fitsNow(lim))  ? cheapestFor(lim.station) : null,
+          upgrade: (!tightBrigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station)  : null,
           body:`${Math.round(roomPerHour)} covers an hour of seating against ${Math.round(perHour)} of kitchen, so there is only about ${Math.round(headroom)} an hour spare.${turned} That sounds like a reason to buy tables and it is not: the smallest block adds about ${Math.round(blockAdds)} covers an hour, which would seat people the pass cannot feed. A guest turned away at the door costs you the sale; one who sits down and gives up costs you the plate, the food, the table they held and your name. **Lift the kitchen first, then the room.**` });
       }
     }
@@ -1760,6 +1836,86 @@ function advise(){
         // move is — the same one the kitchen advice would offer.
         buy: (!brigade && fitsNow(lim)) ? cheapestFor(lim.station) : null,
         upgrade: (!brigade && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
+    }
+  }
+
+  // --- 3c. BALANCED, AND FAR TOO SMALL. ---
+  //
+  // The harness found this the day the walkout fix landed: 240 days, $72,009 in the bank,
+  // still 12 seats and one cook, and the Advisor said "nothing needs you" for two hundred
+  // of them — while the forecast said `seats-bound` on every single one of those days.
+  //
+  // The cause is that every capacity rule above detects IMBALANCE. The kitchen fires when
+  // the pass is under 80% of the room, the room fires when the room is under 80% of the
+  // pass, and a restaurant sitting between the two is declared healthy. A place that is
+  // perfectly balanced at twelve seats is perfectly balanced and far too small, and nothing
+  // was looking at that. The walkouts rule used to drag such a restaurant forward by
+  // accident; once abandoned plates stopped burning the pass, walkouts fell below its
+  // threshold and the last voice telling anyone to grow went quiet.
+  //
+  // THE FORECAST ALREADY KNEW. It reports `constraint` — demand, seats or kitchen — from
+  // the same state, and it had been saying "seats" all along. Two components answering the
+  // same question from different data will eventually disagree, and the player believes
+  // whichever one has a button. So this one defers: if the forecast says a ceiling binds
+  // and none of the rules above found anything to say, the forecast wins.
+  //
+  // And it names BOTH levers, because that is what the situation actually needs. CLAUDE.md
+  // has had this open for a while — "the Advisor can only ever recommend one lever, and
+  // some problems need two" — and a balanced restaurant is precisely the case: lifting
+  // either half alone just moves the bottleneck across.
+  if(d && !out.some(o => ["kitchen","room","roomtight","brigade","walkouts"].includes(o.id))){
+    const f = forecastDay();
+
+    if(f.constraint === "seats" || f.constraint === "kitchen"){
+      const missed = Math.max(0, Math.round(f.demand - f.covers));
+
+      if(missed >= 8){
+        // GROW BOTH, BUT IN THE RIGHT ORDER — and only ever offer ONE button.
+        //
+        // The first version of this offered tables and a cooker together and let the player
+        // choose. The harness took the tables every time and finished on 42 seats and one
+        // cook, tripping its own invariant four times over: "recommends seats the pass
+        // cannot feed". Two buttons where only one gets pressed is not a choice, it is a
+        // coin flip with a wrong side.
+        //
+        // So the ORDER is the advice. Lift the kitchen first — a guest turned away at the
+        // door costs you the sale, while one who sits down and gives up costs the plate,
+        // the food, the table they held and your name. Once the pass is genuinely ahead of
+        // the room, the ordinary `room` rule above picks it up and buys the tables.
+        const brigade = lim && lim.kind === "brigade";
+        // The pass must be ahead by a WHOLE BLOCK of tables, not by a whisker. At pass 17/hr
+        // against room 16/hr the harness was offered seats that add ~13/hr — seating people
+        // the kitchen cannot feed, which is the granularity trap the `roomtight` rule below
+        // already knows about and this one had to learn.
+        const blockAdds   = 10 * (60/DWELL);
+        const roomIsAhead = f.constraint === "seats" && lim && (perHour - roomPerHour) >= blockAdds;
+
+        const fit = roomIsAhead
+          ? FURNITURE.filter(x => freeArea() >= x.foot*10 && G.cash >= x.perSeat*10)
+                     .sort((a,b)=>a.perSeat-b.perSeat)[0]
+          : null;
+
+        out.push({ rank:3, id:"grow",
+          head:"Nothing here is broken — the whole place is just small for the street.",
+          body:`The room and the kitchen are in step with each other, which is why nothing above is ` +
+               `complaining. But about ${missed} covers a night want a table and do not get one: ` +
+               `${Math.round(f.demand)} would come, ${Math.round(f.covers)} can be served. ` +
+               `Lifting one half alone just moves the bottleneck across, so this wants growing on ` +
+               `both sides — ` +
+               (roomIsAhead
+                 ? `and the pass is far enough ahead now that the room is the half to lift.`
+                 : brigade
+                   ? `starting with the kitchen, and it is hands rather than equipment: ` +
+                     `${lim.cooks} cook${lim.cooks===1?"":"s"} moving about ${Math.round(lim.allows)} covers an hour. ` +
+                     `Seats bought before there is someone to cook for them are seats that lose you money.`
+                   : `starting with the kitchen. A seat you cannot feed is worse than no seat at all, ` +
+                     `so the pass goes first and the tables follow it.`) +
+               ` You have ${money(G.cash)}.`,
+          needsWage: brigade && !roomIsAhead,
+          seats: fit || null,
+          buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? cheapestFor(lim.station) : null,
+          upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
+      }
     }
   }
 
