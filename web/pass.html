@@ -847,6 +847,7 @@ function newSite(site, id, name){
     licence: false,          // permission to sell alcohol; bought, then renewed monthly
     campaign: null,          // { claim, channel } — what you say, and where you say it
     lastAdvice: null,        // so the rail records advice when it CHANGES, not every day
+    metrics: [],             // one full row per day, so effects can be measured rather than guessed
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -877,7 +878,12 @@ const SITE_FIELDS = [
   "site","supplier","prices","onMenu","stations","floorArea","seats","fittings","seatSpend",
   "cooks","servers","windows","licence","rep","recent","applicants","today","ledger",
   "sold","soldToday","dishHistory","pantry","usage","usedToday","spoiled","standingOrder",
-  "interrupt","lastMonthBooked","stockoutFlag","lostStreak","suggest","forecast","lastAutopsy"
+  "interrupt","lastMonthBooked","stockoutFlag","lostStreak","suggest","forecast","lastAutopsy",
+  // Metrics belong to a RESTAURANT, not the company — each site has its own trajectory, and
+  // averaging two of them together would hide exactly the differences worth seeing. Left off
+  // this list it simply did not exist at runtime, because the company object only proxies what
+  // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
+  "metrics"
 ];
 
 function bindActiveSite(G){
@@ -2016,6 +2022,11 @@ function runDay(){
               + judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing))*W.value
               + judgedAgainstClaim("room",  comfortOf())*W.room;
       sat += s;
+      // Kept at DAY level too. Satisfaction is the leading indicator — it moves the night a
+      // decision lands, while standing takes weeks to follow it — and it was computed every
+      // service and thrown away, so the one number that shows an effect early was the one
+      // number the metrics could not report.
+      d.satTotal = (d.satTotal || 0) + s;
       recordMeal(s);
     }
     seatsBusy.push(m + 45 + longest);
@@ -2057,6 +2068,30 @@ function runDay(){
   }
 
   if(G.active === 0) G.history.push({ day:G.day, cash:G.cash, standing:G.rep.standing, covers:d.covers });
+
+  /* EVERY METRIC, EVERY DAY. Aaron: *"the audit log should be keeping track of every single
+     metric every day so you can see how every action impacts every other thing over time."*
+     Right — and it is the only way to answer "does marketing actually do anything", which the
+     summary line cannot: it shows what happened, not what MOVED. A decision's effect lives in
+     the difference between the fortnight either side of it, and you cannot subtract what was
+     never written down. */
+  const bindNow = bindingConstraint(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+  G.metrics.push({
+    day: G.day, site: G.active,
+    covers: d.covers, revenue: Math.round(d.revenue), food: Math.round(d.food),
+    labor: Math.round(d.labor), profit: Math.round(d.revenue - d.food - d.labor),
+    cash: Math.round(G.cash),
+    sat: +(d.covers ? (d.satTotal||0)/d.covers : 0).toFixed(3), standing: +G.rep.standing.toFixed(3), known: +awareness().toFixed(3),
+    walkouts: d.walkouts, balkWait: d.balkedWait, balkPrice: d.balkedPrice,
+    noTable: d.noTable, lostMenu: d.lostMenu, remakes: d.remakes||0, spoiled: Math.round(d.spoiled||0),
+    seats: G.seats, servable: servableSeats(), cooks: G.cooks.length, servers: G.servers.length,
+    pricePos: +pricePosition().toFixed(3),
+    menuFit: +menuDrawAt(daypartAt(G.windows[0] ? G.windows[0].from : 19)).toFixed(3),
+    roomHr: Math.round(bindNow.room), passHr: Math.round(bindNow.pass),
+    marketing: campaign() ? G.campaign.channel + ":" + G.campaign.claim : "-",
+    supplier: G.supplier
+  });
+  if(G.metrics.length > 4000) G.metrics.shift();
 
   // A DISH'S SALES OVER TIME, which the menu matrix cannot show. Star/Plowhorse/Puzzle/Dog is
   // a SNAPSHOT — what a dish is right now. It cannot answer "what did my last decision do to
@@ -3323,6 +3358,43 @@ function fullTranscript(){
     if(a.needsWage) offers.push("hire a " + (a.role||"cook"));
     L.push(`    offers: ${offers.length ? offers.join(", ") : "nothing"}`);
   });
+
+  /* WHAT EACH DECISION ACTUALLY DID. This is the section that answers "does marketing have an
+     impact" — a question the day log cannot settle, because it shows what happened and not what
+     MOVED. Fourteen days either side of every recorded decision, so the comparison is like for
+     like and the reader is not left eyeballing a thousand rows. */
+  rule("WHAT EACH DECISION DID — 14 days before against 14 days after");
+  const window_ = (from, to) => {
+    const w = G.metrics.filter(m => m.day > from && m.day <= to);
+    if(w.length < 3) return null;
+    const avg = k => w.reduce((a,x)=>a+(x[k]||0),0)/w.length;
+    return { covers:avg("covers"), profit:avg("profit"), sat:avg("sat"),
+             standing:w[w.length-1].standing, known:avg("known"),
+             walkouts:avg("walkouts"), balkPrice:avg("balkPrice") };
+  };
+  const moves = G.log.filter(e => e.kind === "you").slice().reverse();
+  if(!moves.length) L.push("(no decisions recorded yet)");
+  moves.forEach(m => {
+    const before = window_(m.day-14, m.day), after = window_(m.day, m.day+14);
+    if(!before || !after) return;
+    const d2 = (a,b,dp) => { const x = b-a; return (x>=0?"+":"") + x.toFixed(dp===undefined?1:dp); };
+    L.push(`d${String(m.day).padStart(4,"0")}  ${m.text}`);
+    L.push(`        covers ${before.covers.toFixed(1)} -> ${after.covers.toFixed(1)} (${d2(before.covers,after.covers)})` +
+           `   profit ${Math.round(before.profit)} -> ${Math.round(after.profit)} (${d2(before.profit,after.profit,0)})`);
+    L.push(`        satisfaction ${before.sat.toFixed(3)} -> ${after.sat.toFixed(3)} (${d2(before.sat,after.sat,3)})` +
+           `   standing ${Math.round(before.standing*100)} -> ${Math.round(after.standing*100)}` +
+           `   known ${Math.round(before.known*100)}% -> ${Math.round(after.known*100)}%`);
+    L.push(`        walkouts ${before.walkouts.toFixed(1)} -> ${after.walkouts.toFixed(1)}` +
+           `   put off by price ${before.balkPrice.toFixed(1)} -> ${after.balkPrice.toFixed(1)}`);
+  });
+
+  /* And the raw rows, so nothing is taken on trust. */
+  rule("EVERY METRIC, EVERY DAY (comma separated)");
+  if(G.metrics.length){
+    const cols = Object.keys(G.metrics[0]);
+    L.push(cols.join(","));
+    G.metrics.forEach(m => L.push(cols.map(k=>m[k]).join(",")));
+  }
 
   rule("EVERY DAY, OLDEST FIRST");
   L.push("(your own moves are marked YOU, advice is marked ADVISOR)");

@@ -3073,6 +3073,48 @@ the meaningful moves are another site or a repricing, not a $700 bench — but e
 written against ratios that behave the same at $20,000 and at $1.3m. Recorded rather than
 guessed at: the fix is probably a wealth-aware ordering, and it wants measuring first.
 
+### Every metric, every day — and what each decision DID (Aaron)
+
+> *"I also don't know if marketing has an impact"* and *"the audit log should be keeping track
+> of every single metric every day so you can see how every action impacts every other thing
+> over time."*
+
+**Those are the same question, and the second answers the first.** A day log shows what
+HAPPENED; a decision's effect lives in the DIFFERENCE between the fortnight either side of it,
+and you cannot subtract what was never written down.
+
+`G.metrics` now records 27 columns every day — covers, revenue, food, labor, profit, cash,
+satisfaction, standing, awareness, walkouts, all four balk types, remakes, spoilage, seats,
+servable seats, brigade, price position, menu fit, room and pass throughput, the live campaign
+and the supplier. The transcript carries it as CSV, and above it a section that does the
+subtraction for you.
+
+**It answered his question immediately, and better than "yes":**
+
+    d0040  Started marketing: the food press, claiming what we cook with.
+           covers 110.3 -> 136.5 (+26.2)   profit 524 -> 752 (+228)
+           satisfaction 0.701 -> 0.570 (-0.132)   known 52% -> 69%
+
+    d0080  Sourcing switched to Premium Harvest Partners (tier 5).
+           covers 153.9 -> 163.3 (+9.4)   profit 879 -> 734 (-145)
+           satisfaction 0.546 -> 0.763 (+0.217)   standing 52 -> 55
+
+**Marketing works in both directions.** Claiming *"what we cook with"* on mid-tier produce
+bought 26 covers a night and COST 0.13 of satisfaction — the claim outran the kitchen, exactly
+as the expectation mechanic intends. Upgrading the ingredients then bought that satisfaction
+back at the cost of short-term profit. **The chain is legible for the first time**, and none of
+it was visible in a log that only recorded incidents.
+
+**Two bugs found while building it, both the same shape as everything else this session:**
+
+- **`metrics` declared in `newGame` and absent from `SITE_FIELDS` simply did not exist.** The
+  company object proxies only the fields named in that list, so a field can be initialised,
+  look correct, and be silently gone at runtime. Metrics belong to a RESTAURANT — averaging two
+  sites together would hide the differences worth seeing.
+- **Satisfaction was computed every service and thrown away.** It is the LEADING indicator — it
+  moves the night a decision lands, while standing takes weeks to follow — so the one number
+  that shows an effect early was the one number the metrics could not report.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
