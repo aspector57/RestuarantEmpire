@@ -537,6 +537,58 @@ const LICENCE_FEE = 6500;            // LiquorLicense.ApplicationFee — steep a
 const LICENCE_RENEWAL = 340;         // paid monthly whether you sell a drop
 
 // Said the way a cook would say it, not by id.
+const HOUR_PRESETS = [
+  { name:"Dinner only", w:[{name:"Dinner",from:18,to:23}] },
+  { name:"Lunch + dinner", w:[{name:"Lunch",from:12,to:15},{name:"Dinner",from:18,to:23}] },
+  { name:"Breakfast + lunch", w:[{name:"Breakfast",from:7,to:11},{name:"Lunch",from:12,to:15}] },
+  { name:"All day", w:[{name:"All day",from:8,to:23}] },
+  { name:"Round the clock", w:[{name:"24h",from:0,to:24}] }
+];
+
+/* HOW MUCH OF THIS STREET YOUR HOURS ACTUALLY REACH.
+ *
+ * Aaron opened on the Business District — a breakfast-and-lunch street — with the default
+ * dinner hours, and traded for SIXTY DAYS at five to seventeen covers a night, losing money
+ * every one of them, until he changed the hours on day 61 and covers went straight to seventy.
+ * Cash bottomed at -$4,784 on the way.
+ *
+ * Measured: the window he chose was worth 16 people an hour against 132 in the ones he was
+ * closed for. **He was capturing 12% of his own street and nothing ever said so.** The menu
+ * advice checks the card against the hours; nothing checked the hours against the STREET.
+ */
+function trafficIn(windows){
+  let total = 0;
+  for(const w of windows){
+    const span = w.to > w.from ? w.to - w.from : (24 - w.from) + w.to;
+    for(let i = 0; i < span; i++) total += G.site.traffic[(w.from + i) % 24];
+  }
+  return total;
+}
+
+/* WORTH, NOT REACH. Ranking by raw traffic always answered "round the clock", because being
+   open more hours always touches more people — while every one of those hours is paid for in
+   wages whether anybody comes in or not. An hour below what it costs to staff is a loss you
+   chose. Scored against a floor set by the street's own peak, so a dead hour contributes
+   nothing and is charged for. */
+function hoursAreWorth(windows){
+  const peak = Math.max.apply(null, G.site.traffic);
+  const floor = peak * 0.30;          // below this an open hour cannot pay for itself
+  let worth = 0;
+  for(const w of windows){
+    const span = w.to > w.from ? w.to - w.from : (24 - w.from) + w.to;
+    for(let i = 0; i < span; i++){
+      const at = G.site.traffic[(w.from + i) % 24];
+      worth += at - floor;            // good hours earn, dead ones cost
+    }
+  }
+  return worth;
+}
+
+function bestHoursForThisStreet(){
+  return HOUR_PRESETS.map(p => ({ preset:p, worth: hoursAreWorth(p.w) }))
+                     .sort((a,b) => b.worth - a.worth)[0];
+}
+
 const STORAGE_STATIONS_JS = { "cold-storage":1, "dry-storage":1 };
 const STATION_NAMES = {
   "oven":"oven", "saute":"range", "garde-manger":"cold section",
@@ -2529,6 +2581,19 @@ function advise(){
     }
   }
 
+  // --- 3d. OPEN WHEN THE STREET IS EMPTY. ---
+  const best = bestHoursForThisStreet();
+  const nowWorth = hoursAreWorth(G.windows);
+  if(best && best.worth > 0 && best.worth > Math.max(nowWorth, 1) * 1.6){
+    out.push({ rank:1, id:"hours",
+      head:"You are open when this street is empty.",
+      body:`Counting every open hour against what it costs to staff, the hours you keep score ` +
+           `${Math.round(nowWorth)} on this street. **${best.preset.name}** scores ${Math.round(best.worth)}. ` +
+           `It is not the food, the prices or the kitchen — there is simply nobody outside at the ` +
+           `times you have chosen to open, and you are paying wages through all of it.`,
+      hours: best.preset });
+  }
+
   // --- 4. Priced away from the money. ---
   const sp = G.suggest || (G.suggest = suggestedPosition());
   if(sp.gain > 0.08)
@@ -3294,6 +3359,17 @@ function renderAdvisor(){
       b.className = "btn";
       b.textContent = a.role === "server" ? "Go and hire a server" : "Go and hire a cook";
       b.onclick = ()=>{ TAB = "team"; render(); };
+      row.appendChild(b);
+    }
+    if(a.hours){
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.textContent = `Switch to ${a.hours.name.toLowerCase()}`;
+      b.onclick = ()=>{
+        G.windows = a.hours.w;
+        didThat(`Hours changed to ${a.hours.name.toLowerCase()} — ${a.hours.w.map(w=>`${w.name} ${w.from}:00-${w.to}:00`).join(", ")}.`);
+        render();
+      };
       row.appendChild(b);
     }
     if(a.openSite){
@@ -4575,14 +4651,8 @@ function panelTeam(){
   const w = card("Opening hours", "The clock runs whatever you choose. The street decides whether anyone is out there — and every open hour is paid for whether or not anyone walks in.");
   const seg2 = document.createElement("div");
   seg2.className = "seg";
-  const presets = [
-    { name:"Dinner only", w:[{name:"Dinner",from:18,to:23}] },
-    { name:"Lunch + dinner", w:[{name:"Lunch",from:12,to:15},{name:"Dinner",from:18,to:23}] },
-    { name:"Breakfast + lunch", w:[{name:"Breakfast",from:7,to:11},{name:"Lunch",from:12,to:15}] },
-    { name:"All day", w:[{name:"All day",from:8,to:23}] },
-    { name:"Round the clock", w:[{name:"24h",from:0,to:24}] }
-  ];
-  for(const p of presets){
+
+  for(const p of HOUR_PRESETS){
     const b = document.createElement("button");
     b.className = "btn" + (JSON.stringify(p.w)===JSON.stringify(G.windows)?" on":"");
     b.textContent = p.name;

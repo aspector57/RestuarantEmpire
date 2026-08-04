@@ -3202,6 +3202,48 @@ numbers.** Rivals, events, staff and the lease all live in `billTheMonth()`, and
 called `runDay()`. **A harness that misses the hook reports "no effect" with total confidence** —
 the same shape as the fixture that measured a famine and the one that never bought a fridge.
 
+### THE FIRST RUN THAT NEARLY DIED — and the sixty days nobody warned him about
+
+Aaron opened on the **Business District** and kept the default **dinner** hours. Sixty days at
+five to seventeen covers a night, losing $100-160 every one of them, cash falling from $14,818
+to **-$4,784**. On day 61 he changed the hours. Covers went straight to seventy, and by day 137
+he was solvent again.
+
+**This is the first genuinely dangerous run the game has produced, and the recovery is the good
+part** — a mistake that cost real money and could be traded out of. That is the arc the pressure
+work was for.
+
+**But nothing ever told him.** Measured:
+
+| Business District | worth |
+|---|---:|
+| the dinner hours he chose | **16 people an hour** |
+| breakfast + lunch, which he was closed for | **132** |
+
+**He was capturing 12% of his own street for two months.** The menu advice checks the CARD
+against the HOURS. Nothing checked the HOURS against the STREET, and it is the single most
+expensive mistake available at day zero.
+
+`opportunity:hours` now says so, ranked just under the free fixes, with a button that switches:
+
+> *"You are open when this street is empty. Counting every open hour against what it costs to
+> staff, the hours you keep score -32 on this street. Breakfast + lunch scores 65. It is not the
+> food, the prices or the kitchen — there is simply nobody outside at the times you have chosen
+> to open, and you are paying wages through all of it."*
+
+**SCORED BY WORTH, NOT BY REACH — the first version got this wrong and the probe caught it in
+one run.** Ranking by raw traffic answered *"round the clock"* for every street, because being
+open longer always touches more people. **Every one of those hours is paid for whether anybody
+comes in or not.** Hours are now scored against a floor set by the street's own peak, so a dead
+hour contributes nothing and is charged for — which turns the answer from "open always" into a
+different right answer per pitch:
+
+| | dinner only | breakfast + lunch | lunch + dinner |
+|---|---|---|---|
+| Business District | **-32 → warns** | 65 (best) | 15 → warns |
+| Nightlife Quarter | 78 (fine) | **-28 → warns** | 81 (best) |
+| Suburban High Street | 43 (fine) | **1 → warns** | 54 (best) |
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
