@@ -2467,6 +2467,60 @@ function advise(){
     }
   }
 
+  // --- 3c. THIS SITE IS FINISHED. The only growth left is another one. ---
+  //
+  // Twelve advice codes and not one mentioned opening a second restaurant. Aaron's day-558 run
+  // sat on $458,391, one site, 32 seats and 2 servers, being told the same two things for four
+  // hundred days — because the Advisor could see the room and the pass and nothing beyond
+  // them. **A game about building an empire never once suggested a second restaurant.**
+  //
+  // It fires only when this site genuinely cannot absorb more: the street is turning people
+  // away, the fit-out has been done, and there is money spare after keeping a real cushion
+  // here. Otherwise it would just be "you have money, spend it", which is not advice.
+  if(G.sites.length < SITES.length){
+    const spare = G.cash - (monthlyBurn() * 3);          // three months here, untouched
+    const options = SITES.filter(s => !G.sites.some(x => x.site.id === s.id))
+                         .filter(s => spare >= s.key + fitOutCost())
+                         .sort((a,b) => a.key - b.key);
+    const fc = forecastDay();
+
+    // HAS THIS PITCH GOT ANYTHING LEFT? — not merely "is demand high", which is true of every
+    // under-built restaurant and had the advice telling a twelve-seat opening to go and buy a
+    // second one. A site is finished when there is nowhere to put another table, nowhere to
+    // put another unit, and no more building to buy. Until then the cheap growth is here.
+    const noRoomForTables = !FURNITURE.some(x => freeArea() >= x.foot*10);
+    const noRoomForKit    = !EQUIPMENT.filter(e => !STORAGE_STATIONS_JS[e.station])
+                                      .some(e => freeArea() >= e.foot);
+    const builtOut = noRoomForTables && noRoomForKit && !canExtend();
+
+    // And it has to be genuinely busy, or "finished" just means "small".
+    const packed = d && (d.noTable > 4 || fc.demand > fc.covers * 1.15);
+
+    if(options.length && packed && builtOut){
+      // The one whose crowd already likes what this restaurant is. Menu fit is the honest
+      // predictor and it is already computed — a card that suits a street outperforms a
+      // cheaper pitch that does not.
+      const best = options.map(s => {
+        const was = G.site; G.site = s;
+        const fit = ["dinner","lunch"].map(dp => menuDrawAt(dp)).reduce((a,b)=>a+b,0)/2;
+        G.site = was;
+        return { site:s, fit };
+      }).sort((a,b) => b.fit - a.fit)[0];
+
+      out.push({ rank:3, id:"expand",
+        head:`This one is about as big as the street will let it get.`,
+        body:`${Math.round(Math.max(0, fc.demand - fc.covers))} covers a night want a table here and cannot have one, ` +
+             `and there is nowhere left to put a table, a unit or another wall — ${G.floorArea.toFixed(0)} sq ft ` +
+             `of a ${G.site.maxArea} sq ft site, all of it spoken for. ` +
+             `**The next restaurant is the growth now, not this one.** ` +
+             `${best.site.name} looks the most promising — your card reads ${Math.round(best.fit*100)}% for the ` +
+             `crowd on that street. $${best.site.key.toLocaleString()} in key money plus about ` +
+             `$${Math.round(fitOutCost()).toLocaleString()} to fit it out, and you have ${money(G.cash)} ` +
+             `with ${money(spare)} spare after keeping three months here.`,
+        openSite: best.site });
+    }
+  }
+
   // --- 4. Priced away from the money. ---
   const sp = G.suggest || (G.suggest = suggestedPosition());
   if(sp.gain > 0.08)
@@ -2518,6 +2572,7 @@ function advise(){
   if(broke){
     for(const a of out){
       if(a.seats) a.seats = null;
+      if(a.openSite) a.openSite = null;
       if(a.alt) a.alt = null;
       if(a.extend) a.extend = null;
       if(a.upgrade) a.upgrade = null;
@@ -3089,6 +3144,13 @@ function renderAdvisor(){
       b.className = "btn";
       b.textContent = a.role === "server" ? "Go and hire a server" : "Go and hire a cook";
       b.onclick = ()=>{ TAB = "team"; render(); };
+      row.appendChild(b);
+    }
+    if(a.openSite){
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.textContent = `Open on ${a.openSite.name} — $${a.openSite.key.toLocaleString()}`;
+      b.onclick = ()=>{ if(openSite(a.openSite)) render(); };
       row.appendChild(b);
     }
     if(a.extend){

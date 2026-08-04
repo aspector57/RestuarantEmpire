@@ -3115,6 +3115,44 @@ it was visible in a log that only recorded incidents.
   moves the night a decision lands, while standing takes weeks to follow — so the one number
   that shows an effect early was the one number the metrics could not report.
 
+### A game about building an empire never once suggested a second restaurant
+
+Aaron's day-558 run: **$458,391, one site, 32 seats, 2 servers** — and the Advisor had said the
+same two things for four hundred days. Reading the codes explained it: **twelve advice rules and
+not one mentioned expansion.** `openSite` existed, the site strip was on screen the whole time,
+and nothing ever pointed at either.
+
+`opportunity:expand` names the most promising pitch **by menu fit**, which is the honest
+predictor — a card that already suits a street will outperform a cheaper one that does not:
+
+> *"This one is about as big as the street will let it get. 157 covers a night want a table
+> here and cannot have one, and there is nowhere left to put a table, a unit or another wall.
+> **The next restaurant is the growth now, not this one.** City Center looks the most promising
+> — your card reads 128% for the crowd on that street."*
+
+**THE FIRST GATE WAS WRONG IN THE MOST OBVIOUS WAY, and the probe caught it in one run.** It
+asked "is demand high", which is true of every under-built restaurant — so it told a twelve-seat
+opening with one cook to go and buy a second site, while staying silent for the packed one. A
+pitch is finished when **there is nowhere left for a table, a unit, or another wall**, and until
+then the cheap growth is where you already are.
+
+| situation | says expand? |
+|---|---|
+| packed and rich, room still to build | **no** — grow here first |
+| packed but nearly broke | **no** — the brake holds |
+| rich with an empty room | **no** — nothing is wrong |
+| brand new and tiny | **no** — this was the bug |
+| **maxed site, 427 wanted against 270 servable** | **yes** |
+
+It also keeps three months of running costs at the existing restaurant before counting anything
+as spare, because opening a second one by starving the first is not expansion.
+
+**What this does NOT settle, and Aaron's log says so plainly:** he was told for four hundred
+days that 121 covers a night were walking away, and did not act. The advice was right, ordered
+correctly, and had a working button. **Being told is not the same as being moved**, and no
+amount of better wording fixes that — it is an argument for consequences that arrive on their
+own rather than advice that asks more loudly.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
