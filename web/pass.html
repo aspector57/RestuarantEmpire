@@ -4,8 +4,9 @@
 :root{
   --ground:#14120f; --surface:#1c1a16; --raised:#242019; --line:#332d24;
   --ink:#efe8dc; --muted:#a79b89; --faint:#7a6f60;
-  --heat:#ff8c42; --heat-dim:#b35f28;
-  --good:#6fbf8f; --warn:#e8c05a; --bad:#e0625a;
+  --heat:#ff9147; --heat-dim:#b8622a;
+  --cool:#48bcab; --cool-dim:#2b7d72;
+  --good:#63c98d; --warn:#f0c65c; --bad:#ef6a5c;
   --paper:#1f1c17;
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -16,7 +17,8 @@
     --ground:#e6dfd1; --surface:#f7f2e8; --raised:#fffcf4; --line:#d4c9b4;
     --ink:#221d16; --muted:#6b6053; --faint:#948877;
     --heat:#c2571a; --heat-dim:#e08a4d;
-    --good:#3f8f61; --warn:#a67c14; --bad:#b8352c;
+    --cool:#0e7c6f; --cool-dim:#63b5aa;
+    --good:#2f8a58; --warn:#9c7410; --bad:#b8352c;
     --paper:#fffdf8;
   }
 }
@@ -24,14 +26,16 @@
   --ground:#e6dfd1; --surface:#f7f2e8; --raised:#fffcf4; --line:#d4c9b4;
   --ink:#221d16; --muted:#6b6053; --faint:#948877;
   --heat:#c2571a; --heat-dim:#e08a4d;
-  --good:#3f8f61; --warn:#a67c14; --bad:#b8352c;
+  --cool:#0e7c6f; --cool-dim:#63b5aa;
+  --good:#2f8a58; --warn:#9c7410; --bad:#b8352c;
   --paper:#fffdf8;
 }
 :root[data-theme="dark"]{
   --ground:#14120f; --surface:#1c1a16; --raised:#242019; --line:#332d24;
   --ink:#efe8dc; --muted:#a79b89; --faint:#7a6f60;
-  --heat:#ff8c42; --heat-dim:#b35f28;
-  --good:#6fbf8f; --warn:#e8c05a; --bad:#e0625a;
+  --heat:#ff9147; --heat-dim:#b8622a;
+  --cool:#48bcab; --cool-dim:#2b7d72;
+  --good:#63c98d; --warn:#f0c65c; --bad:#ef6a5c;
   --paper:#1f1c17;
 }
 
@@ -331,6 +335,76 @@ body::before{
                          0 6px 18px -8px var(--heat); }
 
 @media (prefers-reduced-motion:reduce){ *{ animation-duration:.01ms !important; } }
+
+/* =========================================================================
+   TWO HUES, AND ONLY TWO. Amber owns money and action; verdigris owns
+   information. Copper going to patina is in this subject's own world and is
+   a true complement to the amber, so the pair reads as chosen rather than
+   as a second colour picked at random. Everything else stays quiet — the
+   boldness is spent in one place, deliberately.
+   ========================================================================= */
+
+/* The lamps pick up a cool bounce at the edges, the way a warm light does
+   against steel. Two stops instead of one, and the page stops being brown. */
+body::before{
+  background:
+    radial-gradient(78% 120% at 50% -28%, color-mix(in oklab, var(--heat) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(60% 90% at 88% -10%, color-mix(in oklab, var(--cool) 13%, transparent) 0%, transparent 62%),
+    linear-gradient(to bottom, color-mix(in oklab, var(--heat) 5%, transparent), transparent 70%);
+}
+
+/* Tabs: the section you are in is the live one, so it takes the accent. */
+.tab[aria-selected="true"]{ color:var(--heat); border-bottom-color:var(--heat); }
+.tab:hover{ color:var(--cool); }
+
+/* THE FORECAST is a diagram, not a control — verdigris, with the binding
+   ceiling in amber so the thing that is actually stopping you pops. */
+.fcbar .t i{ background:linear-gradient(90deg, var(--cool-dim), var(--cool)); }
+.fcbar.binds .t i{ background:linear-gradient(90deg, var(--heat-dim), var(--heat)); }
+.fcbound.demand{ color:var(--good); border-color:color-mix(in oklab, var(--good) 55%, transparent); }
+.fcbound.seats{ color:var(--cool); border-color:color-mix(in oklab, var(--cool) 55%, transparent); }
+.fcbound.kitchen{ color:var(--heat); border-color:color-mix(in oklab, var(--heat) 55%, transparent); }
+
+/* Standing is a slow, earned thing. Let it read cool and settled. */
+.meter i{ background:linear-gradient(90deg, var(--cool-dim), var(--cool)); }
+.repnote.falling{ color:var(--warn); }
+
+/* Sales trends are information too. */
+.sparkline{ stroke:var(--cool); }
+.sparkfill{ fill:color-mix(in oklab, var(--cool) 14%, transparent); opacity:1; }
+.sparkdot{ fill:var(--heat); }
+
+/* Advice is the game talking to you: give the heading the accent so it
+   never reads as another paragraph of body copy. */
+.advhead{ color:var(--ink); }
+.advitem{ border-top-color:color-mix(in oklab, var(--cool) 22%, var(--line)); }
+.advcount{ color:var(--cool); }
+
+/* Cards lift off the ground with a cool hairline rather than a grey box. */
+.card{
+  border-color:color-mix(in oklab, var(--cool) 9%, var(--line));
+  box-shadow:0 1px 0 color-mix(in oklab, var(--ink) 5%, transparent) inset,
+             0 8px 24px -20px #000;
+}
+.card h3{ color:var(--ink); }
+
+/* Menu sections in the accent, small and quiet — a printed card, not a form. */
+.coursehead{ color:var(--cool); border-bottom-color:color-mix(in oklab, var(--cool) 28%, var(--line)); }
+
+/* Numbers carry meaning by colour as well as value. */
+.trendnum.up{ color:var(--good); }
+.trendnum.down{ color:var(--bad); }
+#menufit{ transition:color .2s; }
+
+/* Buttons: hover cool, act amber. The distinction is the point — one is
+   "I am looking at this", the other is "this spends money". */
+.btn:hover,.btn:focus-visible{ border-color:var(--cool); color:var(--cool); }
+.seg .btn.on{ border-color:var(--heat); color:var(--heat);
+              background:color-mix(in oklab, var(--heat) 8%, var(--raised)); }
+.btn.primary{ color:#14120f; }
+@media (prefers-color-scheme: light){ .btn.primary{ color:#fffcf4; } }
+:root[data-theme="light"] .btn.primary{ color:#fffcf4; }
+:root[data-theme="dark"]  .btn.primary{ color:#14120f; }
 </style>
 
 <div class="wrap">
