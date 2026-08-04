@@ -1523,14 +1523,24 @@ function shareOfTheStreet(){
  * different data, and the player believes whichever one has a button. So there is one
  * function now, and the room is in it.
  */
+/* A ROOM CAN BE SHORT FOR TWO DIFFERENT REASONS, and only one of them is fixed by tables.
+   `servableSeats()` is the smaller of the chairs you own and the covers your floor staff can
+   actually work — so a restaurant with 182 seats and 3 servers has a 42-cover room. Advice
+   that says "the room is the tighter half" and offers tables is then buying furniture nobody
+   can serve: a 240-day run bought 150 useless seats, spent $71,000, and covers never moved.
+   Sixth instance of one question answered from the wrong half of the data. */
 function bindingConstraint(dp){
   const lim = passLimit(dp);
-  const room = servableSeats() * (60 / DWELL);
+  const servable = servableSeats();
+  const room = servable * (60 / DWELL);
+  const cappedByStaff = servable < G.seats;
 
-  if(!lim) return { kind:"room", allows:room, room:room, pass:0 };
-  if(room < lim.allows) return { kind:"room", allows:room, room:room, pass:lim.allows, lim:lim };
+  if(!lim) return { kind:"room", allows:room, room:room, pass:0, cappedByStaff:cappedByStaff, servable:servable };
+  if(room < lim.allows)
+    return { kind:"room", allows:room, room:room, pass:lim.allows, lim:lim,
+             cappedByStaff:cappedByStaff, servable:servable };
 
-  return Object.assign({}, lim, { room:room, pass:lim.allows });
+  return Object.assign({}, lim, { room:room, pass:lim.allows, cappedByStaff:cappedByStaff, servable:servable });
 }
 
 function runDay(){
@@ -1888,12 +1898,15 @@ function advise(){
         ? ` Another ${model.name} is $${model.cost.toLocaleString()}; you have ${money(G.cash)}.`
         : better
           ? ` There is no floor left for another — but a ${better.name} runs at ${better.speed}× against the ${owned.speed}× you have now and takes ${owned.foot - better.foot} sq ft LESS. Sell one of the old ones and put that in its place.`
-          : ` There is no floor left for another, and nothing faster fits either. The building would have to be extended.`;
+          : canExtend()
+            ? ` There is no floor left for another and nothing faster fits either — but this site has room to grow into: ${Math.round(G.site.maxArea - G.floorArea)} sq ft of it at $${G.site.landPer} a foot.`
+            : ` There is no floor left for another, nothing faster fits, and the site cannot be extended any further.`;
 
       out.push({ rank:3, id:"kitchen", head:`The ${name} is what is holding us back.`,
         body:`${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` + tail,
         buy: canFit ? model : null,
-        upgrade: !canFit && better ? { from: owned, to: better, station: lim.station } : null });
+        upgrade: !canFit && better ? { from: owned, to: better, station: lim.station } : null,
+        extend: (!canFit && !better && model && blockedByFloorOnly(model.foot)) ? true : null });
     } else if(roomPerHour < perHour * 0.8){
       // A SEAT YOU CANNOT FEED IS WORSE THAN NO SEAT AT ALL, and this advice used to ignore it.
       //
@@ -2057,7 +2070,9 @@ function advise(){
         // block adds thirteen covers an hour, which is most of the kitchen again.
         const roomIsAhead = bind.kind === "room" && (bind.room + blockAdds) <= bind.pass * 1.5;
 
-        const fit = roomIsAhead
+        // Tables are only the answer when the chairs are what is short. If the floor staff
+        // cannot work the seats already bought, more seats are furniture.
+        const fit = (roomIsAhead && !bind.cappedByStaff)
           ? FURNITURE.filter(x => freeArea() >= x.foot*10 && G.cash >= x.perSeat*10)
                      .sort((a,b)=>a.perSeat-b.perSeat)[0]
           : null;
@@ -2070,7 +2085,9 @@ function advise(){
                `Lifting one half alone just moves the bottleneck across, so this wants growing on ` +
                `both sides — ` +
                (roomIsAhead
-                 ? `and the pass is far enough ahead now that the room is the half to lift.`
+                 ? (bind.cappedByStaff
+                     ? `and it is the room — but not the tables. You own ${G.seats} seats and ${G.servers.length} server${G.servers.length===1?"":"s"} can work ${bind.servable} of them, so the other ${G.seats - bind.servable} are furniture. Another server opens them up; more tables would not.`
+                     : `and the pass is far enough ahead now that the room is the half to lift.`)
                  : brigade
                    ? `starting with the kitchen, and it is hands rather than equipment: ` +
                      `${lim.cooks} cook${lim.cooks===1?"":"s"} moving about ${Math.round(lim.allows)} covers an hour. ` +
@@ -2078,8 +2095,12 @@ function advise(){
                    : `starting with the kitchen. A seat you cannot feed is worse than no seat at all, ` +
                      `so the pass goes first and the tables follow it.`) +
                ` You have ${money(G.cash)}.`,
-          needsWage: brigade && !roomIsAhead, role: "cook",
+          needsWage: (brigade && !roomIsAhead) || (roomIsAhead && bind.cappedByStaff),
+          role: (roomIsAhead && bind.cappedByStaff) ? "server" : "cook",
           seats: fit || null,
+          // The floor itself is the move when nothing fits on it. Six square feet short of a
+          // table block is not a reason to say nothing.
+          extend: (!fit && roomIsAhead && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
           buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? cheapestFor(lim.station) : null,
           upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
       }
@@ -2137,6 +2158,7 @@ function advise(){
   if(broke){
     for(const a of out){
       if(a.seats) a.seats = null;
+      if(a.extend) a.extend = null;
       if(a.upgrade) a.upgrade = null;
       if(a.buy){ a.buy = null; a.body += ` There is not enough money to buy your way out of this — the cheaper move is to take the slowest dishes off the card until the pass can keep up.`; }
       else if(a.needsWage){ a.body += ` There is not the money to hire right now, so the move is to shorten the card or the hours until it can be worked with who you have.`; }
@@ -2293,6 +2315,25 @@ function sellEquip(e){
 /* Ten more covers. Shared, so the Advisor's button and the Build tab's cannot drift on price,
    floor area or comfort — the same class of split that had one cook doing 19 covers an hour in
    one readout and 14 in another. */
+/* THE FLOOR IS SOMETHING YOU CAN BUY, and nothing ever said so.
+   A 240-day run finished on $197,461, 32 seats, and 124 sq ft free — six short of the 130 the
+   cheapest tables need. Every growth suggestion silently withheld its button because nothing
+   fits, and no advice anywhere mentioned that the site had 2,100 sq ft of headroom at $32.
+   The player is left with a full building, a full bank, and no visible move. */
+const EXTEND_BY = 215;
+function extendCost(){ return EXTEND_BY * G.site.landPer; }
+function canExtend(){ return G.cash >= extendCost() && G.floorArea + EXTEND_BY <= G.site.maxArea; }
+function extendBuilding(){
+  if(!canExtend()) return;
+  G.cash -= extendCost(); G.ledger.capex += extendCost(); G.floorArea += EXTEND_BY;
+  didThat(`Extended the building by ${EXTEND_BY} sq ft for $${extendCost().toLocaleString()} — ${G.floorArea.toFixed(0)} sq ft now, ${freeArea().toFixed(0)} free.`);
+}
+
+/* Is this suggestion blocked ONLY by floor space? If so the floor is the real advice. */
+function blockedByFloorOnly(needsArea){
+  return freeArea() < needsArea && canExtend();
+}
+
 function buySeats(f){
   const cost = f.perSeat*10, area = f.foot*10;
   if(G.cash < cost || freeArea() < area) return;
@@ -2624,6 +2665,13 @@ function renderAdvisor(){
         buyEquip(a.upgrade.to);
         render();
       };
+      row.appendChild(b);
+    }
+    if(a.extend){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = `Extend the building by ${EXTEND_BY} sq ft — $${extendCost().toLocaleString()}`;
+      b.onclick = ()=>{ extendBuilding(); render(); };
       row.appendChild(b);
     }
     if(a.seats){
@@ -3460,7 +3508,7 @@ function panelBuild(){
   const extCost = 215*G.site.landPer;
   ext.textContent = `Extend by 215 sq ft — $${extCost.toLocaleString()}`;
   ext.disabled = G.cash<extCost || G.floorArea+215>G.site.maxArea;
-  ext.onclick = ()=>{ G.cash-=extCost; G.ledger.capex+=extCost; G.floorArea+=215; say("money","Building extended."); render(); };
+  ext.onclick = ()=>{ extendBuilding(); render(); };
   acts.appendChild(ext);
   c.appendChild(acts);
 

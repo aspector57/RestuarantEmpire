@@ -110,8 +110,33 @@ sweep("Price",              "price",    [0.8,1.0,1.2,1.4,1.6,1.8,2.0], function(
 sweep("Cooks",              "cooks",    [1,2,3,4,5,6],                 function(v){ return v + " cook" + (v===1?"":"s"); });
 sweep("Servers",            "servers",  [1,2,3,4],                     function(v){ return v + " server" + (v===1?"":"s"); });
 sweep("Seats",              "seats",    [12,18,24,32,40,60],           function(v){ return v + " seats"; });
-sweep("Ingredients",        "supplier", ["budget-wholesale","valley-produce","premium-harvest"],
-      function(v){ return SUPPLIERS.filter(function(s){return s.id===v;})[0].name; });
+/* SOURCING CANNOT BE COMPARED AT ONE PRICE, and doing so is how this harness reported
+   "ingredients are a trap" while probe-price-optimum showed the opposite. Better ingredients
+   buy standing, standing is what lets you charge more, and judging them all at 1.0x measures
+   the cost and none of the benefit. Each supplier is swept at ITS OWN best price. */
+console.log("");
+console.log("INGREDIENTS — each supplier at its own best price, because comparing at one price");
+console.log("measures what they cost and not what they buy you.");
+console.log("  " + pad("supplier",22)+pad("best price",13)+pad("net /"+DAYS+"d",13)+pad("covers/day",12)+pad("standing",10)+"food%");
+var sourcing = ["budget-wholesale","valley-produce","premium-harvest"].map(function(sup){
+  var best = null;
+  [1.0,1.1,1.2,1.3,1.4,1.5,1.6].forEach(function(pr){
+    var r = play({ supplier:sup, price:pr });
+    if(!best || r.net > best.net) best = { net:r.net, price:pr, covers:r.covers, foodPct:r.foodPct, standing:G.rep.standing };
+  });
+  console.log("  " + pad(SUPPLIERS.filter(function(s){return s.id===sup;})[0].name,22) +
+              pad(best.price.toFixed(1)+"x",13) + pad(cash(best.net),13) +
+              pad(best.covers.toFixed(1),12) + pad(Math.round(best.standing*100)+"/100",10) +
+              Math.round(best.foodPct*100)+"%");
+  return { sup:sup, net:best.net };
+});
+var bestSup = 0;
+for(var si=1; si<sourcing.length; si++) if(sourcing[si].net > sourcing[bestSup].net) bestSup = si;
+console.log("  -> " + (bestSup === 0
+  ? "budget wins even when everyone is priced properly — sourcing well does not pay"
+  : bestSup === sourcing.length-1
+    ? "premium wins outright"
+    : "a real decision — the middle tier wins once each is priced for what it is"));
 sweep("Oven",               "oven",     ["oven-secondhand","oven-commercial","oven-hearth"],
       function(v){ var m = EQUIPMENT.filter(function(e){return e.id===v;})[0]; return m ? m.name : v; });
 sweep("How many ovens",     "ovens",    [1,2,3,4,5],                   function(v){ return v + " oven" + (v===1?"":"s"); });

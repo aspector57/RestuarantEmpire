@@ -2734,6 +2734,64 @@ by hand and so never noticed `openSite` shipped a shell.
 the result not to grossly outrun the pass — literally the assertion `playthrough.js` makes —
 so the Advisor and the invariant agree by construction rather than by coincidence.
 
+### A ROOM CAN BE SHORT FOR TWO REASONS, and only one is fixed by tables
+
+Found by running the harnesses against the multi-site work after pulling it. The 240-day
+playthrough bought **182 seats**, spent about $71,000 doing it, and covers never moved from
+~149/day.
+
+`servableSeats()` is the smaller of the chairs you own and the covers your floor staff can
+actually work. **Three servers can work 42 covers however many chairs you buy** — so a room can
+be the tighter half while tables are the wrong fix entirely. `bindingConstraint` reported
+`room` correctly and the advice offered furniture, because nothing distinguished *not enough
+seats* from *nobody to serve them*.
+
+**Sixth instance of one question answered from the wrong half of the data.** It now carries
+`cappedByStaff`, withholds the table button when staff are the cap, and says so plainly: *"you
+own 182 seats and 3 servers can work 42 of them, so the other 140 are furniture. Another server
+opens them up; more tables would not."*
+
+**Measured, same seed, 240 days:** 149.9 -> **187.1 covers/day**, $1,600 -> **$1,997/day**,
+32 seats grown sensibly to 52 rather than uselessly to 182.
+
+### The floor is something you can buy, and nothing ever said so
+
+The same run finished on $197,461 with **124 sq ft free and the cheapest tables needing 130**.
+Six square feet short. Every growth suggestion silently withheld its button, and **no advice
+anywhere mentioned that the site had 2,100 sq ft of headroom at $32 a foot.** A full building, a
+full bank, and no visible move.
+
+`extendBuilding()` is now a shared action offered by any advice blocked *only* by floor —
+alongside the existing upgrade path, so "no room" resolves to either a smaller faster unit or
+more building rather than silence.
+
+### Sourcing pays back over TWO YEARS, and premium never does
+
+`levers.js` reported "ingredients are a TRAP" — the exact error corrected one commit earlier:
+**comparing suppliers at a single price measures what they cost and none of what they buy.**
+Fixed to sweep each supplier at its own optimum. Then the horizon turned out to be the real
+story:
+
+| horizon | Budget | Valley | Premium |
+|---|---|---|---|
+| 90 days | **$18,734** (46) | $14,551 (53) | $6,023 (57) |
+| 365 days | $144,889 (36) | $143,210 (52) | $122,640 (67) |
+| **730 days** | $323,473 (36) | **$338,530** (52) | $308,076 (69) |
+
+Standing in brackets. **The mechanic works directionally** — budget decays 46 -> 36 while
+premium climbs 57 -> 69 — **but mid-tier only overtakes at about two years and the top tier
+never overtakes at all.** Recorded rather than tuned: this project has been caught twice
+adjusting constants until a number pleased it, and "is a two-year payback the intended arc?" is
+a design question rather than a bug.
+
+### A probe that calls "healthy" a contradiction
+
+`probe-agreement` failed after the pull, and it was the probe. It quoted `passLimit` — which
+answers "what limits the PASS" and knows nothing about the room — against the whole-restaurant
+constraint, and treated *"about right"* as disagreement. **Near parity is the healthiest a
+restaurant can be, and the test called it a defect.** It now flags only genuine opposition:
+forecast says kitchen while Build says room, or the reverse.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

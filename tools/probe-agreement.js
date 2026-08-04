@@ -26,10 +26,23 @@ for(var i=0;i<20;i++) runDay();
 var f = forecastDay();
 console.log("FORECAST : " + f.constraint + "-bound   (street " + Math.round(f.demand) + ", seats " + f.seatCeil + ", pass " + f.kitchenCeil + ")");
 console.log("BUILD    : " + balanceNote());
-var lim = passLimit("dinner");
-console.log("SHARED   : limited by " + lim.kind.toUpperCase());
+// bindingConstraint answers "what limits the RESTAURANT". passLimit answers the narrower
+// "what limits the PASS" and knows nothing about the room, so quoting it here compared the
+// wrong two things — the probe reported a contradiction that was not one.
+var bind = bindingConstraint("dinner");
+console.log("SHARED   : limited by " + bind.kind.toUpperCase() +
+            "  (room " + Math.round(bind.room) + "/hr, pass " + Math.round(bind.pass) + "/hr)");
 console.log("");
-console.log("AGREE? " + ((f.constraint === "kitchen") === (balanceNote().indexOf("room is the bottleneck") < 0) ? "yes" : "NO — STILL CONTRADICTING"));
+
+// A CONTRADICTION IS THEM POINTING OPPOSITE WAYS, not one of them saying "about right".
+// The old test failed whenever the two halves were near parity — which is the healthiest a
+// restaurant can be — because it treated "neither dominates" as disagreement.
+var note = balanceNote();
+var buildSaysRoom    = note.indexOf("the room is the bottleneck") >= 0;
+var buildSaysKitchen = note.indexOf("is the bottleneck") >= 0 && !buildSaysRoom;
+var clash = (f.constraint === "kitchen" && buildSaysRoom) ||
+            (f.constraint === "seats"   && buildSaysKitchen);
+console.log("AGREE? " + (clash ? "NO — STILL CONTRADICTING" : "yes"));
 console.log("");
 var burn = monthlyBurn();
 var takings = G.recent.slice(-14).reduce(function(a,x){return a+(x.revenue||0);},0)/14*30;

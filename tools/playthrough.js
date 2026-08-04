@@ -122,6 +122,7 @@ for(var day = 1; day <= DAYS; day++){
     else if(top.upgrade)          { sellEquip(top.upgrade.from); buyEquip(top.upgrade.to);
                                     did = "swapped in a " + top.upgrade.to.name; }
     else if(top.seats)            { buySeats(top.seats);          did = "added 10 seats"; }
+    else if(top.extend){ extendBuilding();            did = "extended the building"; }
     // Acts on anything that asks for hands, not one hard-coded code — the harness must follow
     // the advice as given, or it is testing my memory of the Advisor rather than the Advisor.
     // ROLE COMES FROM THE ADVICE, never from here. This hardcoded "cook", so a suggestion
