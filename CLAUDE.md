@@ -3019,6 +3019,19 @@ avoid. And **the renderer no longer fails silently**: an action it cannot carry 
 because a dead button is worse than a missing one — the player believes they acted and the game
 says nothing.
 
+**And a fourth, reported minutes later: the download button.** `a.click()` on a blob URL is
+blocked outright by the artifact's sandboxed iframe, so it failed silently however correct the
+code was — and `navigator.clipboard` can be refused the same way. **Three of the four dead
+buttons were environment, not logic**, which is why reading the source found none of them.
+
+Replaced with **"Show it on the page"**: a textarea, filled and selected, that nothing can
+block. The clipboard button now says *"Blocked — use Show it on the page"* rather than looking
+like it worked. `downloadTranscript` is kept for opening `web/pass.html` straight off disk,
+where downloads are allowed.
+
+**The rule this session keeps teaching: an action is not shipped until something has pressed
+it.** Not read it, not type-checked it — pressed it, in the environment it runs in.
+
 ### Open, and visible in the same run: THE ADVISOR DOES NOT SCALE
 
 Day 1903, **$1,326,021 in the bank, standing 98, 283 covers a day** — and the top suggestion is
