@@ -2919,6 +2919,52 @@ a fine-dining room with families who hate the card.
 **Deliberately not built: Restaurant Week and seasonal events.** Aaron raised them and they are
 the same mechanic with a calendar on top — much better once the base has real trade-offs.
 
+### 1,167 days on one server, because "hire someone" was never a button
+
+Aaron's day-1167 run: **$337,209 in the bank, one server, 32 seats, and 184 covers a night
+walking away.** The Advisor had the diagnosis exactly right —
+
+> *"More chairs would not help — there is nobody to wait on them."*
+> *"Another server opens them up; more tables would not."*
+
+— and then offered him **[Extend the building — $6,880]**, which contradicts the sentence above
+it. Two bugs, and both are the same shape as everything else this session:
+
+**`needsWage` was set in five places and rendered nothing.** Every piece of advice that asked
+for a hire was text the player had to act on by going and finding the Team tab themselves. Three
+years of being told the right thing and never being able to press it. It is a button now.
+
+**The grow advice offered the FLOOR when the problem was STAFF.** Extending the building is
+suggested when a growth move is blocked only by floor space — but when `cappedByStaff` is true
+the floor is not what is blocking anything. Guarded.
+
+### The whole run, in one piece (Aaron)
+
+> *"we need a way to export the whole entire log so you can see every single change that I made
+> and what the advisor recommended."*
+
+**This is the fastest instrument this project has.** Every defect that mattered came out of a
+pasted screen, and a screen is one moment — it shows the state and hides how it got there. A
+transcript is the whole argument: what the restaurant was, what the Advisor said, what the
+player did, and what happened next.
+
+Two things had to exist first. The rail kept only 400 entries (about a hundred days), now 6,000.
+And **the Advisor was never recorded** — the log showed what the player did and never what they
+were told, which is the half that says whether the advice was any good. It is now written into
+the rail the moment the top suggestion CHANGES, so a thousand-day run does not become a thousand
+identical lines.
+
+`Copy the whole run` and `Download as a file` sit under the rail, alongside a new **"What I was
+told"** filter. The transcript opens with the position, the books, and every current suggestion
+WITH WHAT IT OFFERS — because "the Advisor said hire a server and gave me a button for a
+building extension" is exactly the kind of defect that is invisible in prose and obvious in a
+dump.
+
+    d0001  ADVISOR Advisor: [grow] Nothing here is broken — the place is just small for the street.
+    d0011  ADVISOR Advisor: [menu] People are coming in and finding nothing they want.
+    d0012  YOU     Pizza Margherita — price set to $19.00.
+    d0025  YOU     Hired a second server.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

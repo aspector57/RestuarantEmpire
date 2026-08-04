@@ -152,6 +152,7 @@ button{font:inherit; color:inherit; cursor:pointer}
 .trendnum.down{color:var(--bad)}
 .trendwhy{font-style:italic}
 .rail .you .t{color:var(--heat)}
+.ticket.advice{border-left-color:var(--cool); font-style:italic}
 .repnote.falling{color:var(--bad)}
 
 .controls{display:grid; gap:7px}
@@ -530,6 +531,7 @@ const LICENCE_FEE = 6500;            // LiquorLicense.ApplicationFee — steep a
 const LICENCE_RENEWAL = 340;         // paid monthly whether you sell a drop
 
 // Said the way a cook would say it, not by id.
+const STORAGE_STATIONS_JS = { "cold-storage":1, "dry-storage":1 };
 const STATION_NAMES = {
   "oven":"oven", "saute":"range", "garde-manger":"cold section",
   "grill":"grill", "coffee":"coffee machine", "pastry":"pastry section", "bar":"bar"
@@ -838,6 +840,7 @@ function newSite(site, id, name){
     windows: [{name:"Dinner", from:18, to:23}],
     licence: false,          // permission to sell alcohol; bought, then renewed monthly
     campaign: null,          // { claim, channel } — what you say, and where you say it
+    lastAdvice: null,        // so the rail records advice when it CHANGES, not every day
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -2064,7 +2067,7 @@ function runDay(){
 
 function say(kind, text){
   G.log.unshift({ kind, text, day:G.day });
-  if(G.log.length > 400) G.log.pop();   // a real audit log, not the last few nights
+  if(G.log.length > 6000) G.log.pop();   // a real audit log, not the last few nights
 }
 
 /* THE RAIL IS AN AUDIT LOG, so it has to contain what the PLAYER did and not only what the
@@ -2385,7 +2388,9 @@ function advise(){
           seats: fit || null,
           // The floor itself is the move when nothing fits on it. Six square feet short of a
           // table block is not a reason to say nothing.
-          extend: (!fit && roomIsAhead && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
+          // Not when STAFF are the cap. Offering to buy floor space to a restaurant whose
+          // problem is one server contradicts the sentence directly above it, which says so.
+          extend: (!fit && roomIsAhead && !bind.cappedByStaff && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
           buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? cheapestFor(lim.station) : null,
           upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
       }
@@ -2691,7 +2696,14 @@ function advance(days, stopOnInterrupt){
         // second report. Day one uses the forecast the player actually saw and committed
         // against; after that it is recomputed, because reputation, skill and the pantry
         // have all moved.
-        const before = (i === 0 && G.forecast) ? G.forecast : forecastDay();
+        // WHAT THE ADVISOR SAID, recorded the moment it changes. Without this the log shows what
+    // the player did and never what they were told, which is half the story missing — and it
+    // is the half that says whether the advice was any good.
+    const top = advise()[0];
+    const headline = top ? `[${top.id}] ${top.head}` : "[quiet] Nothing needs you right now.";
+    if(headline !== G.lastAdvice){ say("advice", "Advisor: " + headline); G.lastAdvice = headline; }
+
+    const before = (i === 0 && G.forecast) ? G.forecast : forecastDay();
         const d = runDay();
         G.lastAutopsy = autopsy(before, d);
 
@@ -2959,6 +2971,18 @@ function renderAdvisor(){
       };
       row.appendChild(b);
     }
+    // FIVE PIECES OF ADVICE ASKED FOR A HIRE AND NONE OF THEM COULD BE ACTED ON. `needsWage`
+    // was set in five places and never rendered anything, so every "you need another server"
+    // was text the player had to act on by going and finding the Team tab themselves. Aaron
+    // ran 1,167 days on one server with $337,209 in the bank while the Advisor told him,
+    // correctly and uselessly, that another server was the only thing that would help.
+    if(a.needsWage){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = a.role === "server" ? "Go and hire a server" : "Go and hire a cook";
+      b.onclick = ()=>{ TAB = "team"; render(); };
+      row.appendChild(b);
+    }
     if(a.extend){
       const b = document.createElement("button");
       b.className = "btn";
@@ -3167,6 +3191,76 @@ function card(title, note){
 // Which slice of the log is showing. Kept outside the render so it survives a redraw.
 let RAIL_FILTER = "all";
 
+/* Everything, oldest first, with the state it happened in. Oldest first because you read a
+   run forwards — the log is newest-first because you glance at it, which is a different job. */
+function fullTranscript(){
+  const L = [];
+  const rule = (s)=> L.push("", s, new Array(s.length+1).join("="));
+
+  rule("THE PASS — full run transcript");
+  L.push(`site: ${G.site.name}`);
+  L.push(`seed: ${(G.seed>>>0).toString(16)}`);
+  L.push(`day:  ${G.day}`);
+  L.push(`hours: ${G.windows.map(w=>`${w.name} ${w.from}:00-${w.to}:00`).join(", ")}`);
+
+  rule("WHERE IT STANDS NOW");
+  const bind = bindingConstraint(daypartAt(G.windows[0] ? G.windows[0].from : 19));
+  L.push(`cash          ${money(G.cash)}`);
+  L.push(`standing      ${Math.round(G.rep.standing*100)}/100   (heard of you ${Math.round(awareness()*100)}%)`);
+  L.push(`seats         ${G.seats} owned, ${servableSeats()} servable with ${G.servers.length} server(s)`);
+  L.push(`brigade       ${G.cooks.length} cook(s) at ${(avgSkill(G.cooks)*5).toFixed(1)}/5`);
+  L.push(`stations      ` + Object.keys(G.stations).filter(s=>!STORAGE_STATIONS_JS[s])
+           .map(s=>`${s} x${G.stations[s].length}`).join(", "));
+  L.push(`menu          ${[...G.onMenu].join(", ")}`);
+  L.push(`supplier      ${supplierOf().name} (tier ${supplierOf().tier})`);
+  L.push(`licence       ${G.licence ? "held" : "none"}`);
+  L.push(`marketing     ${campaign() ? CHANNELS[G.campaign.channel].name + ", claiming " + CLAIMS[G.campaign.claim].label.toLowerCase() : "none"}`);
+  L.push(`binding on    ${bind.kind} (room ${Math.round(bind.room)}/hr, pass ${Math.round(bind.pass)}/hr)`);
+  L.push(`prices        ` + [...G.onMenu].map(id=>{
+    const r = RECIPES.filter(x=>x.id===id)[0];
+    return r ? `${r.name} $${G.prices[id].toFixed(2)} (${(G.prices[id]/r.base).toFixed(2)}x)` : id;
+  }).join("; "));
+
+  rule("THE BOOKS");
+  L.push(`revenue ${money(G.ledger.revenue)}   food ${money(G.ledger.food)}   labor ${money(G.ledger.labor)}`);
+  L.push(`rent+fees ${money(G.ledger.rent)}   capital ${money(G.ledger.capex)}   binned ${money(G.spoiled)}`);
+  if(G.ledger.revenue > 0)
+    L.push(`prime cost ${Math.round((G.ledger.food+G.ledger.labor)/G.ledger.revenue*100)}%`);
+
+  rule("WHAT THE ADVISOR SAYS RIGHT NOW");
+  const now = advise();
+  if(!now.length) L.push("(nothing — it is allowed to say nothing)");
+  now.forEach(a=>{
+    L.push(`[${a.id}] ${a.head}`);
+    L.push(`    ${a.body.replace(/\*\*/g,"")}`);
+    const offers = [];
+    if(a.buy) offers.push("buy " + a.buy.name);
+    if(a.seats) offers.push("add 10 seats");
+    if(a.upgrade) offers.push("swap in a " + a.upgrade.to.name);
+    if(a.extend) offers.push("extend the building");
+    if(a.needsWage) offers.push("hire a " + (a.role||"cook"));
+    L.push(`    offers: ${offers.length ? offers.join(", ") : "nothing"}`);
+  });
+
+  rule("EVERY DAY, OLDEST FIRST");
+  L.push("(your own moves are marked YOU, advice is marked ADVISOR)");
+  const marks = { you:"YOU     ", advice:"ADVISOR ", money:"money   ", bad:"lost    ", warn:"warn    " };
+  [...G.log].reverse().forEach(e=>{
+    L.push(`d${String(e.day).padStart(4,"0")}  ${marks[e.kind] || "        "}${e.text}`);
+  });
+
+  return L.join("\n");
+}
+
+function downloadTranscript(text){
+  const blob = new Blob([text], { type:"text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `the-pass-day-${G.day}.txt`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
 function panelService(){
   const c = card("The rail",
     "Every night, and every decision you made. Newest first. Walkouts and balks are trade you never got — and your own moves are marked, so you can see what you did just before the numbers turned.");
@@ -3177,7 +3271,8 @@ function panelService(){
   const filters = document.createElement("div");
   filters.className = "seg";
   filters.style.marginBottom = "10px";
-  const views = [["all","Everything"],["you","What I did"],["bad","Trade lost"],["money","Money"]];
+  const views = [["all","Everything"],["you","What I did"],["advice","What I was told"],
+                 ["bad","Trade lost"],["money","Money"]];
   for(const [key, label] of views){
     const b = document.createElement("button");
     b.className = "btn" + (RAIL_FILTER === key ? " on" : "");
@@ -3190,6 +3285,7 @@ function panelService(){
   const shown = G.log.filter(e =>
     RAIL_FILTER === "all" ? true :
     RAIL_FILTER === "you" ? e.kind === "you" :
+    RAIL_FILTER === "advice" ? e.kind === "advice" :
     RAIL_FILTER === "bad" ? (e.kind === "bad" || e.kind === "warn") :
     e.kind === "money" || e.kind === "you");
 
@@ -3209,8 +3305,35 @@ function panelService(){
   const count = document.createElement("p");
   count.className = "hint";
   count.style.marginTop = "10px";
-  count.textContent = `${shown.length} of ${G.log.length} entries. The log keeps the last 400.`;
+  count.textContent = `${shown.length} of ${G.log.length} entries.`;
   c.appendChild(count);
+
+  /* THE WHOLE RUN, IN ONE PIECE. Aaron: *"we need a way to export the whole entire log so you
+     can see every single change that I made and what the advisor recommended."*
+     Right — and it is the fastest instrument this project has. Every defect that mattered came
+     out of a pasted screen, and a screen is one moment. A transcript is the whole argument:
+     what the state was, what he was told, what he did, and what happened next. */
+  const exp = document.createElement("div");
+  exp.className = "seg";
+  exp.style.marginTop = "10px";
+
+  const copy = document.createElement("button");
+  copy.className = "btn";
+  copy.textContent = "Copy the whole run";
+  copy.onclick = ()=>{
+    const text = fullTranscript();
+    navigator.clipboard.writeText(text).then(
+      ()=>{ copy.textContent = "Copied — paste it to Claude"; setTimeout(()=>{ copy.textContent = "Copy the whole run"; }, 2500); },
+      ()=>{ downloadTranscript(text); });
+  };
+  exp.appendChild(copy);
+
+  const dl = document.createElement("button");
+  dl.className = "btn";
+  dl.textContent = "Download as a file";
+  dl.onclick = ()=> downloadTranscript(fullTranscript());
+  exp.appendChild(dl);
+  c.appendChild(exp);
 }
 
 /* THE LICENCE HAS TO BE WHERE THE PLAYER IS LOOKING. Twice now Aaron could not find it —
