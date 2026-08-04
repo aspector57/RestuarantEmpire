@@ -2866,6 +2866,59 @@ meaningless rather than measuring the thing they were named for:**
   Asserted as a ratio now: a day must be a rounding error against a month.
 - Three `FloorSpaceTests` counted `ConcurrentCapacity` meaning boxes. They read `Units`.
 
+### Marketing: a claim, a channel, and the expectation the claim creates (Aaron)
+
+> *"maybe you can market different things... if you market your ingredients but they aren't
+> good, people are upset"* and *"a michelin star restaurant isn't giving away coupons but people
+> know they have great ingredients and they market that."*
+
+**THE EXPECTATION IS THE MECHANIC.** Marketing that only bought footfall would be customers for
+money, which is not a decision. A campaign tells people what to EXPECT, and the meal is judged
+against that rather than against nothing. Saying nothing is always safe and never remarkable.
+
+**It also retires a fudge made an hour earlier.** Willingness to pay carries a 0.30 weight on
+the plate, justified as *"word of mouth leading the formal score"* — a rationalisation, because
+you genuinely cannot see the ingredients from home. **You can see them if the restaurant tells
+you**, and now it has to say so and carry the risk of having said it.
+
+**The rule survives intact: marketing buys AWARENESS, never STANDING.** A campaign changes how
+fast you become known and WHO hears about you. What they think on the night is still earned.
+
+**A CLAIM IS A BAR YOU CLEAR OR YOU DO NOT — the first version had it exactly backwards.**
+Dividing the claimed score by a constant punished in proportion to what you had, so a premium
+kitchen claiming its ingredients LOST standing (69 -> 65) while a budget one claiming the same
+thing barely moved. The probe caught it before any of it reached a screen. Now the claim sets a
+level: clear it and nothing happens, fall short and the gap is what costs you.
+
+| 180 days, same restaurant | no campaign | claims its ingredients |
+|---|---|---|
+| Budget stock | standing **40** | standing **35** |
+| Premium stock | standing **69**, $81,528 | standing **72**, **$90,178** |
+
+**Truth pays immediately; the lie takes about two years to catch up with you** ($589,327 quiet
+against $582,130 loud at 720 days). The shortfall is SQUARED for that reason — with a plain
+ratio the lie did not stop paying until three years, which is far past anything a player would
+connect to the decision. **Recorded rather than sharpened further: the chain from a broken
+promise to lost trade is long by construction — claim, meal, satisfaction, standing, footfall —
+and every step dilutes it.** If it needs to bite harder the honest fix is a visible consequence
+(a complaint, a bad review) rather than a bigger divisor.
+
+**Channels bring different crowds, which is what makes concept and channel interact:**
+
+| | Family | Couple | Influencer | Business |
+|---|---|---|---|---|
+| Local advertising | 1.25x | — | — | — |
+| Coupons and offers | **1.90x** | 0.65x | **0.45x** | 1.35x |
+| The food press | 0.75x | **1.65x** | **1.50x** | — |
+| Influencers | 0.70x | 1.25x | **2.30x** | — |
+
+That is why the Michelin place does not run coupons — **it is not the money, it is who turns
+up.** Multiplied against menu fit rather than replacing it, so a coupon drive still cannot fill
+a fine-dining room with families who hate the card.
+
+**Deliberately not built: Restaurant Week and seasonal events.** Aaron raised them and they are
+the same mechanic with a calendar on top — much better once the base has real trade-offs.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

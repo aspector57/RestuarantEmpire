@@ -627,7 +627,7 @@ function menuDrawAt(dp){
    One number consumed, like the uniform pick it replaced. */
 function pickWhoWalksIn(pool){
   if(pool.length === 1) return pool[0];
-  const w = pool.map(menuAppealTo);
+  const w = pool.map(a => menuAppealTo(a) * marketingPull(a));
   const total = w.reduce((a,b)=>a+b, 0);
   if(total <= 0) return pool[Math.floor(G.rand()*pool.length)];
   let roll = G.rand() * total, running = 0;
@@ -684,6 +684,7 @@ function newSite(site, id, name){
     cooks: [], servers: [],
     windows: [{name:"Dinner", from:18, to:23}],
     licence: false,          // permission to sell alcohol; bought, then renewed monthly
+    campaign: null,          // { claim, channel } — what you say, and where you say it
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -1025,9 +1026,107 @@ function repCeiling(){
 }
 // How many people have heard of you, separate from what they think. A new restaurant is
 // quiet because it is undiscovered; a bad one stays quiet once it is found.
+/* =========================================================================
+   MARKETING — a claim, a channel, and the expectation the claim creates.
+
+   Aaron: *"maybe you can market different things... if you market your ingredients but they
+   aren't good, people are upset"* and *"a michelin star restaurant isn't giving away coupons
+   but people know they have great ingredients and they market that."*
+
+   THE EXPECTATION IS THE WHOLE MECHANIC. Marketing that only bought footfall would be
+   "customers for money", which is not a decision. What a campaign really does is tell people
+   what to expect — and satisfaction is judged against that rather than against nothing. Claim
+   your ingredients on budget stock and guests arrive primed; the same dinner scores worse than
+   if you had stayed quiet, and your name falls faster. **A claim is only safe if it is true.**
+
+   It also retires a fudge. Willingness to pay carries a 0.30 weight on the plate, justified as
+   "word of mouth leading the formal score" — a rationalisation, because you genuinely cannot
+   see the ingredients from home. You CAN see them if the restaurant tells you, and now it has
+   to say so and carry the risk of having said it.
+
+   MARKETING BUYS AWARENESS, NEVER STANDING. That rule predates this and survives it: you can
+   buy people knowing about you; you cannot buy them rating you highly. A campaign changes how
+   fast you become known and WHO hears about you. What they think on the night is still earned.
+   ========================================================================= */
+
+const CLAIMS = {
+  ingredients: { label:"What we cook with", judges:"food",
+                 blurb:"The produce, the supplier, the provenance. Safe if you actually source well." },
+  value:       { label:"What it costs",     judges:"value",
+                 blurb:"Generous plates, fair prices. Safe if you are not charging over the odds." },
+  speed:       { label:"How fast we are",   judges:"speed",
+                 blurb:"In and out at lunch. Safe if the pass can genuinely keep up." },
+  room:        { label:"The room itself",   judges:"room",
+                 blurb:"The setting, the fit-out, the evening. Safe if you have spent on it." }
+};
+
+/* Each channel costs differently, reaches differently, and brings a DIFFERENT CROWD. A
+   discount pulls families and repels enthusiasts; a chef profile does the reverse. That is why
+   the Michelin place does not run coupons — it is not the money, it is who turns up. */
+const CHANNELS = {
+  local:      { name:"Local advertising", cost:450,  reach:0.14, loud:0.10,
+                pulls:{ Local:1.5, Family:1.25 },
+                blurb:"Cheap, steady, and nobody is impressed or offended." },
+  coupons:    { name:"Coupons and offers", cost:700, reach:0.26, loud:0.16,
+                pulls:{ Family:1.9, BusinessLuncher:1.35, RomanticCouple:0.65, Influencer:0.45 },
+                blurb:"Fills a room fast, and tells everyone what kind of place this is." },
+  press:      { name:"The food press", cost:1900, reach:0.19, loud:0.26,
+                pulls:{ RomanticCouple:1.65, Influencer:1.5, Local:0.9, Family:0.75 },
+                blurb:"Slow, dear, and it brings people who came to judge you." },
+  influencer: { name:"Influencers", cost:1300, reach:0.30, loud:0.30,
+                pulls:{ Influencer:2.3, RomanticCouple:1.25, Family:0.7 },
+                blurb:"The loudest reach there is, and the least forgiving room." }
+};
+
+function campaign(){ return (G.campaign && CHANNELS[G.campaign.channel] && CLAIMS[G.campaign.claim]) ? G.campaign : null; }
+
+/* A CLAIM IS A BAR YOU EITHER CLEAR OR YOU DO NOT — not a tax on everybody.
+ *
+ * The first version divided the claimed score by a constant, which punished in proportion to
+ * what you had: a premium kitchen claiming its ingredients LOST standing (69 -> 65) while a
+ * budget one claiming the same thing barely moved. Exactly backwards, and the probe caught it
+ * before any of it reached a screen.
+ *
+ * Now the claim sets a level. Clear it and nothing happens — you said you were good and you
+ * were, which is what a claim is FOR. Fall short and the gap is what costs you, scaled by how
+ * loudly you said it. An influencer telling ten thousand people your produce is exceptional
+ * sets a bar a local newspaper advert never could, and falling short of it in front of that
+ * many people is proportionally worse.
+ */
+function claimBar(component){
+  const c = campaign();
+  if(!c || CLAIMS[c.claim].judges !== component) return 0;
+  return 0.5 + CHANNELS[c.channel].loud;   // "better than ordinary", by how much you shouted
+}
+
+function judgedAgainstClaim(component, actual){
+  const bar = claimBar(component);
+  if(bar <= 0 || actual >= bar) return actual;   // no claim, or you delivered on it
+  // SQUARED, because the chain from a broken promise to lost trade is long — claim, meal,
+  // satisfaction, standing, footfall — and each step dilutes it. Measured with a plain ratio,
+  // a budget kitchen loudly claiming its ingredients did not actually lose money until about
+  // THREE YEARS in, which is far past anything a player would connect to the decision. Squared,
+  // the lie stops paying inside a year, which is a horizon someone can feel.
+  const short_ = actual / bar;
+  return actual * short_ * short_;
+}
+
+/* Multiplies menu fit rather than replacing it, so a coupon drive still cannot fill a
+   fine-dining room with families who hate the card. */
+function marketingPull(arch){
+  const c = campaign();
+  return c ? (CHANNELS[c.channel].pulls[arch] || 1) : 1;
+}
+
+function marketingSpend(){ const c = campaign(); return c ? CHANNELS[c.channel].cost : 0; }
+
 function awareness(){
+  // A campaign is worth a share of the whole journey to being known, on top of the meals you
+  // have actually served. It buys people HEARING of you and nothing else.
+  const bought = campaign() ? CHANNELS[G.campaign.channel].reach : 0;
   if(G.rep.meals >= REP.mealsToBecomeKnown) return 1;
-  return REP.unknownShare + (1-REP.unknownShare)*(G.rep.meals/REP.mealsToBecomeKnown);
+  const earned = REP.unknownShare + (1-REP.unknownShare)*(G.rep.meals/REP.mealsToBecomeKnown);
+  return Math.min(1, earned + bought * (1 - earned));
 }
 function opinionMultiplier(){
   const s = G.rep.standing;
@@ -1747,10 +1846,13 @@ function runDay(){
         }
       }
 
-      const s = clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick))*W.food
-              + scoreSpeed(wait, patience)*W.speed
-              + scoreValue(markup(pick), sens, q, G.rep.standing)*W.value
-              + comfortOf()*W.room;
+      // JUDGED AGAINST WHAT THEY WERE TOLD. A claim divides the thing it claimed: promise
+      // exceptional produce and merely decent produce reads as a let-down, while genuinely good
+      // produce still scores well. Saying nothing is always safe and never impressive.
+      const s = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick)))*W.food
+              + judgedAgainstClaim("speed", scoreSpeed(wait, patience))*W.speed
+              + judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing))*W.value
+              + judgedAgainstClaim("room",  comfortOf())*W.room;
       sat += s;
       recordMeal(s);
     }
@@ -2394,6 +2496,13 @@ function billTheMonth(){
     G.ledger.rent += LICENCE_RENEWAL;
     say("money", `${siteLabel()}Liquor licence renewed — $${LICENCE_RENEWAL} out.`);
   }
+
+  if(campaign()){
+    const spend = marketingSpend();
+    G.cash -= spend;
+    G.ledger.rent += spend;
+    say("money", `${siteLabel()}${CHANNELS[G.campaign.channel].name} — $${spend.toLocaleString()} out.`);
+  }
 }
 
 /* Which restaurant a rail line is about. Silent with one, so single-site play reads exactly
@@ -2998,6 +3107,96 @@ function sparkline(values, width, height){
   </svg>`;
 }
 
+/* WHAT YOU SAY, AND WHERE YOU SAY IT. Two choices rather than a spend slider, because the
+   decision is not how much — it is what you are claiming and who you are claiming it to. */
+function marketingCard(){
+  const c = card("Getting the word out",
+    "A campaign buys people HEARING of you — never what they think once they arrive. What it does change is what they expect: claim something and the meal is judged against the claim. Say nothing and you are always safe, and never remarkable.");
+
+  const live = campaign();
+  const state = document.createElement("p");
+  state.className = "note";
+  state.style.marginTop = "0";
+  state.innerHTML = live
+    ? `Running: <b>${CHANNELS[live.channel].name}</b>, claiming <b>${CLAIMS[live.claim].label.toLowerCase()}</b> — $${CHANNELS[live.channel].cost.toLocaleString()} a month. Guests arrive expecting that to be better than ordinary.`
+    : `Nothing running. You are known only by the people you have already fed.`;
+  c.appendChild(state);
+
+  // --- the claim ---
+  const ch = document.createElement("div");
+  ch.className = "coursehead"; ch.textContent = "What you claim";
+  c.appendChild(ch);
+  const claims = document.createElement("div");
+  claims.className = "seg";
+  for(const key in CLAIMS){
+    const b = document.createElement("button");
+    b.className = "btn" + (live && live.claim === key ? " on" : "");
+    b.textContent = CLAIMS[key].label;
+    b.title = CLAIMS[key].blurb;
+    b.onclick = ()=>{
+      G.campaign = { claim:key, channel: (live ? live.channel : "local") };
+      didThat(`Now claiming ${CLAIMS[key].label.toLowerCase()} via ${CHANNELS[G.campaign.channel].name.toLowerCase()}.`);
+      render();
+    };
+    claims.appendChild(b);
+  }
+  c.appendChild(claims);
+
+  // --- the channel ---
+  const ch2 = document.createElement("div");
+  ch2.className = "coursehead"; ch2.textContent = "Where you say it";
+  c.appendChild(ch2);
+  for(const key in CHANNELS){
+    const m = CHANNELS[key];
+    const row = document.createElement("div");
+    row.className = "priceline";
+    row.style.gridTemplateColumns = "1fr auto";
+    const who = Object.keys(m.pulls).map(k => {
+      const label = (ARCHETYPES[k] && ARCHETYPES[k].label) || k;
+      return `${label} ${m.pulls[k] > 1 ? "&uarr;" : "&darr;"}`;
+    }).join(", ");
+    row.innerHTML = `<span style="font-size:12.5px;line-height:1.5"><b>${m.name}</b> — $${m.cost.toLocaleString()}/mo.
+      <span style="color:var(--muted)">${m.blurb} Brings: ${who || "everyone equally"}.</span></span>`;
+    const b = document.createElement("button");
+    b.className = "btn" + (live && live.channel === key ? " on" : "");
+    b.textContent = live && live.channel === key ? "Running" : "Use this";
+    b.onclick = ()=>{
+      G.campaign = { claim: (live ? live.claim : "ingredients"), channel:key };
+      didThat(`Marketing through ${m.name.toLowerCase()}, claiming ${CLAIMS[G.campaign.claim].label.toLowerCase()} — $${m.cost.toLocaleString()} a month.`);
+      render();
+    };
+    row.appendChild(b);
+    c.appendChild(row);
+  }
+
+  if(live){
+    const stop = document.createElement("button");
+    stop.className = "btn";
+    stop.style.marginTop = "10px";
+    stop.textContent = "Stop the campaign";
+    stop.onclick = ()=>{ G.campaign = null; didThat("Stopped marketing."); render(); };
+    c.appendChild(stop);
+  }
+
+  // --- and whether the claim is one you can keep ---
+  if(live){
+    const bar = 0.5 + CHANNELS[live.channel].loud;
+    const actual = live.claim === "ingredients" ? ingredientQuality() * (0.6 + avgSkill(G.cooks)*0.8)
+                 : live.claim === "room"        ? comfortOf()
+                 : null;
+    if(actual !== null){
+      const warn = document.createElement("p");
+      warn.className = actual >= bar ? "note" : "needslicence";
+      warn.style.marginTop = "10px";
+      warn.textContent = actual >= bar
+        ? "This one you can keep — what you are putting out clears what you are claiming."
+        : `Careful: you are claiming this is better than ordinary and it is not. People arrive expecting more than they get, and that costs you more than saying nothing would.`;
+      c.appendChild(warn);
+    }
+  }
+  return c;
+}
+
 function licenceCard(){
   // `card()` appends to #panel itself and returns the node — there is no wrapper to add it to.
   // Assuming otherwise threw a ReferenceError right after the dish list and silently killed
@@ -3035,7 +3234,8 @@ function licenceCard(){
 
 function panelMenu(){
   const anySold = totalSold() > 0;
-  licenceCard();   // card() appends itself
+  licenceCard();     // card() appends itself
+  marketingCard();
 
   const legend = card("What the labels mean",
     "Two different questions, and it is worth keeping them apart.");
