@@ -848,6 +848,9 @@ function newSite(site, id, name){
     campaign: null,          // { claim, channel } — what you say, and where you say it
     lastAdvice: null,        // so the rail records advice when it CHANGES, not every day
     metrics: [],             // one full row per day, so effects can be measured rather than guessed
+    rivals: 0,               // who else is on this street
+    supplierOut: 0,          // days your supplier cannot deliver
+    leaseSetOn: 0,           // when the rent was last agreed
     rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -883,7 +886,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics"
+  "metrics","rivals","supplierOut","leaseSetOn"
 ];
 
 function bindActiveSite(G){
@@ -1583,7 +1586,7 @@ function forecastDay(){
     openMinutes += 60;
     const dp = daypartAt(h);
 
-    const pull = trafficMultiplier() * menuDrawAt(dp);   // constant across the hour
+    const pull = trafficMultiplier() * menuDrawAt(dp) * rivalPressure();   // constant across the hour
     let parties = 0;
     for(let m=0; m<60; m++){
       const base = G.site.traffic[h] + (G.site.traffic[(h+1)%24]-G.site.traffic[h])*(m/60);
@@ -1858,7 +1861,7 @@ function runDay(){
 
     const dp = daypartAt(h);
     const base = G.site.traffic[h] + (G.site.traffic[(h+1)%24]-G.site.traffic[h])*((m%60)/60);
-    const footfall = base * shareOfTheStreet() * trafficMultiplier() * menuDrawAt(dp);
+    const footfall = base * shareOfTheStreet() * rivalPressure() * trafficMultiplier() * menuDrawAt(dp);
     if(G.rand() >= footfall/60) continue;
 
     // a party arrives
@@ -2041,7 +2044,12 @@ function runDay(){
 
   // The standing order goes in before service. Ordering is a policy you set, not a chore you
   // perform every day -- otherwise this becomes a stocking game.
-  if(G.standingOrder){
+  // A supplier that cannot deliver is the one risk a deep pantry insures against — which is
+  // what makes ordering depth a decision rather than a chore.
+  if(G.supplierOut > 0){
+    G.supplierOut--;
+    if(G.supplierOut === 0) say("", `${siteLabel()}${supplierOf().name} is delivering again.`);
+  } else if(G.standingOrder){
     let spent = 0;
     for(const id of menuIngredients()) spent += orderStock(id, suggestedOrder(id));
     if(spent > 0) d.ordered = spent;
@@ -2775,10 +2783,152 @@ function buyEquip(e){
 /* ---------- advancing ---------- */
 
 /* Bills a restaurant its fixed monthly costs. Once per site per month, from `advance`. */
+/* =========================================================================
+   PRESSURE — the four things that can take away what you built.
+
+   Measured before any of this existed: an established restaurant sabotaged for a full YEAR —
+   one cook, one server, budget stock, a gutted kitchen and a marketing lie, all at once — still
+   made $793 a day against a control of $1,532. **You could not lose.** The worst possible play
+   halved your profit, and that was the entire downside in the game.
+
+   Aaron's hypothesis was that real-time play and more decisions would make it harder. It would
+   not: adding decisions to a game with no downside adds ways to win slightly slower. Difficulty
+   has to come from things that TAKE AWAY — and all four of these were in the design doc and
+   none of them were built.
+
+   Every one reports itself in the rail WITH ITS CAUSE, per Binding Principle 2: an outcome the
+   player cannot trace to a named reason is unfair however realistic it is.
+   ========================================================================= */
+
+/* --- 1. COMPETITORS. The only pressure that scales with how well you are doing, which makes
+   success itself the thing that creates the next problem. --- */
+function rivalPressure(){
+  const n = G.rivals || 0;
+  if(!n) return 1;
+  // Your name is the defence: a well-regarded restaurant keeps its crowd, an unknown one does
+  // not. Each rival bites less than the last — the street is finite, but so is the damage.
+  const defence = 0.55 + G.rep.standing * 0.45;
+  let share = 1;
+  for(let i = 0; i < n; i++) share *= (1 - 0.16 * (1 - defence * 0.75));
+  return Math.max(0.35, share);
+}
+
+function maybeARivalOpens(){
+  if((G.rivals || 0) >= 4) return;
+  // They come when the street looks worth taking, and turning people away is what that looks
+  // like from outside.
+  const recent = G.metrics.slice(-30);
+  if(recent.length < 30) return;
+  if(recent.reduce((a,x)=>a+x.noTable, 0) / 30 < 6) return;
+
+  if(G.rand() < 0.18){
+    G.rivals = (G.rivals || 0) + 1;
+    say("bad", siteLabel() + "Somebody has opened up down the road. " +
+        (G.rivals === 1 ? "You are no longer the only option on this street" : "That is " + G.rivals + " of them now") +
+        " — they are here because you have been turning people away, and that is visible from the pavement.");
+  }
+}
+
+/* --- 2. EVENTS. Each is CAUSED by something you did or failed to do, so none of them is a
+   dice roll wearing a story. --- */
+function maybeSomethingHappens(){
+  const recent = G.metrics.slice(-30);
+  if(recent.length < 30) return;
+
+  const avgSat = recent.reduce((a,x)=>a+x.sat, 0) / 30;
+  const binned = recent.reduce((a,x)=>a+x.spoiled, 0);
+  const spend  = recent.reduce((a,x)=>a+x.food, 0);
+
+  // A BAD REVIEW — earned by feeding mediocre food to people who were told it would be good,
+  // and it lands harder the louder you claimed otherwise.
+  if(avgSat < 0.62 && G.rand() < 0.22){
+    const loud = campaign() ? CHANNELS[G.campaign.channel].loud : 0;
+    const hit  = 0.05 + loud * 0.5;
+    G.rep.standing = Math.max(0.05, G.rep.standing - hit);
+    say("bad", siteLabel() + "Somebody wrote about the food, and not kindly. Standing down " +
+        Math.round(hit*100) + " points to " + Math.round(G.rep.standing*100) + "." +
+        (campaign() ? " Being loud about it made the fall further than it would have been." : ""));
+  }
+
+  // AN INSPECTION — earned by binning a lot of what you buy, which is what a stock problem
+  // looks like from the outside.
+  if(spend > 0 && binned / spend > 0.22 && G.rand() < 0.25){
+    const fine = Math.round(1200 + G.rand()*2400);
+    G.cash -= fine;
+    G.ledger.rent += fine;
+    G.rep.standing = Math.max(0.05, G.rep.standing - 0.04);
+    say("bad", siteLabel() + "A health inspection went badly — " + Math.round(binned/spend*100) +
+        "% of last month's food went in the bin and it showed. $" + fine.toLocaleString() +
+        " fine, four points off your name.");
+  }
+
+  // A SUPPLIER LETS YOU DOWN — nothing you did, and exactly what a deeper pantry insures against.
+  if(G.rand() < 0.06){
+    G.supplierOut = 3 + Math.floor(G.rand()*3);
+    say("warn", siteLabel() + supplierOf().name + " cannot deliver for " + G.supplierOut +
+        " days. What is in the walk-in is what you have.");
+  }
+}
+
+/* --- 3. STAFF LEAVE — the good ones especially, and the underpaid ones soonest. Training
+   somebody for a year and losing them is the price of not noticing what they became. --- */
+function maybeSomebodyLeaves(){
+  const all = [...G.cooks, ...G.servers];
+  if(all.length <= 1) return;
+
+  for(const person of all){
+    const market = person.role === "cook"
+      ? HIRE.cookFloor + person.skill * HIRE.cookPremium
+      : HIRE.serverFloor + person.skill * HIRE.serverPremium;
+    const underpaid = Math.max(0, (market - person.wage) / market);
+
+    // Skill makes you poachable; underpayment makes you willing.
+    if(G.rand() < 0.012 + person.skill * 0.03 + underpaid * 0.35){
+      const list = person.role === "cook" ? G.cooks : G.servers;
+      const i = list.indexOf(person);
+      if(i >= 0){
+        list.splice(i, 1);
+        say("bad", siteLabel() + person.name + " has handed in their notice — " + person.role +
+            " at " + (person.skill*5).toFixed(1) + "/5 on $" + person.wage + "/hr" +
+            (underpaid > 0.1 ? ", which is " + Math.round(underpaid*100) + "% under what they could get elsewhere."
+                             : ", and somebody offered more."));
+      }
+      return;   // one at a time; a whole brigade walking out is a different game
+    }
+  }
+}
+
+/* --- 4. THE LEASE — a landlord who can see you making money asks for more of it. This is the
+   one that punishes success specifically, which is exactly why it belongs. --- */
+function maybeTheRentGoesUp(){
+  if(G.day - (G.leaseSetOn || 0) < 360) return;
+  G.leaseSetOn = G.day;
+
+  const recent = G.metrics.slice(-90);
+  if(recent.length < 60) return;
+  const monthlyProfit = recent.reduce((a,x)=>a+x.profit, 0) / recent.length * 30;
+  if(monthlyProfit <= 0) return;
+
+  // What the pitch is worth now somebody has proved it works. Capped, so it is a squeeze and
+  // never an eviction.
+  const asking = Math.min(G.site.rent * 1.6, Math.max(G.site.rent, monthlyProfit * 0.28));
+  if(asking <= G.site.rent * 1.04) return;
+
+  const was = G.site.rent;
+  G.site = Object.assign({}, G.site, { rent: Math.round(asking) });
+  say("bad", siteLabel() + "The lease came up. Rent goes from $" + was.toLocaleString() +
+      " to $" + Math.round(asking).toLocaleString() + " a month — you have proved the pitch works and the landlord noticed.");
+}
+
 function billTheMonth(){
   G.cash -= G.site.rent;
   G.ledger.rent += G.site.rent;
   say("money", `${siteLabel()}Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
+
+  maybeTheRentGoesUp();
+  maybeARivalOpens();
+  maybeSomethingHappens();
+  maybeSomebodyLeaves();
 
   // A licence is not a one-off. A quiet restaurant holding one is bleeding, which is what
   // stops it being a cost you take once and forget.

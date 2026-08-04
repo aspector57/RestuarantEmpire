@@ -3153,6 +3153,55 @@ correctly, and had a working button. **Being told is not the same as being moved
 amount of better wording fixes that — it is an argument for consequences that arrive on their
 own rather than advice that asks more loudly.
 
+### YOU COULD NOT LOSE — measured, then four pressures built
+
+Aaron: *"it is very easy still but this will not be as easy when I play in real time and there
+are more decisions to make I think?"* Half right, and testable. An established restaurant, one
+year of deliberate sabotage each:
+
+| what you do wrong | before pressure | after |
+|---|---:|---:|
+| nothing (control) | $1,532/day | $1,338/day |
+| fire every cook but one | $771 | **$492** |
+| cheapest supplier | $1,513 | **$859** |
+| double every price | $933 | **$801** |
+| lie in your marketing | $1,454, standing 53 | **$878, standing 17** |
+| **all of it at once** | **$793** | **$468** |
+
+**Before: every deliberate mistake still made money.** The entire downside in the game was
+halving your profit. So the hypothesis is wrong in a specific way: **more decisions cannot make
+a game harder when no decision can hurt you** — it adds ways to win slightly slower. Real-time
+changes when you decide, not what is at stake.
+
+**Four pressures, all from the design doc, none previously built. Each one reports its CAUSE**,
+because an outcome the player cannot trace to a reason is unfair however realistic it is:
+
+- **Competitors** — the only pressure that scales with success, so doing well is what creates
+  the next problem. They arrive when you have been turning people away, *"because that is
+  visible from the pavement."* Your standing is the defence.
+- **Events, each earned rather than rolled** — a bad review when satisfaction is poor, and it
+  falls further the louder you have been claiming otherwise; an inspection when you have been
+  binning a fifth of what you buy; a supplier failing, which is the one risk a deep pantry
+  insures against.
+- **Staff leave** — skill makes them poachable, underpayment makes them willing. Training
+  somebody for a year and losing them is the price of not noticing what they became.
+- **The lease** — a landlord who can see you making money asks for more of it. Rent went
+  $3,600 -> $5,760 in the probe. **This is the one that punishes success specifically.**
+
+**IT IS HARDER AND STILL NOT LOSABLE, and the reason is precise.** With one cook and one server
+the restaurant serves **102 covers a day at 16% labour and 13% food cost**. The trade runs
+labour at 30-35% and food at 28-35%. **Nothing kills a business with 60% margins** — no amount
+of pressure fixes economics that generous, and stacking more on would be treating the symptom.
+
+**Recorded rather than tuned**, because that is a design decision about how many covers one
+person can work and what ingredients ought to cost, and this project has twice been caught
+adjusting constants until a number looked right.
+
+**A probe trap worth keeping: the first run after adding all four reported BYTE-IDENTICAL
+numbers.** Rivals, events, staff and the lease all live in `billTheMonth()`, and the probe only
+called `runDay()`. **A harness that misses the hook reports "no effect" with total confidence** —
+the same shape as the fixture that measured a famine and the one that never bought a fridge.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**
