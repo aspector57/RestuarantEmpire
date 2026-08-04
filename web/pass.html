@@ -2109,9 +2109,31 @@ function didThat(text){
 
 /* What to actually DO about a station that is short, shared so two pieces of advice about the
    same bottleneck cannot recommend different things. */
+/* THE BEST ONE YOU CAN ACTUALLY AFFORD AND FIT — not the cheapest that exists.
+ *
+ * Aaron, at $1,326,021 in the bank: *"I agree when you are doing well it should not recommend
+ * the cheap stuff."* Right, and there is a mechanical reason as well as a tonal one. Premium
+ * models are faster AND SMALLER per unit — that is the whole point of the equipment ladder, and
+ * it is what makes upgrading an alternative to expanding once the building is full. So once you
+ * can afford the good one it is strictly better, and pointing a millionaire at a second-hand
+ * deck oven is not modest, it is wrong.
+ *
+ * Ranked by throughput per unit — speed times how many plates it holds — because that is what
+ * the pass actually cares about, not the price.
+ */
+function bestFor(station){
+  const fits = EQUIPMENT.filter(e => e.station === station &&
+                 G.cash >= e.cost && freeArea() >= e.foot);
+  if(!fits.length) return null;
+  return fits.sort((a,b) => (b.speed*(b.holds||1)) - (a.speed*(a.holds||1)))[0];
+}
+
+/* Still wanted where the question is "is there ANY move here", and as the modest alternative
+   offered alongside the good one. */
 function cheapestFor(station){
-  const m = EQUIPMENT.filter(e => e.station === station).sort((a,b)=>a.cost-b.cost)[0];
-  return m && G.cash >= m.cost && freeArea() >= m.foot ? m : null;
+  const fits = EQUIPMENT.filter(e => e.station === station &&
+                 G.cash >= e.cost && freeArea() >= e.foot);
+  return fits.sort((a,b)=>a.cost-b.cost)[0] || null;
 }
 function fitsNow(lim){
   return lim && lim.kind === "station" && cheapestFor(lim.station) !== null;
@@ -2172,7 +2194,10 @@ function advise(){
         needsWage: true, role: "cook" });
     } else if(perHour < roomPerHour * 0.8){
       const name = STATION_NAMES[lim.station] || lim.station;
-      const model = EQUIPMENT.filter(e => e.station === lim.station).sort((x,y)=>x.cost-y.cost)[0];
+      // The best that fits, for the same reason as everywhere else — premium is faster AND
+      // smaller, so once it is affordable the cheap box is the worse buy, not the humbler one.
+      const model = bestFor(lim.station)
+                 || EQUIPMENT.filter(e => e.station === lim.station).sort((x,y)=>x.cost-y.cost)[0];
       // A BUTTON THAT SILENTLY DOES NOTHING IS WORSE THAN NO BUTTON. The interrupt checked
       // floor space before offering the purchase and this did not, so at 14 sq ft free the
       // Advisor still said "Buy a Second-hand Deck Oven" and clicking it did nothing at all.
@@ -2199,6 +2224,7 @@ function advise(){
       out.push({ rank:3, id:"kitchen", head:`The ${name} is what is holding us back.`,
         body:`${lim.units} unit${lim.units>1?"s":""} cooking ${lim.dishes} of the card allows about ${Math.round(perHour)} covers an hour, against ${Math.round(roomPerHour)} the room could turn.` + tail,
         buy: canFit ? model : null,
+        alt: canFit ? cheapestFor(lim.station) : null,
         upgrade: !canFit && better ? { from: owned, to: better, station: lim.station } : null,
         extend: (!canFit && !better && model && blockedByFloorOnly(model.foot)) ? true : null });
     } else if(roomPerHour < perHour * 0.8){
@@ -2259,7 +2285,8 @@ function advise(){
 
         out.push({ rank:3, id:"roomtight", head:"The room is a little smaller than the kitchen — leave it that way for now.",
           needsWage: tightBrigade, role: "cook",
-          buy:     (!tightBrigade && lim && fitsNow(lim))  ? cheapestFor(lim.station) : null,
+          buy:     (!tightBrigade && lim && fitsNow(lim))  ? bestFor(lim.station) : null,
+          alt: lim ? cheapestFor(lim.station) : null,
           upgrade: (!tightBrigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station)  : null,
           body:`${Math.round(roomPerHour)} covers an hour of seating against ${Math.round(perHour)} of kitchen, so there is only about ${Math.round(headroom)} an hour spare.${turned} That sounds like a reason to buy tables and it is not: the smallest block adds about ${Math.round(blockAdds)} covers an hour, which would seat people the pass cannot feed. A guest turned away at the door costs you the sale; one who sits down and gives up costs you the plate, the food, the table they held and your name. **Lift the kitchen first, then the room.**` });
       }
@@ -2295,7 +2322,8 @@ function advise(){
         // immediately: the advice fired every day for 220 days and offered nothing to do, so
         // an obedient player following it changed nothing at all. Carry whatever the actual
         // move is — the same one the kitchen advice would offer.
-        buy: (!brigade && fitsNow(lim)) ? cheapestFor(lim.station) : null,
+        buy: (!brigade && fitsNow(lim)) ? bestFor(lim.station) : null,
+          alt: lim ? cheapestFor(lim.station) : null,
         upgrade: (!brigade && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
     }
   }
@@ -2397,7 +2425,8 @@ function advise(){
           // Not when STAFF are the cap. Offering to buy floor space to a restaurant whose
           // problem is one server contradicts the sentence directly above it, which says so.
           extend: (!fit && roomIsAhead && !bind.cappedByStaff && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
-          buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? cheapestFor(lim.station) : null,
+          buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? bestFor(lim.station) : null,
+          alt: lim ? cheapestFor(lim.station) : null,
           upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
       }
     }
@@ -2454,6 +2483,7 @@ function advise(){
   if(broke){
     for(const a of out){
       if(a.seats) a.seats = null;
+      if(a.alt) a.alt = null;
       if(a.extend) a.extend = null;
       if(a.upgrade) a.upgrade = null;
       if(a.buy){ a.buy = null; a.body += ` There is not enough money to buy your way out of this — the cheaper move is to take the slowest dishes off the card until the pass can keep up.`; }
@@ -2539,7 +2569,7 @@ function checkInterrupts(d){
     }
 
     const busiest = lim ? lim.station : busiestStation();
-    const cheapest = EQUIPMENT.filter(e=>e.station===busiest).sort((a,b)=>a.cost-b.cost)[0];
+    const cheapest = bestFor(busiest) || EQUIPMENT.filter(e=>e.station===busiest).sort((a,b)=>a.cost-b.cost)[0];
     const name = STATION_NAMES[busiest] || busiest;
     return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
       body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour against ${Math.round(servableSeats()*(60/DWELL))} the room turns.`,
@@ -2989,6 +3019,17 @@ function renderAdvisor(){
       b.className = "btn";
       b.textContent = `Buy a ${a.buy.name} — $${a.buy.cost.toLocaleString()}`;
       b.onclick = ()=>{ buyEquip(a.buy); render(); };
+      row.appendChild(b);
+    }
+    // THE CHOICE, not the decision. Offering both is what keeps this a suggestion: the good
+    // one is recommended, the modest one is there if you would rather keep the cash.
+    if(a.alt && a.buy && a.alt.id !== a.buy.id){
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = `or the cheap one — ${a.alt.name}, $${a.alt.cost.toLocaleString()}`;
+      b.title = `${a.alt.speed}x speed, holds ${a.alt.holds||1}, ${a.alt.foot} sq ft. ` +
+                `Against the ${a.buy.name} at ${a.buy.speed}x holding ${a.buy.holds||1} in ${a.buy.foot} sq ft.`;
+      b.onclick = ()=>{ buyEquip(a.alt); render(); };
       row.appendChild(b);
     }
     if(a.upgrade){

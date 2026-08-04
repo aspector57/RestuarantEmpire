@@ -3032,7 +3032,36 @@ where downloads are allowed.
 **The rule this session keeps teaching: an action is not shipped until something has pressed
 it.** Not read it, not type-checked it — pressed it, in the environment it runs in.
 
-### Open, and visible in the same run: THE ADVISOR DOES NOT SCALE
+### The Advisor recommends the best you can afford, not the cheapest that exists (Aaron)
+
+> *"maybe it just suggests buying the bench, not a specific one? maybe there could be a drop
+> down, but I agree when you are doing well it should not recommend the cheap stuff."*
+
+**There is a mechanical reason as well as a tonal one.** Premium models are faster AND SMALLER
+per unit — that is the entire point of the equipment ladder, and what makes upgrading an
+alternative to expanding once the building is full. So once you can afford the good one it is
+strictly better, and pointing a millionaire at a second-hand deck oven is not modest, it is
+**wrong advice**.
+
+`bestFor(station)` ranks by throughput per unit — speed times plates held — because that is
+what the pass cares about, not price. Measured across wealth:
+
+| cash | recommends | alternative offered |
+|---|---|---|
+| $2,500 | nothing it can afford | — |
+| $60,000 | **Stone Hearth Oven ($9,000)** | Second-hand Deck Oven ($1,600) |
+| $1,326,021 | **Stone Hearth Oven ($9,000)** | Second-hand Deck Oven ($1,600) |
+
+**Both are offered, which is what keeps it a suggestion.** The good one is recommended and the
+modest one sits beside it with the trade-off on hover — a choice rather than a decision made
+for the player, per Binding Principle 5. Aaron's dropdown would work too; two buttons say the
+same thing without a control to open.
+
+**It had to be fixed in FOUR places** — three advice branches and the interrupt — because each
+picked its own model independently. Same shape as every other divergence this session: one
+question, answered separately in several places, drifting apart.
+
+### Still open: the advice is sized for the opening in every OTHER way too
 
 Day 1903, **$1,326,021 in the bank, standing 98, 283 covers a day** — and the top suggestion is
 *"Buy a Prep Bench — $700."* Technically correct and absurd at that size. The prices line is
