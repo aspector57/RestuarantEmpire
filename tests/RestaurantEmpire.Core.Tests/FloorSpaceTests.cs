@@ -97,7 +97,7 @@ namespace RestaurantEmpire.Core.Tests
 
             restaurant.BuyEquipment(hearth, 4);   // replaces, does not stack
 
-            Assert.Equal(4, restaurant.Kitchen.Get("oven").ConcurrentCapacity);
+            Assert.Equal(4, restaurant.Kitchen.Get("oven").Units);   // boxes owned, not plates worked
             Assert.True(restaurant.Kitchen.Get("oven").SpeedMultiplier > beforeSpeed);
             Assert.True(restaurant.Kitchen.Footprint < beforeSpace);   // faster AND smaller
         }
@@ -113,7 +113,7 @@ namespace RestaurantEmpire.Core.Tests
 
             restaurant.BuyEquipment(oven, 1);
 
-            Assert.Equal(3, restaurant.Kitchen.Get("oven").ConcurrentCapacity);
+            Assert.Equal(3, restaurant.Kitchen.Get("oven").Units);   // boxes owned, not plates worked
             Assert.Equal(cashAfterFirst - oven.Cost, company.Economy.CashOnHand);
         }
 
@@ -143,7 +143,7 @@ namespace RestaurantEmpire.Core.Tests
             restaurant.BuyEquipment(company.Definitions.GetEquipment("oven-commercial"), 50);
             restaurant.BuyTables("tables", "Tables", 100m, 500);
 
-            Assert.Equal(50, restaurant.Kitchen.Get("oven").ConcurrentCapacity);
+            Assert.Equal(50, restaurant.Kitchen.Get("oven").Units);  // boxes owned, not plates worked
             Assert.Equal(500, restaurant.SeatingCapacity);
         }
 

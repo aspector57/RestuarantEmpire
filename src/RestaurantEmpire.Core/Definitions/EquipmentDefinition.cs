@@ -15,7 +15,8 @@ namespace RestaurantEmpire.Core.Definitions
     {
         public EquipmentDefinition(
             string id, string stationId, string name,
-            decimal cost, decimal speedMultiplier, decimal footprint, decimal quality = 0.5m, decimal capacity = 0m)
+            decimal cost, decimal speedMultiplier, decimal footprint, decimal quality = 0.5m, decimal capacity = 0m,
+            int platesAtOnce = 1)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Equipment id is required.", nameof(id));
             if (string.IsNullOrWhiteSpace(stationId)) throw new ArgumentException("Equipment must name a station.", nameof(stationId));
@@ -31,6 +32,7 @@ namespace RestaurantEmpire.Core.Definitions
             Footprint = footprint;
             Quality = quality;
             Capacity = capacity < 0m ? 0m : capacity;
+            PlatesAtOnce = platesAtOnce < 1 ? 1 : platesAtOnce;
         }
 
         public string Id { get; }
@@ -42,6 +44,18 @@ namespace RestaurantEmpire.Core.Definitions
 
         /// <summary>Price of one unit.</summary>
         public decimal Cost { get; }
+
+        /// <summary>
+        /// How many plates ONE unit works at the same time. A deck oven holds several pizzas;
+        /// a four-burner range has four burners.
+        ///
+        /// Every cooking station used to be one plate at a time, which is why a deck oven made
+        /// FIVE PIZZAS AN HOUR and the only way to add throughput was to buy another box.
+        /// Aaron: *"I still had to buy too many ovens even when I didn't add tables."* Exactly
+        /// right, and this was why — the lever sweep agreed independently, reporting "how many
+        /// ovens: more is always better, so it is a purchase not a choice."
+        /// </summary>
+        public int PlatesAtOnce { get; }
 
         /// <summary>Above 1.0 cooks faster than baseline.</summary>
         public decimal SpeedMultiplier { get; }

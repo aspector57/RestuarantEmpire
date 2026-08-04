@@ -202,25 +202,38 @@ namespace RestaurantEmpire.Core.Tests
             var pass = r.Kitchen.OpenPass(0, plates: 4);
             var margherita = definitions.GetRecipe("margherita");
 
-            var giveUp = new List<Ticket>();
-            for (var i = 0; i < 3; i++) giveUp.Add(pass.Fire(margherita, 0, null));
+            // DERIVED FROM THE STATION, NOT HARDCODED. This used to fire three plates at an
+            // oven that cooked one at a time, so two were certain to still be queued. Once
+            // equipment gained a batch size that same oven starts three at once and nothing
+            // was ever waiting, so the test measured nothing and said so by failing.
+            var atOnce = r.Kitchen.Get("oven").ConcurrentCapacity;
 
+            // A station that holds several plates works in WAVES, so a plate is only genuinely
+            // queued behind another wave. Firing "two more than are cooking" put them in the
+            // same wave as the plate behind them, and abandoning them moved nothing.
+            var cooking = new List<Ticket>();
+            for (var i = 0; i < atOnce; i++) cooking.Add(pass.Fire(margherita, 0, null));
+
+            // A whole second wave: none of these have gone on.
+            var waiting = new List<Ticket>();
+            for (var i = 0; i < atOnce; i++) waiting.Add(pass.Fire(margherita, 0, null));
+
+            // And one in a third wave, which is what should move up.
             var behind = pass.Fire(margherita, 0, null);
             var wasDue = behind.CompletedTick;
 
-            // The first plate is in the pan at minute 1; the other two have not gone on.
-            var dropped = pass.Abandon(giveUp, 1);
+            var dropped = pass.Abandon(new List<Ticket>(waiting), 1);
 
             _out.WriteLine(dropped + " plates came off; the one behind moved from " +
                            wasDue + " to " + behind.CompletedTick);
 
-            Assert.Equal(2, dropped);
+            Assert.Equal(atOnce, dropped);   // the whole wave that had not gone on
             Assert.True(behind.CompletedTick < wasDue,
                 "The plate queued behind an abandoned table did not move up — the pass is still " +
                 "cooking for people who left, which is the loop that makes hiring counterproductive.");
 
-            // The plate already cooking keeps its place. You cannot un-cook it.
-            Assert.True(giveUp[0].StartedTick <= 1);
+            // The plates already cooking keep their place. You cannot un-cook one.
+            Assert.True(cooking[0].StartedTick <= 1);
         }
 
         [Fact(Skip = "Measuring instrument, not a test. Run by removing this Skip.")]

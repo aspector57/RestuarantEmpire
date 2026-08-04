@@ -297,12 +297,23 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(restaurant.ReputationCeiling < 0.60m, "the ceiling drops at once — that part is correct");
 
             // One day of trading on the cheap stuff barely registers.
+            //
+            // ASSERTED AS A RATIO, NOT A CONSTANT. Reputation moves per MEAL, so how far it
+            // travels in a day depends on how busy you are — and when equipment gained a batch
+            // size, throughput roughly doubled and a fixed 0.02 threshold started failing at
+            // 0.021 for a restaurant behaving exactly as designed. The claim was never about a
+            // number; it is that a day is a rounding error against a month.
             Trade(restaurant, 1);
-            Assert.True(restaurant.Reputation.Standing > earned - 0.02m,
-                "one day cost " + (earned - restaurant.Reputation.Standing) + " of standing");
+            var oneDay = earned - restaurant.Reputation.Standing;
+            var afterADay = restaurant.Reputation.Standing;
+            Assert.True(oneDay < 0.05m,
+                "one day cost " + oneDay + " of standing, which is not 'barely registers'");
 
-            // A month in, it is visibly going.
+            // A month in, it is visibly going — and by an order more than the single day did.
             Trade(restaurant, 30);
+            var oneMonth = afterADay - restaurant.Reputation.Standing;
+            Assert.True(oneMonth > oneDay * 8m,
+                "a month should cost far more than a day: day " + oneDay + ", month " + oneMonth);
             Assert.True(restaurant.Reputation.Standing < earned - 0.15m, "a month should show real damage");
 
             // And it takes months to actually arrive.

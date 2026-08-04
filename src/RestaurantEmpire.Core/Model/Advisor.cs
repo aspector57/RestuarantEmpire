@@ -279,7 +279,7 @@ namespace RestaurantEmpire.Core.Model
                     subjectId: stock.IngredientId));
             }
 
-            var units = _restaurant.Kitchen.Stations.Sum(s => s.ConcurrentCapacity);
+            var units = _restaurant.Kitchen.Stations.Sum(s => s.Units);
             var manned = _restaurant.Payroll.CountOf(StaffRole.Cook) * KitchenPass.PlatesPerCook;
 
             // THE RATCHET, AND ITS BRAKE.
@@ -470,7 +470,7 @@ namespace RestaurantEmpire.Core.Model
             // was worse: the advised runs grew to thirty-two covers against seven units and
             // earned less than twenty-two against eleven. Worth re-deriving if prep times or
             // seating times change, because it is a property of those and nothing deeper.
-            var kitchenUnits = _restaurant.Kitchen.Stations.Sum(s => s.ConcurrentCapacity);
+            var kitchenUnits = _restaurant.Kitchen.Stations.Sum(s => s.Units);
             var roomIsOutOfProportion = kitchenUnits > 0
                 && _restaurant.SeatingCapacity < kitchenUnits * 2;
 

@@ -15,7 +15,7 @@ namespace RestaurantEmpire.Core.Model
     public sealed class KitchenStation
     {
         public KitchenStation(string id, string name, int concurrentCapacity = 1, decimal speedMultiplier = 1.0m,
-            decimal cost = 0m, decimal footprintPerUnit = 0m, string equipmentId = null)
+            decimal cost = 0m, decimal footprintPerUnit = 0m, string equipmentId = null, int platesAtOnce = 1)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Station id is required.", nameof(id));
             if (concurrentCapacity < 1) throw new ArgumentOutOfRangeException(nameof(concurrentCapacity), "A station must handle at least one plate at a time.");
@@ -25,6 +25,7 @@ namespace RestaurantEmpire.Core.Model
             Id = id;
             Name = name ?? id;
             ConcurrentCapacity = concurrentCapacity;
+            PlatesAtOnce = platesAtOnce < 1 ? 1 : platesAtOnce;
             SpeedMultiplier = speedMultiplier;
             Cost = cost;
             FootprintPerUnit = footprintPerUnit;
@@ -36,6 +37,19 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>How many plates this station can work simultaneously.</summary>
         public int ConcurrentCapacity { get; }
+
+        /// <summary>How many plates ONE box of this equipment works at the same time.</summary>
+        public int PlatesAtOnce { get; }
+
+        /// <summary>
+        /// How many BOXES you own, as opposed to how many plates they work between them.
+        ///
+        /// These parted company when equipment gained a batch size: three deck ovens that each
+        /// hold four pizzas are three units and twelve plates. Throughput wants the plates;
+        /// floor space, purchase counts and anything the player is shown want the units, because
+        /// "you own 12 ovens" is a lie when you bought three.
+        /// </summary>
+        public int Units { get { return ConcurrentCapacity / PlatesAtOnce; } }
 
         /// <summary>Above 1.0 is faster than baseline. Better equipment, and later better staff.</summary>
         public decimal SpeedMultiplier { get; }

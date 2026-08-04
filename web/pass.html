@@ -474,23 +474,23 @@ const RECIPES = [
 ];
 
 const EQUIPMENT = [
-  {id:"bar-speedrail",station:"bar",name:"Speed Rail and Fridge",cost:1100,speed:0.8,foot:26},
-  {id:"bar-back",station:"bar",name:"Back Bar with Taps",cost:3800,speed:1.0,foot:40},
-  {id:"bar-cocktail",station:"bar",name:"Full Cocktail Bar",cost:9500,speed:1.5,foot:52},
-  {id:"oven-secondhand",station:"oven",name:"Second-hand Deck Oven",cost:1600,speed:0.75,foot:54},
-  {id:"oven-commercial",station:"oven",name:"Commercial Deck Oven",cost:3400,speed:1.0,foot:43},
-  {id:"oven-hearth",station:"oven",name:"Stone Hearth Oven",cost:9000,speed:1.6,foot:34},
-  {id:"saute-basic",station:"saute",name:"Four-burner Range",cost:1400,speed:0.8,foot:43},
-  {id:"saute-commercial",station:"saute",name:"Six-burner Range",cost:3000,speed:1.0,foot:38},
-  {id:"saute-induction",station:"saute",name:"Induction Suite",cost:8200,speed:1.55,foot:30},
-  {id:"gm-basic",station:"garde-manger",name:"Prep Bench",cost:700,speed:0.85,foot:32},
-  {id:"gm-refrigerated",station:"garde-manger",name:"Refrigerated Prep Counter",cost:2100,speed:1.0,foot:28},
-  {id:"gm-pass",station:"garde-manger",name:"Cold Pass with Chiller",cost:5400,speed:1.45,foot:24},
-  {id:"coffee-filter",station:"coffee",name:"Batch Filter Brewer",cost:900,speed:0.8,foot:15},
-  {id:"coffee-espresso",station:"coffee",name:"Two-group Espresso Machine",cost:4200,speed:1.0,foot:19},
-  {id:"coffee-marzocco",station:"coffee",name:"Three-group La Marzocco",cost:11000,speed:1.5,foot:24},
-  {id:"grill-flat",station:"grill",name:"Flat-top Griddle",cost:1500,speed:0.85,foot:37},
-  {id:"grill-chargrill",station:"grill",name:"Chargrill",cost:3600,speed:1.1,foot:32},
+  {id:"bar-speedrail",station:"bar",name:"Speed Rail and Fridge",cost:1100,speed:0.8,foot:26,holds:2},
+  {id:"bar-back",station:"bar",name:"Back Bar with Taps",cost:3800,speed:1.0,foot:40,holds:3},
+  {id:"bar-cocktail",station:"bar",name:"Full Cocktail Bar",cost:9500,speed:1.5,foot:52,holds:4},
+  {id:"oven-secondhand",station:"oven",name:"Second-hand Deck Oven",cost:1600,speed:0.75,foot:54,holds:3},
+  {id:"oven-commercial",station:"oven",name:"Commercial Deck Oven",cost:3400,speed:1.0,foot:43,holds:4},
+  {id:"oven-hearth",station:"oven",name:"Stone Hearth Oven",cost:9000,speed:1.6,foot:34,holds:6},
+  {id:"saute-basic",station:"saute",name:"Four-burner Range",cost:1400,speed:0.8,foot:43,holds:4},
+  {id:"saute-commercial",station:"saute",name:"Six-burner Range",cost:3000,speed:1.0,foot:38,holds:6},
+  {id:"saute-induction",station:"saute",name:"Induction Suite",cost:8200,speed:1.55,foot:30,holds:6},
+  {id:"gm-basic",station:"garde-manger",name:"Prep Bench",cost:700,speed:0.85,foot:32,holds:3},
+  {id:"gm-refrigerated",station:"garde-manger",name:"Refrigerated Prep Counter",cost:2100,speed:1.0,foot:28,holds:4},
+  {id:"gm-pass",station:"garde-manger",name:"Cold Pass with Chiller",cost:5400,speed:1.45,foot:24,holds:5},
+  {id:"coffee-filter",station:"coffee",name:"Batch Filter Brewer",cost:900,speed:0.8,foot:15,holds:2},
+  {id:"coffee-espresso",station:"coffee",name:"Two-group Espresso Machine",cost:4200,speed:1.0,foot:19,holds:2},
+  {id:"coffee-marzocco",station:"coffee",name:"Three-group La Marzocco",cost:11000,speed:1.5,foot:24,holds:3},
+  {id:"grill-flat",station:"grill",name:"Flat-top Griddle",cost:1500,speed:0.85,foot:37,holds:4},
+  {id:"grill-chargrill",station:"grill",name:"Chargrill",cost:3600,speed:1.1,foot:32,holds:5},
   {id:"cold-domestic",station:"cold-storage",name:"Domestic Fridge",cost:600,speed:1,foot:12,capacity:250},
   {id:"cold-underbar",station:"cold-storage",name:"Under-counter Fridge",cost:1400,speed:1,foot:16,capacity:600},
   {id:"cold-walkin",station:"cold-storage",name:"Walk-in Cold Room",cost:6800,speed:1,foot:90,capacity:3000},
@@ -957,9 +957,35 @@ function pricePosition(){
 //
 // Reputation belongs here because it is the only quality signal available from home: you
 // cannot see the ingredients before you go, but you have heard whether the place is any good.
+/* WHAT THIS RESTAURANT IS ACTUALLY OFFERING, weighed the way a guest weighs it.
+ *
+ * Aaron: *"people should be willing to pay more for premium ingredients especially if made by
+ * a great chef, but also happy with lower costs for worse food as long as it isn't horrible"*
+ * and *"the price needs to match the overall value and many factors need to be considered."*
+ *
+ * Willingness to pay used to hang on REPUTATION alone, which made sourcing a two-year bet:
+ * good ingredients raised standing, standing slowly raised what you could charge, and a great
+ * chef never got credit for tonight's dinner. Now the plate itself counts.
+ *
+ * Ingredients and craft multiply rather than add, because they gate each other — a brilliant
+ * chef cannot rescue poor ingredients and the best produce in the world dies in a careless
+ * kitchen. That is already how PlateQuality works on the satisfaction side; this is the same
+ * belief applied to what someone will PAY, so the two halves finally agree.
+ */
+function valueOnOffer(){
+  const ingredients = ingredientQuality();
+  const craft       = avgSkill(G.cooks);
+  const plate       = Math.sqrt(Math.max(0.05, ingredients) * Math.max(0.05, craft));
+  return clamp01(plate * 0.30 + comfortOf() * 0.15 + G.rep.standing * 0.55);
+}
+
 function wouldConsider(sens, pos){
   if(pos <= 1) return 1;
-  const allowance = 0.75 + G.rep.standing * 0.5;
+
+  // The floor matters as much as the ceiling. At 0.70 a plainly-sourced, competently-run
+  // room still carries a normal price without complaint — "happy with lower costs for worse
+  // food as long as it isn't horrible" — while everything above that is earned.
+  const allowance = 0.70 + valueOnOffer() * 0.95;
   return Math.max(0.03, 1 - ((pos - 1) / allowance) * sens * 0.85);
 }
 
@@ -1546,7 +1572,11 @@ function bindingConstraint(dp){
 function runDay(){
   const d = G.today = { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 };
   const freeAt = {};   // station -> array of minute-free per unit
-  for(const s in G.stations) freeAt[s] = new Array(G.stations[s].length).fill(0);
+  // ONE SLOT PER PLATE THE STATION CAN WORK, not per box you own. A deck oven holds several
+  // pizzas; counting boxes made it a single-pizza slot, which is why the only way to add
+  // throughput was to buy more ovens.
+  for(const s in G.stations)
+    freeAt[s] = new Array(Math.max(1, G.stations[s].reduce((a,u)=>a + (u.holds||1), 0))).fill(0);
   let cookFree = new Array(Math.max(1, plateCapacity())).fill(0);
   let seatsBusy = [];
   let openMinutes = 0;
@@ -2345,7 +2375,7 @@ function buySeats(f){
 function buyEquip(e){
   if(G.cash < e.cost || freeArea() < e.foot) return;
   G.cash -= e.cost; G.ledger.capex += e.cost;
-  (G.stations[e.station] = G.stations[e.station]||[]).push({ id:e.id, speed:e.speed, foot:e.foot, capacity:e.capacity||0 });
+  (G.stations[e.station] = G.stations[e.station]||[]).push({ id:e.id, speed:e.speed, foot:e.foot, capacity:e.capacity||0, holds:e.holds||1 });
   didThat(`Bought a ${e.name} for $${e.cost.toLocaleString()} — ${stationUnits(e.station)} on that station now, ${money(G.cash)} left.`);
 }
 
@@ -3830,7 +3860,7 @@ function start(site){
 function buyEquipSilent(id){
   const e = EQUIPMENT.find(x=>x.id===id);
   G.cash -= e.cost; G.ledger.capex += e.cost;
-  (G.stations[e.station] = G.stations[e.station]||[]).push({ id:e.id, speed:e.speed, foot:e.foot, capacity:e.capacity||0 });
+  (G.stations[e.station] = G.stations[e.station]||[]).push({ id:e.id, speed:e.speed, foot:e.foot, capacity:e.capacity||0, holds:e.holds||1 });
 }
 
 document.addEventListener("click", ev=>{

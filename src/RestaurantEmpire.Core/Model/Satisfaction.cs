@@ -185,6 +185,25 @@ namespace RestaurantEmpire.Core.Model
         /// At 2.5 the reaction starts around a third above the designed price and steepens,
         /// so there is real headroom for a confident operator and a real wall behind it.
         /// </summary>
+        /// <summary>
+        /// What a restaurant is actually offering, on the one scale a guest judges it by.
+        ///
+        /// Ingredients and craft MULTIPLY rather than add, because each gates the other: a
+        /// brilliant chef cannot rescue poor produce, and the best produce dies in a careless
+        /// kitchen. That is already how <see cref="PlateQuality"/> works, and this applies the
+        /// same belief to what somebody will PAY — so the two halves of the same judgement
+        /// finally agree instead of one running on reputation alone.
+        /// </summary>
+        public static decimal ValueOnOffer(decimal ingredientQuality, decimal kitchenSkill,
+                                           decimal comfort, decimal standing)
+        {
+            var ing = ingredientQuality < 0.05m ? 0.05m : ingredientQuality;
+            var craft = kitchenSkill < 0.05m ? 0.05m : kitchenSkill;
+            var plate = (decimal)System.Math.Sqrt((double)(ing * craft));
+
+            return Clamp((plate * 0.30m) + (Clamp(comfort) * 0.15m) + (Clamp(standing) * 0.55m));
+        }
+
         public const double PriceToleranceExponent = Tuning.PriceToleranceExponent;
 
         /// <summary>

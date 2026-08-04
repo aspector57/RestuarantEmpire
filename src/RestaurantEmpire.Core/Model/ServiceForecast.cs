@@ -307,13 +307,20 @@ namespace RestaurantEmpire.Core.Model
                 restaurant.Location == null ? "" : restaurant.Location.Id);
             if (likely.Length == 0) return 1m;
 
+            // The same thing the service asks, so the projection cannot disagree with the night.
+            var offering = SatisfactionModel.ValueOnOffer(
+                restaurant.Costing.IngredientQuality(restaurant.Menu.RecipeIds),
+                restaurant.Payroll.AverageSkill(StaffRole.Cook),
+                restaurant.DiningRoom.Comfort,
+                standing);
+
             var weighted = 0m;
             var weight = 0m;
 
             for (var i = 0; i < likely.Length; i++)
             {
                 var w = restaurant.Menu.Count == 0 ? 1m : restaurant.Menu.AppealTo(likely[i]);
-                weighted += ArchetypeProfile.For(likely[i]).WouldConsider(pricePosition, standing) * w;
+                weighted += ArchetypeProfile.For(likely[i]).WouldConsider(pricePosition, offering) * w;
                 weight += w;
             }
 

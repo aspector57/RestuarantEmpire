@@ -94,19 +94,39 @@ namespace RestaurantEmpire.Core.Model
         /// any good, and a well-regarded restaurant is forgiven a dearer menu. This is what
         /// makes building a reputation the thing that BUYS the right to charge.
         /// </param>
-        public decimal WouldConsider(decimal pricePosition, decimal standing = 0.5m)
+        /// <summary>
+        /// Would this sort of person eat here at these prices? <paramref name="valueOnOffer"/>
+        /// is what the restaurant is actually putting in front of them — see
+        /// <see cref="SatisfactionModel.ValueOnOffer"/>. Defaults to the neutral 0.5 so callers
+        /// that do not know yet behave exactly as before.
+        /// </summary>
+        public decimal WouldConsider(decimal pricePosition, decimal valueOnOffer = 0.5m)
         {
             if (pricePosition <= 1m) return 1m;   // priced as designed or under: everybody is in
 
-            // A neutral name is worth nothing either way; a strong one carries about a third
-            // more price before people stop considering you.
-            var reputationAllowance = 0.75m + (standing * 0.5m);
+            // WHAT YOU CAN CHARGE IS WHAT YOU ARE ACTUALLY OFFERING, not just your name.
+            //
+            // Aaron: *"people should be willing to pay more for premium ingredients especially
+            // if made by a great chef, but also happy with lower costs for worse food as long
+            // as it isn't horrible."*
+            //
+            // This used to hang on reputation alone, which made sourcing a two-year bet — good
+            // ingredients raised standing, standing slowly raised the price you could ask, and
+            // a great chef got no credit for tonight's dinner. Measured across horizons, budget
+            // sourcing beat mid-tier until about two years and premium never won at all.
+            //
+            // The 0.70 floor is the other half of his sentence: a plainly-sourced, competently
+            // run room still carries a normal price without anyone objecting. Everything above
+            // that has to be earned.
+            var allowance = 0.70m + (Clamp(valueOnOffer) * 0.95m);
 
-            var over = (pricePosition - 1m) / reputationAllowance;
+            var over = (pricePosition - 1m) / allowance;
             var chance = 1m - (over * PriceSensitivity * 0.85m);
 
             return chance < 0.03m ? 0.03m : chance;
         }
+
+        private static decimal Clamp(decimal v) { return v < 0m ? 0m : v > 1m ? 1m : v; }
 
         public static ArchetypeProfile For(CustomerArchetype archetype)
         {

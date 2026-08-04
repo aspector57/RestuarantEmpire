@@ -142,6 +142,21 @@ namespace RestaurantEmpire.Core.Model
             return total / recipeIds.Count;
         }
 
+
+        /// <summary>
+        /// What the whole card is made of, on average. Willingness to pay is judged against the
+        /// restaurant rather than against one dish — a guest decides whether to come here, not
+        /// whether to order the risotto.
+        /// </summary>
+        public decimal IngredientQuality(IReadOnlyList<string> recipeIds)
+        {
+            if (recipeIds == null || recipeIds.Count == 0) return 0.5m;
+
+            var total = 0m;
+            for (var i = 0; i < recipeIds.Count; i++) total += IngredientQuality(recipeIds[i]);
+
+            return total / recipeIds.Count;
+        }
         public decimal IngredientQuality(string recipeId)
         {
             var recipe = _definitions.GetRecipe(recipeId);

@@ -920,7 +920,13 @@ namespace RestaurantEmpire.Core.Model
             // arrive, because that is when people decide — they know roughly what a place
             // costs. Drawn from the judgement stream so it cannot shift arrivals or mishaps.
             var pricePosition = _restaurant.Costing.PricePosition(_restaurant.Menu.RecipeIds);
-            if (!_judgement.Chance((double)profile.WouldConsider(pricePosition, _restaurant.Reputation.Standing)))
+            var offering = SatisfactionModel.ValueOnOffer(
+                _restaurant.Costing.IngredientQuality(_restaurant.Menu.RecipeIds),
+                _restaurant.Payroll.AverageSkill(StaffRole.Cook),
+                _restaurant.DiningRoom.Comfort,
+                _restaurant.Reputation.Standing);
+
+            if (!_judgement.Chance((double)profile.WouldConsider(pricePosition, offering)))
             {
                 _partiesPutOffByThePrices++;
                 return null;

@@ -362,8 +362,17 @@ namespace RestaurantEmpire.Core.Model
             var replacing = Kitchen.TryGet(equipment.StationId, out existing) && existing.EquipmentId != equipment.Id;
             var keeping = Kitchen.TryGet(equipment.StationId, out existing) && existing.EquipmentId == equipment.Id;
 
-            var totalUnits = keeping ? existing.ConcurrentCapacity + units : units;
-            var spaceNeeded = (equipment.Footprint * totalUnits) - (existing == null ? 0m : existing.Footprint);
+            // THROUGHPUT SCALES WITH PLATES, FLOOR SPACE SCALES WITH BOXES, and conflating them
+            // is a real trap: `KitchenStation.Footprint` is `FootprintPerUnit x ConcurrentCapacity`,
+            // so making capacity mean plates instantly tripled the room an oven takes up.
+            //
+            // Dividing the model's footprint by its batch keeps that identity true — a
+            // three-pizza oven is stored as three plate-slots of a third the footprint each,
+            // which multiplies back to exactly one oven's worth of floor.
+            var platesPerUnit = equipment.PlatesAtOnce < 1 ? 1 : equipment.PlatesAtOnce;
+            var totalUnits = keeping ? existing.ConcurrentCapacity + (units * platesPerUnit) : units * platesPerUnit;
+            var footprintPerPlate = equipment.Footprint / platesPerUnit;
+            var spaceNeeded = (footprintPerPlate * totalUnits) - (existing == null ? 0m : existing.Footprint);
 
             if (!HasRoomFor(spaceNeeded))
             {
@@ -375,7 +384,7 @@ namespace RestaurantEmpire.Core.Model
 
             var station = new KitchenStation(
                 equipment.StationId, equipment.Name, totalUnits,
-                equipment.SpeedMultiplier, equipment.Cost, equipment.Footprint, equipment.Id);
+                equipment.SpeedMultiplier, equipment.Cost, footprintPerPlate, equipment.Id, platesPerUnit);
 
             Kitchen.Install(station);
 

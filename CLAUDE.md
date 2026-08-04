@@ -2792,6 +2792,80 @@ constraint, and treated *"about right"* as disagreement. **Near parity is the he
 restaurant can be, and the test called it a defect.** It now flags only genuine opposition:
 forecast says kitchen while Build says room, or the reverse.
 
+### A deck oven holds one pizza — which is why you kept buying ovens (Aaron)
+
+> *"I still had to buy too many ovens even when I didn't add tables."*
+
+**Every cooking station was a single-plate slot.** `capacity` existed in the equipment data and
+was used only by fridges, so a second-hand deck oven made **five pizzas an hour** and the only
+way to add throughput was another box. The lever sweep had already said so independently:
+*"how many ovens: more is always better, so it is a purchase not a choice."*
+
+`platesAtOnce` is now data on every cooking model — a deck oven holds 3-6, a four-burner range
+holds 4, a six-burner 6. Named after what the thing physically is.
+
+**A trap worth recording: `KitchenStation.Footprint` is `FootprintPerUnit x ConcurrentCapacity`,
+so making capacity mean PLATES instantly tripled the floor an oven takes.** 38 tests failed at
+once. Throughput scales with plates; floor space, purchase counts and anything shown to the
+player scale with BOXES. Storing a three-pizza oven as three slots of a third the footprint
+keeps both true, and `KitchenStation.Units` now exposes the box count so nothing has to divide.
+
+**The opening is a different game now:** day one goes from 33 servable covers to 40 against a
+street wanting 71, and the do-nothing run banks cash instead of drowning.
+
+### "It rarely recommended tables — just ovens, staff, equipment" (Aaron)
+
+True, and structural: **the game opens you with a room twice the size of your kitchen** (80
+covers of seating against 40 of pass), so the kitchen is correctly the constraint for a long
+time and tables cannot be the answer until it catches up. With one-plate ovens it never did.
+
+With batch capacity the advised run now interleaves both sides:
+
+    d1  oven      d5  +10 seats     d41 +10 seats
+    d3  cook      d24 oven          d62 extended the building
+    d4  server    d55 cook          d72 +10 seats
+
+240 days: **198 covers/day and $2,111/day**, up from 187 and $1,997.
+
+### What you can charge is what you are actually offering (Aaron)
+
+> *"people should be willing to pay more for premium ingredients especially if made by a great
+> chef, but also happy with lower costs for worse food as long as it isn't horrible"*
+> *"the price needs to match the overall value and many factors need to be considered"*
+
+`SatisfactionModel.ValueOnOffer` blends ingredients x craft (multiplied, because each gates the
+other), the room, and standing. `WouldConsider` uses it in place of reputation alone, over a
+**0.70 floor** — the second half of his sentence, so a plainly-sourced competent room still
+carries a normal price without complaint.
+
+**THE WEIGHT ON THE PLATE TERM IS A DIAL BETWEEN REALISM AND PAYBACK SPEED, and it is worth
+knowing the shape before touching it:**
+
+| plate weight | quality starts winning at | honest? |
+|---|---|---|
+| 0.62 | 90 days | no — implies you can see the ingredients from home |
+| **0.30 (set here)** | **~1 year** | word of mouth leading the formal score |
+| 0.00 (before) | ~2 years | pure reputation, too slow to feel like a decision |
+
+At 0.30 the arc is: **cheap wins while you are unknown, quality wins once you have a name.**
+Budget takes 90 days ($23,035 to Valley's $20,635) and Valley takes the year and the two-year
+($162,193 and $361,435). Both halves of what he asked for, and neither strategy is a trap.
+
+`DishRatingTests` defends the claim that *"you cannot see the ingredients from home"* and it
+is the reason the weight is not higher — at 0.62 that test fails honestly, because the model
+would be claiming something false.
+
+**Three tests changed, and all three were measuring constants that the throughput change made
+meaningless rather than measuring the thing they were named for:**
+
+- `PlatesForATableThatWalkedComeOffTheBoard` fired three plates at a one-plate oven. A station
+  that holds several works in WAVES, so the plate "behind" was in the same wave as the ones
+  being abandoned and moving them changed nothing. Now derived from the station's own capacity.
+- `CuttingCornersDoesNotCraterYouOvernight` failed at 0.021 against a fixed 0.02. Reputation
+  moves per MEAL, so a day's travel depends on how busy you are, and throughput had doubled.
+  Asserted as a ratio now: a day must be a rounding error against a month.
+- Three `FloorSpaceTests` counted `ConcurrentCapacity` meaning boxes. They read `Units`.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

@@ -8,7 +8,11 @@
     "is the only way left to add throughput. A pile of cheap ovens is the beginner move and",
     "it eats the floor space your dining room needs.",
     "",
-    "footprint is square metres per unit, including the clearance to actually work around it."
+    "footprint is square metres per unit, including the clearance to actually work around it.",
+    "platesAtOnce is how many plates ONE unit works at the same time -- a deck oven holds",
+    "several pizzas, a four-burner range has four burners. Before this every cooking station",
+    "was one plate at a time, so a deck oven made five pizzas an hour and the only way to",
+    "grow throughput was to buy more boxes."
   ],
   "equipment": [
     {
@@ -19,7 +23,8 @@
       "speed": 0.75,
       "footprint": 54,
       "quality": 0.4,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 3
     },
     {
       "id": "oven-commercial",
@@ -29,7 +34,8 @@
       "speed": 1.0,
       "footprint": 43,
       "quality": 0.6,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 4
     },
     {
       "id": "oven-hearth",
@@ -39,7 +45,8 @@
       "speed": 1.6,
       "footprint": 34,
       "quality": 0.9,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 6
     },
     {
       "id": "saute-basic",
@@ -49,7 +56,8 @@
       "speed": 0.8,
       "footprint": 43,
       "quality": 0.4,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 4
     },
     {
       "id": "saute-commercial",
@@ -59,7 +67,8 @@
       "speed": 1.0,
       "footprint": 38,
       "quality": 0.6,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 6
     },
     {
       "id": "saute-induction",
@@ -69,7 +78,8 @@
       "speed": 1.55,
       "footprint": 30,
       "quality": 0.9,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 6
     },
     {
       "id": "gm-basic",
@@ -79,7 +89,8 @@
       "speed": 0.85,
       "footprint": 32,
       "quality": 0.4,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 3
     },
     {
       "id": "gm-refrigerated",
@@ -89,7 +100,8 @@
       "speed": 1.0,
       "footprint": 28,
       "quality": 0.6,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 4
     },
     {
       "id": "gm-pass",
@@ -99,7 +111,8 @@
       "speed": 1.45,
       "footprint": 24,
       "quality": 0.9,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 5
     },
     {
       "id": "coffee-filter",
@@ -109,7 +122,8 @@
       "speed": 0.8,
       "footprint": 15,
       "quality": 0.3,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 2
     },
     {
       "id": "coffee-espresso",
@@ -119,7 +133,8 @@
       "speed": 1.0,
       "footprint": 19,
       "quality": 0.7,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 2
     },
     {
       "id": "coffee-marzocco",
@@ -129,7 +144,8 @@
       "speed": 1.5,
       "footprint": 24,
       "quality": 1.0,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 3
     },
     {
       "id": "grill-flat",
@@ -139,7 +155,8 @@
       "speed": 0.85,
       "footprint": 37,
       "quality": 0.5,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 4
     },
     {
       "id": "grill-chargrill",
@@ -149,7 +166,8 @@
       "speed": 1.1,
       "footprint": 32,
       "quality": 0.8,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 5
     },
     {
       "id": "cold-domestic",
@@ -209,7 +227,8 @@
       "speed": 0.8,
       "footprint": 26,
       "quality": 0.4,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 2
     },
     {
       "id": "bar-back",
@@ -219,7 +238,8 @@
       "speed": 1.0,
       "footprint": 40,
       "quality": 0.6,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 3
     },
     {
       "id": "bar-cocktail",
@@ -229,7 +249,8 @@
       "speed": 1.5,
       "footprint": 52,
       "quality": 0.9,
-      "capacity": 0
+      "capacity": 0,
+      "platesAtOnce": 4
     }
   ]
 }
