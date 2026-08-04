@@ -2991,6 +2991,46 @@ went wrong". Both now record the wage, the CV, and the resulting headcount.
 extensions, prices, menu edits and staff were already covered; the audit found no remaining
 silent action.
 
+### Eight interrupts, one typo, and the dead button was the one that mattered
+
+Aaron: *"this button doesn't work, the add 10 seats."*
+
+**`run:` where every other interrupt in the file uses `fn:`.** The renderer calls `a.fn()`, so
+clicking threw and did nothing. Seven interrupts had it right; the one that did not was the
+single action a room-bound restaurant most needs.
+
+**That is the THIRD dead button to ship**, after the Advisor offering an oven with no floor for
+it and `needsWage` rendering nothing at all. Every one looked correct in the source and did
+nothing when pressed. **Static checking cannot see any of this class — only pressing them can.**
+
+`tools/probe-actions.js` presses every button the game offers, across six shapes chosen so each
+binds on something different, and reports whether state actually changed:
+
+    room-bound, floor spare  interrupt   Add 10 seats — Folding t   yes
+    room-bound, no floor     interrupt   Go to Build                yes
+    short of hands           interrupt   Go to hiring               yes
+
+**Run it after touching any advice or interrupt.** It forces the wait-balk condition rather
+than hoping for it, because the dead `run:` lived on a path no ordinary shape happened to reach.
+
+Two smaller fixes came with it. **When nothing fits, say where to go** — Aaron's own suggestion,
+and an interrupt that names a problem while offering no move is exactly what this tier exists to
+avoid. And **the renderer no longer fails silently**: an action it cannot carry out now says so,
+because a dead button is worse than a missing one — the player believes they acted and the game
+says nothing.
+
+### Open, and visible in the same run: THE ADVISOR DOES NOT SCALE
+
+Day 1903, **$1,326,021 in the bank, standing 98, 283 covers a day** — and the top suggestion is
+*"Buy a Prep Bench — $700."* Technically correct and absurd at that size. The prices line is
+worth 25% more revenue and has gone untaken for a thousand days, and there are three unopened
+sites on screen.
+
+**The advice is sized for the opening and never grows with the player.** At a million in cash
+the meaningful moves are another site or a repricing, not a $700 bench — but every rule is
+written against ratios that behave the same at $20,000 and at $1.3m. Recorded rather than
+guessed at: the fix is probably a wealth-aware ordering, and it wants measuring first.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

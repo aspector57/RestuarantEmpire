@@ -2512,9 +2512,16 @@ function checkInterrupts(d){
              `People are queueing for a table while the kitchen waits for tickets. Another cook ` +
              `would change nothing.`,
         why:"A guest who cannot sit down never reaches the kitchen at all.",
-        acts: fit ? [{ label:`Add 10 seats — ${fit.name}, ${money(fit.perSeat*10)}`,
-                       run:()=>{ buySeats(fit); } }]
-                  : [] };
+        // `run:` — every other interrupt in the file uses `fn:`, which is what the renderer
+        // calls, so this button threw and did nothing. Eight interrupts, one typo, and the
+        // one action a room-bound restaurant most needs was dead.
+        //
+        // And when nothing fits, say where to go rather than offering nothing at all. Aaron:
+        // *"maybe it should say go to build instead."* An interrupt that names a problem and
+        // offers no move is the thing this whole tier exists to avoid.
+        acts: fit
+          ? [{ label:`Add 10 seats — ${fit.name}, ${money(fit.perSeat*10)}`, fn:()=>{ buySeats(fit); } }]
+          : [{ label:"Go to Build", fn:()=>{ TAB = "build"; } }] };
     }
 
     // NOT ENOUGH HANDS. No amount of equipment fixes this, and telling the player to buy
@@ -3184,7 +3191,16 @@ function render(){
       const b = document.createElement("button");
       b.className = "btn" + (ix===0?" primary":"");
       b.textContent = a.label;
-      b.onclick = ()=>{ a.fn(); G.interrupt = null; render(); };
+      b.onclick = ()=>{
+        if(typeof a.fn !== "function"){
+          // Never fail silently. A dead button is worse than a missing one, because the
+          // player believes they acted and the game says nothing.
+          say("warn", "That action could not be carried out — nothing was changed.");
+        } else {
+          a.fn();
+        }
+        G.interrupt = null; render();
+      };
       acts.appendChild(b);
     });
     const dismiss = document.createElement("button");
