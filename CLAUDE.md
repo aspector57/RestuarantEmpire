@@ -2965,6 +2965,32 @@ dump.
     d0012  YOU     Pizza Margherita — price set to $19.00.
     d0025  YOU     Hired a second server.
 
+### Every day, including the quiet ones (Aaron)
+
+> *"the log should show literally everything that happens, marketing, etc, and you need to be
+> able to see every single day."*
+
+**The log only spoke when something went wrong**, so a run read as a list of disasters with the
+trajectory missing between them. **A quiet night is information** — it is the shape of the
+business when nothing is on fire, and **a slow decline is invisible in a log that only records
+incidents.**
+
+One line per day now, always:
+
+    d0007          Day 7: 74 covers, $805 in, $345 kept. Standing 51, cash $51,503.
+    d0009          Day 9: 103 covers, $1,097 in, $591 kept. Standing 51, cash $52,827.  Lost: 9 turned away.
+
+That is FEWER entries than before, not more — four conditional lines folded into one, with
+losses appended only when there were any.
+
+**Hiring and firing were logged but not marked as the player's moves**, so they never appeared
+under "What I did" — the filter that exists precisely to answer "what did I change before this
+went wrong". Both now record the wage, the CV, and the resulting headcount.
+
+`Every day` joins the rail filters. Marketing, sourcing, hours, licence, equipment, seats,
+extensions, prices, menu edits and staff were already covered; the audit found no remaining
+silent action.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

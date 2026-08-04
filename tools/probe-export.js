@@ -18,19 +18,31 @@ G.stations["dry-storage"]=[{id:"dry-racking",speed:1,foot:34,capacity:4000}];
 RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) orderStock(k,200); });
 G.campaign = { claim:"ingredients", channel:"press" };
 
-for(var d=0; d<40; d++){
+for(var n=0; n<60; n++){
   var top = advise()[0];
   var head = top ? "["+top.id+"] "+top.head : "[quiet] Nothing needs you right now.";
   if(head !== G.lastAdvice){ say("advice", "Advisor: " + head); G.lastAdvice = head; }
-  if(d===12){ G.prices["margherita"] = 19; noteDecision("margherita","price set to $19.00"); }
-  if(d===25){ G.servers.push({id:"s1",name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5}); didThat("Hired a second server."); }
-  runDay(); G.day++;   // the clock lives in advance(), which a bare runDay() bypasses
+  if(n===12){ G.prices["margherita"] = 19; noteDecision("margherita","price set to $19.00"); }
+  if(n===25){ G.servers.push({id:"s1",name:"S",role:"server",wage:12,skill:0.5,claim:0.5,potential:0.5}); didThat("Hired a second server."); }
+  var d = runDay();
+  // Mirror what advance() writes, so the probe exercises the real logging path.
+  var lost = [];
+  if(d.walkouts) lost.push(d.walkouts + " walked out");
+  if(d.balkedWait) lost.push(d.balkedWait + " put off by the wait");
+  if(d.noTable) lost.push(d.noTable + " turned away");
+  say(d.covers ? "day" : "warn",
+    "Day " + G.day + ": " + d.covers + " covers, " + money(d.revenue) + " in, " +
+    money(d.revenue-d.food-d.labor) + " kept. Standing " + Math.round(G.rep.standing*100) +
+    ", cash " + money(G.cash) + "." + (lost.length ? "  Lost: " + lost.join(", ") + "." : ""));
+  G.day++;
 }
 
 var text = fullTranscript();
 var lines = text.split("\n");
 console.log(lines.slice(0, 34).join("\n"));
 console.log("...");
-console.log(lines.filter(function(l){ return l.indexOf("YOU ")>=0 || l.indexOf("ADVISOR")>=0; }).slice(0,8).join("\n"));
+var days = lines.filter(function(l){ return /^d\d{4}/.test(l); });
+console.log("EVERY DAY IS PRESENT — " + days.length + " dated lines. A sample around the price change:");
+console.log(days.slice(10, 18).join("\n"));
 console.log("");
 console.log("(" + lines.length + " lines, " + text.length + " characters)");

@@ -153,6 +153,7 @@ button{font:inherit; color:inherit; cursor:pointer}
 .trendwhy{font-style:italic}
 .rail .you .t{color:var(--heat)}
 .ticket.advice{border-left-color:var(--cool); font-style:italic}
+.ticket.day{border-left-color:color-mix(in oklab, var(--line) 60%, transparent)}
 .repnote.falling{color:var(--bad)}
 
 .controls{display:grid; gap:7px}
@@ -2710,11 +2711,30 @@ function advance(days, stopOnInterrupt){
         const who = siteLabel();
         if(!G.lastAutopsy.asExpected && days <= 7)
           say(G.lastAutopsy.variance < 0 ? "warn" : "", `${who}Day ${G.day}: ${G.lastAutopsy.headline}`);
-        if(d.covers) say("", `${who}Day ${G.day}: ${d.covers} covers, ${money(d.revenue)} in.`);
-        if(d.remakes) say("warn", `${who}Day ${G.day}: ${d.remakes} plates remade${d.comped?`, ${d.comped} comped`:""} — ${money(d.wasted||0)} of food in the bin.`);
-        if(d.walkouts) say("bad", `${who}Day ${G.day}: ${d.walkouts} walked out after waiting.`);
-        if(d.balkedWait > 3) say("warn", `${who}Day ${G.day}: ${d.balkedWait} parties put off by the wait.`);
-        if(d.balkedPrice > 3) say("warn", `${who}Day ${G.day}: ${d.balkedPrice} parties put off by the prices.`);
+        // EVERY DAY GETS A LINE, INCLUDING THE QUIET ONES. Aaron: *"you need to be able to
+        // see every single day."* Right — the log only spoke when something went wrong, so a
+        // run reads as a list of disasters with the trajectory missing between them. A quiet
+        // night is information: it is the shape of the business when nothing is on fire, and
+        // you cannot see a slow decline in a log that only records incidents.
+        //
+        // One line per day carrying the numbers, and separate lines only for things that
+        // genuinely happened. That is fewer entries than before, not more, because the four
+        // conditional lines are folded into one.
+        const lost = [];
+        if(d.walkouts)    lost.push(`${d.walkouts} walked out`);
+        if(d.balkedWait)  lost.push(`${d.balkedWait} put off by the wait`);
+        if(d.balkedPrice) lost.push(`${d.balkedPrice} by the price`);
+        if(d.noTable)     lost.push(`${d.noTable} turned away`);
+        if(d.lostMenu)    lost.push(`${d.lostMenu} found nothing`);
+
+        const profit = d.revenue - d.food - d.labor;
+        say(d.covers ? "day" : "warn",
+          `${who}Day ${G.day}: ${d.covers} covers, ${money(d.revenue)} in, ${money(profit)} kept. ` +
+          `Standing ${Math.round(G.rep.standing*100)}, cash ${money(G.cash)}.` +
+          (lost.length ? `  Lost: ${lost.join(", ")}.` : ""));
+
+        if(d.remakes)
+          say("warn", `${who}Day ${G.day}: ${d.remakes} plates remade${d.comped?`, ${d.comped} comped`:""} — ${money(d.wasted||0)} of food in the bin.`);
 
         // JUMPING AHEAD MUST STOP WHEN SOMETHING NEEDS DECIDING. Aaron: *"the only time I
         // got this was when I clicked sim until something happens; if I did 1w, 1m, it would
@@ -3244,7 +3264,7 @@ function fullTranscript(){
 
   rule("EVERY DAY, OLDEST FIRST");
   L.push("(your own moves are marked YOU, advice is marked ADVISOR)");
-  const marks = { you:"YOU     ", advice:"ADVISOR ", money:"money   ", bad:"lost    ", warn:"warn    " };
+  const marks = { you:"YOU     ", advice:"ADVISOR ", money:"money   ", bad:"lost    ", warn:"warn    ", day:"        " };
   [...G.log].reverse().forEach(e=>{
     L.push(`d${String(e.day).padStart(4,"0")}  ${marks[e.kind] || "        "}${e.text}`);
   });
@@ -3272,7 +3292,7 @@ function panelService(){
   filters.className = "seg";
   filters.style.marginBottom = "10px";
   const views = [["all","Everything"],["you","What I did"],["advice","What I was told"],
-                 ["bad","Trade lost"],["money","Money"]];
+                 ["day","Every day"],["bad","Trade lost"],["money","Money"]];
   for(const [key, label] of views){
     const b = document.createElement("button");
     b.className = "btn" + (RAIL_FILTER === key ? " on" : "");
@@ -3286,6 +3306,7 @@ function panelService(){
     RAIL_FILTER === "all" ? true :
     RAIL_FILTER === "you" ? e.kind === "you" :
     RAIL_FILTER === "advice" ? e.kind === "advice" :
+    RAIL_FILTER === "day" ? e.kind === "day" :
     RAIL_FILTER === "bad" ? (e.kind === "bad" || e.kind === "warn") :
     e.kind === "money" || e.kind === "you");
 
@@ -4150,7 +4171,8 @@ function panelTeam(){
       const list = person.role==="cook" ? G.cooks : G.servers;
       const i = list.indexOf(person);
       if(i >= 0) list.splice(i, 1);
-      say("warn", `Let ${person.name} go.`);
+      didThat(`Let ${person.name} go — ${person.role} on $${person.wage}/hr. ` +
+              `${G.cooks.length} cook(s) and ${G.servers.length} server(s) left.`);
     });
   }
   c.appendChild(seg);
@@ -4170,7 +4192,8 @@ function panelTeam(){
     b.onclick = ()=>{
       (cand.role==="cook" ? G.cooks : G.servers).push(cand);
       G.applicants = G.applicants.filter(x=>x!==cand);
-      say("", `Hired ${cand.name}.`);
+      didThat(`Hired ${cand.name} — ${cand.role}, $${cand.wage}/hr, CV reads "${reads(cand.claim)}". ` +
+              `${G.cooks.length} cook(s) and ${G.servers.length} server(s) now.`);
       render();
     };
     row.appendChild(b);
