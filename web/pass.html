@@ -2356,13 +2356,34 @@ function runDay(){
         const bar = drinksFor(dp);
         if(bar.length && G.rand() < drinkChance(arch, dp)){
           const drink = bar[Math.floor(G.rand()*bar.length)];
-          if(canCook(drink)){
+
+          // A DRINK HAS TO BE POURED BY SOMEBODY, AT A BAR.
+          //
+          // It used to be pure revenue: a drink was attached with no station time and no pass
+          // time at all, so the `bar` station every drink NAMES was consulted by nothing. That
+          // made a drinks-led room free money -- the wine bar earned $111,209 a month against
+          // fine dining's $30,900 in the same market, and won three streets of four.
+          //
+          // Seventh instance of the recurring shape: a field populated (`station:"bar"`) and
+          // read on one side of the decision it informs. A bar is a physical thing with a
+          // queue in front of it exactly like an oven.
+          const barSlots = freeAt[drink.station];
+          const poured = barSlots && canCook(drink);
+
+          if(poured){
+            // Deals onto the real board, so a busy bar backs up and the next guest waits for
+            // theirs -- and so buying a second speed rail is a decision with a reason.
+            placePlate(drink, m, barSlots, cookFree);
             for(const k in drink.ing) consume(k, drink.ing[k]);
             d.food += plateCost(drink);
             d.revenue += G.prices[drink.id];
             d.drinks = (d.drinks||0) + 1;
             G.sold[drink.id] = (G.sold[drink.id]||0) + 1;
             G.soldToday[drink.id] = (G.soldToday[drink.id]||0) + 1;
+          } else if(!barSlots){
+            // Drinks on the card and nowhere to pour them. Worth naming rather than silently
+            // selling nothing -- the same class of failure as alcohol without a licence.
+            d.noBar = (d.noBar||0) + 1;
           }
         }
       }
