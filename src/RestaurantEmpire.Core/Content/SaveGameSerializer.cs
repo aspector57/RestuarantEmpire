@@ -58,6 +58,14 @@ namespace RestaurantEmpire.Core.Content
     /// </summary>
     public static class SaveGameSerializer
     {
+        private static Dictionary<string, List<string>> ExtrasOf(Model.Restaurant restaurant)
+        {
+            var result = new Dictionary<string, List<string>>();
+            foreach (var dish in restaurant.Extras.All())
+                if (dish.Value.Count > 0) result[dish.Key] = new List<string>(dish.Value);
+            return result;
+        }
+
         private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
@@ -119,6 +127,7 @@ namespace RestaurantEmpire.Core.Content
                     Fittings = new List<FittingState>(),
                     Inventory = new List<StockState>(),
                     ReputationStanding = restaurant.Reputation.Standing,
+                    DishExtras = ExtrasOf(restaurant),
                     ReputationMeals = restaurant.Reputation.MealsRemembered,
                     ReputationWordOfMouth = restaurant.Reputation.WordOfMouth,
                     Staff = new List<StaffState>()
@@ -368,6 +377,14 @@ namespace RestaurantEmpire.Core.Content
             // Accumulated history, restored as-is. A save written before reputation existed
             // has no value here and lands at neutral — an unknown restaurant, not a hated one.
             restaurant.Reputation.Restore(state.ReputationStanding, state.ReputationMeals, state.ReputationWordOfMouth);
+
+            // A save written before extras existed simply has none, and loads as plain food —
+            // which is what that save meant. Architecture Rule 3.
+            if (state.DishExtras != null)
+                foreach (var dish in state.DishExtras)
+                    if (dish.Value != null)
+                        foreach (var extraId in dish.Value)
+                            restaurant.Extras.Set(dish.Key, extraId, true);
 
             if (state.Staff != null)
             {

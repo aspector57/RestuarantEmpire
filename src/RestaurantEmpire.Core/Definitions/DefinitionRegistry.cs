@@ -42,7 +42,9 @@ namespace RestaurantEmpire.Core.Definitions
             IEnumerable<string> loadWarnings = null,
             IEnumerable<EquipmentDefinition> equipment = null,
             IEnumerable<ConceptDefinition> concepts = null,
-            IEnumerable<CountryDefinition> countries = null)
+            IEnumerable<CountryDefinition> countries = null,
+            IEnumerable<DishExtraDefinition> extras = null,
+            IReadOnlyDictionary<string, decimal> liftCeilings = null)
         {
             _ingredients = new Dictionary<string, IngredientDefinition>();
             _suppliers = new Dictionary<string, SupplierDefinition>();
@@ -50,6 +52,8 @@ namespace RestaurantEmpire.Core.Definitions
             _equipment = new Dictionary<string, EquipmentDefinition>();
             _concepts = new Dictionary<string, ConceptDefinition>();
             _countries = new Dictionary<string, CountryDefinition>();
+            _extras = new Dictionary<string, List<DishExtraDefinition>>();
+            _liftCeilings = new Dictionary<string, decimal>();
             _loadWarnings = loadWarnings == null ? new List<string>() : new List<string>(loadWarnings);
 
             if (ingredients != null)
@@ -69,6 +73,49 @@ namespace RestaurantEmpire.Core.Definitions
 
             if (countries != null)
                 foreach (var c in countries) _countries[c.Id] = c;
+
+            if (extras != null)
+                foreach (var e in extras)
+                {
+                    List<DishExtraDefinition> forDish;
+                    if (!_extras.TryGetValue(e.RecipeId, out forDish))
+                    {
+                        forDish = new List<DishExtraDefinition>();
+                        _extras[e.RecipeId] = forDish;
+                    }
+                    forDish.Add(e);
+                }
+
+            if (liftCeilings != null)
+                foreach (var kv in liftCeilings) _liftCeilings[kv.Key] = kv.Value;
+        }
+
+        private readonly Dictionary<string, List<DishExtraDefinition>> _extras;
+        private readonly Dictionary<string, decimal> _liftCeilings;
+
+        /// <summary>What may be added to this dish. Empty for a dish nothing has been written for.</summary>
+        public IReadOnlyList<DishExtraDefinition> ExtrasFor(string recipeId)
+        {
+            List<DishExtraDefinition> forDish;
+            if (recipeId != null && _extras.TryGetValue(recipeId, out forDish)) return forDish;
+            return new List<DishExtraDefinition>();
+        }
+
+        public DishExtraDefinition GetExtra(string recipeId, string extraId)
+        {
+            foreach (var e in ExtrasFor(recipeId)) if (e.Id == extraId) return e;
+            return null;
+        }
+
+        /// <summary>
+        /// How far a dish of this kind can be dressed up before the plate stops carrying it.
+        /// A focaccia cannot be lifted into a main course however much is put on it.
+        /// </summary>
+        public decimal LiftCeilingFor(string category)
+        {
+            decimal ceiling;
+            if (category != null && _liftCeilings.TryGetValue(category, out ceiling)) return ceiling;
+            return 0.40m;
         }
 
         /// <summary>Markets you can trade in. A country is a Region with a market attached.</summary>

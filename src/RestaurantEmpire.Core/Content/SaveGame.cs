@@ -108,6 +108,10 @@ namespace RestaurantEmpire.Core.Content
         /// </summary>
         public decimal ReputationStanding { get; set; } = Model.Reputation.Neutral;
 
+        /// <summary>What is on each dish — recipe id to the extras chosen. A choice nothing
+        /// can re-derive, so it must be saved or a loaded game quietly serves plain food.</summary>
+        public Dictionary<string, List<string>> DishExtras { get; set; }
+
         public int ReputationMeals { get; set; }
 
         /// <summary>

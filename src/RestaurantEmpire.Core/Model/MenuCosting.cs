@@ -18,8 +18,10 @@ namespace RestaurantEmpire.Core.Model
         private readonly DefinitionRegistry _definitions;
         private readonly SupplierPolicy _policy;
         private readonly PricingPolicy _pricing;
+        private readonly DishExtras _extras;
 
-        public MenuCosting(DefinitionRegistry definitions, SupplierPolicy policy, PricingPolicy pricing)
+        public MenuCosting(DefinitionRegistry definitions, SupplierPolicy policy, PricingPolicy pricing,
+                           DishExtras extras = null)
         {
             if (definitions == null) throw new ArgumentNullException(nameof(definitions));
             if (policy == null) throw new ArgumentNullException(nameof(policy));
@@ -28,6 +30,7 @@ namespace RestaurantEmpire.Core.Model
             _definitions = definitions;
             _policy = policy;
             _pricing = pricing;
+            _extras = extras;
         }
 
         /// <summary>
@@ -35,6 +38,59 @@ namespace RestaurantEmpire.Core.Model
         /// is set anywhere up the chain, otherwise the price the recipe shipped with.
         /// Every figure below is computed against this, never against the raw definition.
         /// </summary>
+        /// <remarks>Which extras are currently on this dish. Owned by the Restaurant, read here.</remarks>
+        public IReadOnlyList<string> ExtrasOn(string recipeId)
+        {
+            return _extras == null ? new List<string>() : _extras.On(recipeId);
+        }
+
+        /// <summary>
+        /// HOW MUCH MORE THIS DISH IS WORTH for what has been put on it — diminishing, then
+        /// capped by what the dish IS. See <see cref="Definitions.DishExtraDefinition"/>.
+        ///
+        /// Ordered by lift so the answer does not depend on the order the player ticked the
+        /// boxes: two identical plates must be worth the same.
+        /// </summary>
+        public decimal ExtrasLift(string recipeId)
+        {
+            var chosen = ExtrasOn(recipeId);
+            if (chosen.Count == 0) return 0m;
+
+            var picked = new List<Definitions.DishExtraDefinition>();
+            foreach (var id in chosen)
+            {
+                var extra = _definitions.GetExtra(recipeId, id);
+                if (extra != null) picked.Add(extra);
+            }
+
+            picked.Sort((a, b) => b.Lift.CompareTo(a.Lift));
+
+            var lift = 0m;
+            var factor = 1m;
+            for (var i = 0; i < picked.Count; i++)
+            {
+                lift += picked[i].Lift * factor;
+                factor *= Tuning.ExtraDiminishing;
+            }
+
+            var ceiling = _definitions.LiftCeilingFor(_definitions.GetRecipe(recipeId).Category);
+            return lift > ceiling ? ceiling : lift;
+        }
+
+        /// <summary>
+        /// What the dish is DESIGNED to sell for, once you account for what is on it.
+        ///
+        /// This is the half that makes extras pay at all. The first version raised cost and
+        /// quality only — and quality reaches money solely through the slow reputation chain,
+        /// so profit fell at every step and the right answer was always "add nothing". A
+        /// dressed-up plate has to be JUDGED against a higher bar, or charging for it reads
+        /// as gouging.
+        /// </summary>
+        public decimal DesignedPrice(string recipeId)
+        {
+            return _definitions.GetRecipe(recipeId).MenuPrice * (1m + ExtrasLift(recipeId));
+        }
+
         public decimal MenuPrice(string recipeId)
         {
             return _pricing.ResolvePrice(recipeId);
@@ -53,6 +109,17 @@ namespace RestaurantEmpire.Core.Model
             {
                 var line = recipe.Ingredients[i];
                 total += _policy.UnitPriceFor(line.IngredientId) * line.Quantity;
+            }
+
+            foreach (var id in ExtrasOn(recipeId))
+            {
+                var extra = _definitions.GetExtra(recipeId, id);
+                if (extra == null) continue;
+                for (var i = 0; i < extra.Ingredients.Count; i++)
+                {
+                    var line = extra.Ingredients[i];
+                    total += _policy.UnitPriceFor(line.IngredientId) * line.Quantity;
+                }
             }
 
             return total;
@@ -91,7 +158,7 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public decimal Markup(string recipeId)
         {
-            var designed = _definitions.GetRecipe(recipeId).MenuPrice;
+            var designed = DesignedPrice(recipeId);
             return designed == 0m ? 1m : MenuPrice(recipeId) / designed;
         }
 

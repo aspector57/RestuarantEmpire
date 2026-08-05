@@ -26,6 +26,7 @@ namespace RestaurantEmpire.Core.Content
         public const string CountriesFileName = "countries.json";
         public const string RecipesDirectoryName = "recipes";
         public const string EquipmentFileName = "equipment.json";
+        public const string ExtrasFileName = "extras.json";
 
         public static DefinitionRegistry LoadFromDirectory(string dataDirectory)
         {
@@ -44,8 +45,12 @@ namespace RestaurantEmpire.Core.Content
             var concepts = LoadConcepts(Path.Combine(dataDirectory, ConceptsFileName), recipes, warnings);
             var countries = LoadCountries(Path.Combine(dataDirectory, CountriesFileName), suppliers, warnings);
 
+            Dictionary<string, decimal> liftCeilings;
+            var extras = LoadExtras(Path.Combine(dataDirectory, ExtrasFileName), ingredients, recipes,
+                                    out liftCeilings, warnings);
+
             return new DefinitionRegistry(ingredients.Values, suppliers, recipes, warnings, equipment,
-                concepts, countries);
+                concepts, countries, extras, liftCeilings);
         }
 
         /// <summary>
@@ -345,6 +350,87 @@ namespace RestaurantEmpire.Core.Content
         }
 
         // ---- File shapes. Kept private: these mirror the JSON, the public model does not. ----
+
+        /// <summary>
+        /// Extras are optional content — a build with no extras.json simply offers nothing to
+        /// add to a dish, which is what every version before this one did. An extra naming a
+        /// recipe or an ingredient that does not exist is DROPPED with a warning rather than
+        /// failing the load, per Architecture Rule 3.
+        /// </summary>
+        private static List<DishExtraDefinition> LoadExtras(
+            string path,
+            Dictionary<string, IngredientDefinition> ingredients,
+            List<RecipeDefinition> recipes,
+            out Dictionary<string, decimal> liftCeilings,
+            List<string> warnings)
+        {
+            liftCeilings = new Dictionary<string, decimal>();
+            var result = new List<DishExtraDefinition>();
+            if (!File.Exists(path)) return result;
+
+            var file = JsonConvert.DeserializeObject<ExtrasFileDto>(File.ReadAllText(path));
+            if (file == null) return result;
+
+            if (file.LiftCeilings != null)
+                foreach (var kv in file.LiftCeilings) liftCeilings[kv.Key] = kv.Value;
+
+            var known = new HashSet<string>();
+            if (recipes != null) foreach (var r in recipes) known.Add(r.Id);
+
+            if (file.Extras == null) return result;
+
+            foreach (var dto in file.Extras)
+            {
+                if (dto == null || string.IsNullOrWhiteSpace(dto.Id) || string.IsNullOrWhiteSpace(dto.RecipeId))
+                {
+                    warnings.Add("An extra with no id or no recipe was skipped.");
+                    continue;
+                }
+
+                if (!known.Contains(dto.RecipeId))
+                {
+                    warnings.Add("Extra '" + dto.Id + "' names recipe '" + dto.RecipeId + "', which does not exist — dropped.");
+                    continue;
+                }
+
+                var lines = new List<RecipeIngredient>();
+                var ok = true;
+
+                if (dto.Ingredients != null)
+                    foreach (var line in dto.Ingredients)
+                    {
+                        if (line == null || string.IsNullOrWhiteSpace(line.IngredientId)) continue;
+                        if (!ingredients.ContainsKey(line.IngredientId))
+                        {
+                            warnings.Add("Extra '" + dto.Id + "' on '" + dto.RecipeId + "' needs ingredient '" +
+                                         line.IngredientId + "', which does not exist — dropped.");
+                            ok = false;
+                            break;
+                        }
+                        lines.Add(new RecipeIngredient(line.IngredientId, line.Quantity));
+                    }
+
+                if (!ok) continue;
+                result.Add(new DishExtraDefinition(dto.RecipeId, dto.Id, dto.Name, dto.Lift, lines));
+            }
+
+            return result;
+        }
+
+        private sealed class ExtrasFileDto
+        {
+            public Dictionary<string, decimal> LiftCeilings { get; set; }
+            public List<ExtraDto> Extras { get; set; }
+        }
+
+        private sealed class ExtraDto
+        {
+            public string RecipeId { get; set; }
+            public string Id { get; set; }
+            public string Name { get; set; }
+            public decimal Lift { get; set; }
+            public List<RecipeIngredientDto> Ingredients { get; set; }
+        }
 
         private sealed class IngredientFileDto
         {

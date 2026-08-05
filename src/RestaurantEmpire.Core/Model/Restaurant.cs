@@ -629,9 +629,16 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public PricingPolicy Pricing { get; }
 
+        /// <summary>
+        /// What is currently on each dish. Genuine state — a choice nothing can re-derive —
+        /// so it lives here and is saved, while <see cref="Costing"/> only reads it.
+        /// </summary>
+        public DishExtras Extras { get { return _extras; } }
+        private readonly DishExtras _extras = new DishExtras();
+
         public MenuCosting Costing
         {
-            get { return new MenuCosting(Company.Definitions, SupplierPolicy, Pricing); }
+            get { return new MenuCosting(Company.Definitions, SupplierPolicy, Pricing, Extras); }
         }
 
         public override string ToString()

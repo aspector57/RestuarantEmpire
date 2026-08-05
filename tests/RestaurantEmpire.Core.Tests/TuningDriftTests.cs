@@ -45,6 +45,7 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("EXTRA_DIMINISH", (double)Tuning.ExtraDiminishing, "what each further thing on a plate is worth");
             yield return ("WOM_FLOOR", (double)Tuning.WordOfMouthFloor, "what a forgettable meal still does for word of mouth");
             yield return ("WOM_FROM", (double)Tuning.WordOfMouthFrom, "where word of mouth starts to grow");
             yield return ("WOM_DELIGHT", (double)Tuning.WordOfMouthDelight, "the meal that spreads fully");
@@ -232,6 +233,80 @@ namespace RestaurantEmpire.Core.Tests
                 "The browser build's menu has drifted from the content files:\n  " + string.Join("\n  ", wrong) +
                 "\n\nweb/pass.html mirrors data/ BY HAND. Recalibrating one build and not the other " +
                 "is why every browser probe came back byte-identical after a real change.");
+        }
+
+        /// <summary>
+        /// EXTRAS EXIST TWICE, so they drift. `data/extras.json` in the engine, `EXTRAS` in
+        /// the browser build — and the browser had them first, alone, for a session. That is
+        /// precisely the gap the food recalibration fell through.
+        ///
+        /// Checks the lift on every extra and the per-category ceilings, which are the two
+        /// numbers that decide whether dressing a dish up pays.
+        /// </summary>
+        [Fact]
+        public void TheBrowserBuildDressesDishesUpByTheSameAmounts()
+        {
+            var path = BrowserBuildPath();
+            Assert.True(path != null, "web/pass.html not found");
+
+            var source = File.ReadAllText(path);
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "data", "extras.json")))
+                dir = dir.Parent;
+            Assert.True(dir != null, "data/extras.json not found");
+
+            var json = File.ReadAllText(Path.Combine(dir.FullName, "data", "extras.json"));
+            var wrong = new List<string>();
+
+            foreach (Match m in Regex.Matches(json,
+                @"""recipeId""\s*:\s*""([^""]+)""\s*,\s*""id""\s*:\s*""([^""]+)""[^}]*?""lift""\s*:\s*([0-9.]+)"))
+            {
+                var recipe = m.Groups[1].Value;
+                var id = m.Groups[2].Value;
+                var lift = decimal.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
+
+                var block = Regex.Match(source,
+                    @"""" + Regex.Escape(recipe) + @""":\s*\[(.*?)\]", RegexOptions.Singleline);
+                if (!block.Success)
+                {
+                    wrong.Add($"{recipe} — the browser build offers nothing to add to this dish");
+                    continue;
+                }
+
+                var entry = Regex.Match(block.Groups[1].Value,
+                    @"id:""" + Regex.Escape(id) + @""".*?lift:\s*([0-9.]+)", RegexOptions.Singleline);
+                if (!entry.Success)
+                {
+                    wrong.Add($"{recipe}/{id} — not offered in the browser build");
+                    continue;
+                }
+
+                var actual = decimal.Parse(entry.Groups[1].Value, CultureInfo.InvariantCulture);
+                if (actual != lift)
+                    wrong.Add($"{recipe}/{id} lift — browser says {actual}, engine says {lift}");
+            }
+
+            // Only the liftCeilings block — scanning the whole file picks up every "lift" and
+            // "quantity" key in the extras array itself.
+            var ceilingBlock = Regex.Match(json, @"""liftCeilings""\s*:\s*\{(.*?)\}", RegexOptions.Singleline);
+            Assert.True(ceilingBlock.Success, "extras.json has no liftCeilings block");
+
+            foreach (Match m in Regex.Matches(ceilingBlock.Groups[1].Value, @"""([a-z ]+)""\s*:\s*([0-9.]+)"))
+            {
+                var category = m.Groups[1].Value;
+                var ceiling = decimal.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+
+                var js = Regex.Match(source, @"LIFT_CEILING[^;]*?""" + Regex.Escape(category) + @""":\s*([0-9.]+)");
+                if (!js.Success) { wrong.Add($"ceiling for '{category}' — not found in the browser build"); continue; }
+
+                var actual = decimal.Parse(js.Groups[1].Value, CultureInfo.InvariantCulture);
+                if (actual != ceiling)
+                    wrong.Add($"'{category}' lift ceiling — browser says {actual}, engine says {ceiling}");
+            }
+
+            Assert.True(wrong.Count == 0,
+                "Dish extras have drifted between the two builds:\n  " + string.Join("\n  ", wrong));
+            _out.WriteLine("  extras and ceilings agree across both builds");
         }
 
         /// <summary>

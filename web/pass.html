@@ -1216,6 +1216,7 @@ const EXTRAS = {
 
 /* A dish can only be lifted so far before the plate stops carrying it. Set by what the dish IS
    — bread has a lower ceiling than a fish course, however much you spend on it. */
+const EXTRA_DIMINISH = 0.62;
 const LIFT_CEILING = { "small plate":0.30, "main":0.55, "drink":0.15, "dessert":0.35, "side":0.25 };
 
 function extrasOn(recipeId){
@@ -2490,7 +2491,23 @@ function advise(){
       const heldByFloor = Math.floor(G.servers.length * SEATS_PER_SERVER * (0.7+avgSkill(G.servers)*0.6));
       const floorIsTheCap = heldByFloor <= G.seats + 2;
 
-      if(floorIsTheCap){
+      // NO SERVERS AT ALL IS NOT A NOTE ABOUT FURNITURE — THE RESTAURANT IS SHUT.
+      //
+      // Found while measuring the awareness ramp: staff leave every month, nothing replaced
+      // them, and a restaurant sat at ZERO covers a day with $31,891 in the bank. This rule
+      // did fire, so it was never silent — but at rank 3, headed "More chairs would not
+      // help", which is wording written for a room that is merely under-served. A business
+      // that has stopped trading outranks everything, including the runway brake: hiring is
+      // not discretionary spending when the alternative is taking no money at all.
+      if(G.servers.length === 0){
+        out.push({ rank:0, id:"shut",
+          head:"There is nobody to seat anyone — the restaurant is serving no one.",
+          body:`There are ${G.seats} seats and no floor staff at all, so not one of them can be ` +
+               `used. Every night open like this costs the rent, the wages of whoever is left in ` +
+               `the kitchen, and whatever is going off in the walk-in, and takes nothing at the ` +
+               `door. Hire a server before anything else.`,
+          needsWage: true, role: "server" });
+      } else if(floorIsTheCap){
         out.push({ rank:3, id:"floorstaff",
           head:"More chairs would not help — there is nobody to wait on them.",
           body:`${G.servers.length} server${G.servers.length===1?"":"s"} can hold about ${heldByFloor} covers, ` +
@@ -2790,6 +2807,11 @@ function advise(){
   const broke = G.recent.length >= 5 && runway < 2;
   if(broke){
     for(const a of out){
+      // A SHUT RESTAURANT IS EXEMPT. The brake removes the ASK and keeps the cause, which is
+      // right everywhere else — but "there is not the money to hire, so shorten the card"
+      // is nonsense advice to a place that cannot seat anybody at all. Shortening the card
+      // changes nothing when the takings are zero; the only move is a server.
+      if(a.id === "shut") continue;
       if(a.seats) a.seats = null;
       if(a.openSite) a.openSite = null;
       if(a.alt) a.alt = null;

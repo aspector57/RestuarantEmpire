@@ -1,0 +1,44 @@
+{
+  "liftCeilings": {
+    "small plate": 0.30,
+    "main": 0.55,
+    "side": 0.25,
+    "dessert": 0.35,
+    "drink": 0.15
+  },
+  "extras": [
+    { "recipeId": "margherita", "id": "buffalo", "name": "Buffalo mozzarella", "lift": 0.22,
+      "ingredients": [ { "ingredientId": "mozzarella", "quantity": 0.08 } ] },
+    { "recipeId": "margherita", "id": "parma", "name": "Prosciutto", "lift": 0.26,
+      "ingredients": [ { "ingredientId": "cured-ham", "quantity": 0.05 } ] },
+    { "recipeId": "margherita", "id": "basil", "name": "Torn fresh basil", "lift": 0.10,
+      "ingredients": [ { "ingredientId": "basil", "quantity": 0.03 } ] },
+
+    { "recipeId": "caprese-salad", "id": "buffalo", "name": "Buffalo mozzarella", "lift": 0.26,
+      "ingredients": [ { "ingredientId": "mozzarella", "quantity": 0.09 } ] },
+    { "recipeId": "caprese-salad", "id": "goodoil", "name": "Estate olive oil", "lift": 0.14,
+      "ingredients": [ { "ingredientId": "olive-oil", "quantity": 0.03 } ] },
+
+    { "recipeId": "house-focaccia", "id": "goodoil", "name": "Estate olive oil", "lift": 0.16,
+      "ingredients": [ { "ingredientId": "olive-oil", "quantity": 0.04 } ] },
+    { "recipeId": "house-focaccia", "id": "rosemary", "name": "Rosemary and salt", "lift": 0.09,
+      "ingredients": [ { "ingredientId": "basil", "quantity": 0.02 } ] },
+
+    { "recipeId": "sea-bass", "id": "biggerfish", "name": "A larger fillet", "lift": 0.20,
+      "ingredients": [ { "ingredientId": "sea-bass", "quantity": 0.08 } ] },
+    { "recipeId": "sea-bass", "id": "butter", "name": "Beurre blanc", "lift": 0.18,
+      "ingredients": [ { "ingredientId": "butter", "quantity": 0.06 } ] },
+    { "recipeId": "sea-bass", "id": "truffled", "name": "Shaved truffle", "lift": 0.24,
+      "ingredients": [ { "ingredientId": "truffle", "quantity": 1.2 } ] },
+
+    { "recipeId": "truffle-risotto", "id": "moretruffle", "name": "A heavier hand with the truffle", "lift": 0.22,
+      "ingredients": [ { "ingredientId": "truffle", "quantity": 2.0 } ] },
+    { "recipeId": "truffle-risotto", "id": "parmesan", "name": "Aged parmesan", "lift": 0.16,
+      "ingredients": [ { "ingredientId": "parmesan", "quantity": 0.05 } ] },
+
+    { "recipeId": "eggs-benedict", "id": "salmon", "name": "Smoked salmon instead of ham", "lift": 0.22,
+      "ingredients": [ { "ingredientId": "sea-bass", "quantity": 0.07 } ] },
+    { "recipeId": "eggs-benedict", "id": "extraegg", "name": "A third egg", "lift": 0.09,
+      "ingredients": [ { "ingredientId": "eggs", "quantity": 0.07 } ] }
+  ]
+}

@@ -104,6 +104,13 @@ namespace RestaurantEmpire.Core.Model
         // This is a modelling fix, not a difficulty dial. It closes the same defect this
         // project keeps finding — a value that is computed, and then not read on the side of
         // the decision it exists to inform.
+        /// <summary>
+        /// What each further thing on a plate is worth against the one before it. The second
+        /// good idea on a dish is worth less than the first, which is what stops "add
+        /// everything" being the answer before the category ceiling is even reached.
+        /// </summary>
+        public const decimal ExtraDiminishing = 0.62m;
+
         public const decimal WordOfMouthFloor = 0.25m;
         public const decimal WordOfMouthFrom = 0.40m;
         public const decimal WordOfMouthDelight = 0.85m;
