@@ -19,9 +19,20 @@
 function pad(s,n){ s=String(s); while(s.length<n) s+=" "; return s; }
 function rpad(s,n){ s=String(s); while(s.length<n) s=" "+s; return s; }
 
+/*
+ * CARRY THE EQUIPMENT'S REAL CAPACITY ACROSS. Hardcoding capacity:0 here gave the walk-ins no
+ * storage at all, so the standing order could not accept a delivery: the pantry emptied on day
+ * one and every day after served ZERO covers with five million in the bank. The probe then
+ * reported "0 wanted, 0 served, 100% satisfied" for all four streets, which read as a finding
+ * and was a famine.
+ *
+ * Third time this exact fixture bug has been made here -- the missing fridge, the storage-less
+ * starvation, and now this. A fixture that skips the game's own economy measures something
+ * that is not the game.
+ */
 function unit(id){
   var e = EQUIPMENT.filter(function(x){ return x.id === id; })[0];
-  return { id:e.id, speed:e.speed, foot:e.foot, capacity:0, holds:e.holds };
+  return { id:e.id, speed:e.speed, foot:e.foot, capacity:(e.capacity || 0), holds:e.holds };
 }
 
 /* Build the biggest restaurant this site can legally hold, and staff it to match. */
