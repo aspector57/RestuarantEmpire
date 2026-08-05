@@ -1508,6 +1508,146 @@ function wordOfMouthFrom(sat){
   const delight = span <= 0 ? 1 : clamp01((clamp01(sat) - WOM_FROM) / span);
   return WOM_FLOOR + (1 - WOM_FLOOR) * delight;
 }
+/* ---------- MORALE ---------- */
+/*
+ * WHAT IT IS LIKE TO WORK HERE, and it is not a mood ring — it costs money in two directions.
+ *
+ * Restaurant Empire ties morale to wages and hours, and lets low morale both slow people down
+ * and generate complaints of its own. That second half is what makes it a decision rather than
+ * a tax: an underpaid dining room is not just cheaper, it is visibly worse to sit in, and the
+ * player can SEE which it is because the complaint says so.
+ *
+ * Two drivers, both things the player actually sets:
+ *   - what you pay against what the market pays for that person's skill
+ *   - how long the service is
+ *
+ * It moves slowly, like reputation, because a pay rise does not buy a good week overnight.
+ */
+const MORALE = { floor:0.15, drift:0.18, longShift:6 };
+
+/* How long the doors are open, across every service. A midnight wrap counts forward. */
+function openHours(){
+  let h = 0;
+  for(const w of (G.windows || [])) h += (w.to > w.from ? w.to - w.from : (24 - w.from) + w.to);
+  return h;
+}
+
+function marketWage(p){
+  return p.role === "cook" ? HIRE.cookFloor + p.skill*HIRE.cookPremium
+                           : HIRE.serverFloor + p.skill*HIRE.serverPremium;
+}
+
+/* Where this person's morale is heading, given the pay and the hours right now. */
+function moraleTarget(p){
+  const market = marketWage(p);
+  const paidWell = market <= 0 ? 1 : p.wage / market;               // 1.0 = the going rate
+
+  // Paying the going rate is FINE, not generous -- it lands at 1.0 and nothing above it buys
+  // more. Deliberate: the lever is avoiding a bad wage, not bidding for a bonus, so paying
+  // over the odds never becomes a mechanical optimum. Underpay 20% and it halves.
+  const pay = clamp01((paidWell - 0.55) / 0.45);
+
+  // Long hours cost morale whatever you pay, which is the other half of the opening-hours
+  // decision -- until now trading round the clock cost only wages.
+  const strain = clamp01((openHours() - MORALE.longShift) / 6) * 0.35;
+
+  return clamp01(Math.max(MORALE.floor, pay - strain));
+}
+
+function tickMorale(){
+  for(const p of G.cooks.concat(G.servers)){
+    // Start where they are heading rather than at a fixed number, so a restaurant that pays
+    // properly is not dragged for its first few months by an arbitrary starting value.
+    if(p.morale == null) p.morale = moraleTarget(p);
+    p.morale = clamp01(p.morale + (moraleTarget(p) - p.morale) * MORALE.drift);
+  }
+}
+
+function avgMorale(list){
+  if(!list || !list.length) return 1;
+  let n = 0;
+  for(const p of list) n += (p.morale == null ? moraleTarget(p) : p.morale);
+  return n / list.length;
+}
+
+/* Unhappy people work worse. It only ever DRAGS -- full morale is 1.0, never a bonus above
+   what someone can actually do, so this cannot become a way to buy skill with money. */
+function moraleFactor(list){ return 0.85 + avgMorale(list) * 0.15; }
+
+/* ---------- COMPLAINTS ---------- */
+/*
+ * WHAT THE GUEST WOULD ACTUALLY SAY, in their words, ranked by how much it mattered.
+ *
+ * Satisfaction is one number, and one number cannot be acted on: 0.61 does not tell you
+ * whether to hire a cook, drop a price, or replace the chairs. Both Restaurant Empire games
+ * put an itemised complaint list in front of the player for exactly this reason, and this
+ * project's own notes predicted needing it -- the marketing lie was measured as taking two
+ * years to bite, and the recorded fix was "a visible consequence (a complaint, a bad review)
+ * rather than a bigger divisor."
+ *
+ * A complaint fires when a component falls below what that guest expected, and its severity
+ * is how far short it fell. Nobody complains about a merely average dinner.
+ */
+const GRUMBLE = 0.55;          // below this, a component is worth mentioning
+
+function severityOf(score){
+  const short = GRUMBLE - score;
+  return short >= 0.30 ? 3 : short >= 0.15 ? 2 : 1;
+}
+
+function complaintsFrom(ctx){
+  const out = [];
+  const add = (code, text, score) => out.push({ code, text, severity: severityOf(score) });
+
+  if(ctx.speed < GRUMBLE) add("wait", "the food took too long", ctx.speed);
+  if(ctx.value < GRUMBLE) add("price", "dear for what it was", ctx.value);
+  if(ctx.room  < GRUMBLE) add("room",  "the room is tired", ctx.room);
+
+  // The food line splits, because "the food was poor" is not actionable and the three
+  // things underneath it are. Freshness and the claim are separately visible.
+  if(ctx.food < GRUMBLE){
+    if(ctx.fresh != null && ctx.fresh < 0.75) add("stale", "it did not taste fresh", ctx.food);
+    else if(G.campaign && G.campaign.claim === "ingredients") add("claim", "not what the advertising promised", ctx.food);
+    else add("food", "the cooking was not up to much", ctx.food);
+  }
+
+  // Morale is its own complaint rather than a hidden multiplier, so an underpaid dining room
+  // is something the player can SEE rather than infer from a worse score.
+  if(ctx.floorMorale != null && ctx.floorMorale < 0.45)
+    add("service", "the staff seemed like they would rather be elsewhere", ctx.floorMorale);
+
+  return out;
+}
+
+function logComplaints(d, ctx){
+  const list = complaintsFrom(ctx);
+  if(!list.length) return;
+
+  d.complaints = d.complaints || {};
+  for(const c of list){
+    const row = d.complaints[c.code] || (d.complaints[c.code] = { text:c.text, count:0, severity:0 });
+    row.count++;
+    row.severity = Math.max(row.severity, c.severity);
+  }
+
+  // A handful of actual tables, kept verbatim, so the player can look at ONE party and see
+  // why they were unhappy rather than only reading an aggregate.
+  d.tables = d.tables || [];
+  if(d.tables.length < 12)
+    d.tables.push({ dish: ctx.dish ? ctx.dish.name : "—",
+                    wait: Math.round(ctx.wait || 0),
+                    said: list.map(c => c.text) });
+}
+
+/* Last night's complaints, worst first. */
+function complaintsLastNight(){
+  const d = G.metrics && G.metrics.length ? G.metrics[G.metrics.length-1] : null;
+  if(!d || !d.complaints) return [];
+  return Object.keys(d.complaints)
+    .map(k => Object.assign({ code:k }, d.complaints[k]))
+    .sort((a,b) => (b.severity - a.severity) || (b.count - a.count));
+}
+
 function livingOnPastGlory(){ return G.rep.standing > G.rep.ceiling + 0.02; }
 function atCeiling(){ return G.rep.standing >= G.rep.ceiling-0.01 && G.rep.standing <= G.rep.ceiling+0.02; }
 // What is actually holding the standing down, named the way a dish rating names its
@@ -1558,7 +1698,12 @@ function makeStaff(role, forceSkill){
     role, claim, skill: actual, wage: Math.round((floor + claim*prem)*100)/100
   };
 }
-function avgSkill(list){ return list.length ? list.reduce((a,b)=>a+b.skill,0)/list.length : 0.5; }
+function avgSkillRaw(list){ return list.length ? list.reduce((a,b)=>a+b.skill,0)/list.length : 0.5; }
+
+/* WHAT THIS BRIGADE IS ACTUALLY WORTH TONIGHT -- their skill, dragged by how they feel about
+   working here. Every caller wants this rather than the raw figure: a resentful kitchen cooks
+   worse food and a resentful floor is slower, which is the whole point of tracking morale. */
+function avgSkill(list){ return clamp01(avgSkillRaw(list) * moraleFactor(list)); }
 function wageBill(){ return [...G.cooks,...G.servers].reduce((a,b)=>a+b.wage,0); }
 function plateCapacity(){
   return Math.floor(G.cooks.reduce((a,c)=>a + PLATES_PER_COOK*(0.7+c.skill*0.6), 0));
@@ -2219,10 +2364,18 @@ function runDay(){
       // produce still scores well. Saying nothing is always safe and never impressive.
       // What you chose to put on the plate lifts the food score — capped, so past a point you
       // are buying ingredients nobody is paying you for.
-      const s = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick) + extrasLift(pick.id)))*W.food
-              + judgedAgainstClaim("speed", scoreSpeed(wait, patience))*W.speed
-              + judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing))*W.value
-              + judgedAgainstClaim("room",  comfortOf())*W.room;
+      // Each component is kept separately rather than summed inline, because a complaint has
+      // to name WHICH one let the guest down. A bare score cannot tell you whether to fix the
+      // kitchen, the pass, the price or the room, and those are four different bills.
+      const cFood  = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick) + extrasLift(pick.id)));
+      const cSpeed = judgedAgainstClaim("speed", scoreSpeed(wait, patience));
+      const cValue = judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing));
+      const cRoom  = judgedAgainstClaim("room",  comfortOf());
+
+      const s = cFood*W.food + cSpeed*W.speed + cValue*W.value + cRoom*W.room;
+      logComplaints(d, { food:cFood, speed:cSpeed, value:cValue, room:cRoom,
+                         dish:pick, wait:wait, fresh:recipeFreshness(pick),
+                         floorMorale: avgMorale(G.servers) });
       sat += s;
       // Kept at DAY level too. Satisfaction is the leading indicator — it moves the night a
       // decision lands, while standing takes weeks to follow it — and it was computed every
@@ -2296,7 +2449,13 @@ function runDay(){
     menuFit: +menuDrawAt(daypartAt(G.windows[0] ? G.windows[0].from : 19)).toFixed(3),
     roomHr: Math.round(bindNow.room), passHr: Math.round(bindNow.pass),
     marketing: campaign() ? G.campaign.channel + ":" + G.campaign.claim : "-",
-    supplier: G.supplier
+    supplier: G.supplier,
+    // The metrics row is built FRESH from the day accumulator rather than being the same
+    // object, so anything not named here is silently dropped. Complaints were written to `d`
+    // and never survived the night -- which read as "nobody had a bad word" no matter how
+    // badly the restaurant was run.
+    complaints: d.complaints || null, tables: d.tables || null,
+    moraleKitchen: +avgMorale(G.cooks).toFixed(3), moraleFloor: +avgMorale(G.servers).toFixed(3)
   });
   if(G.metrics.length > 4000) G.metrics.shift();
 
@@ -3154,6 +3313,10 @@ function maybeTheRentGoesUp(){
 }
 
 function billTheMonth(){
+  // Morale moves monthly, like reputation, because a pay rise does not buy a good week
+  // overnight and a bad month does not undo one either.
+  tickMorale();
+
   G.cash -= G.site.rent;
   G.ledger.rent += G.site.rent;
   say("money", `${siteLabel()}Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
@@ -3874,6 +4037,10 @@ function downloadTranscript(text){
 }
 
 function panelService(){
+  // Above the rail, because it answers "how did last night go" in words rather than leaving
+  // the player to infer it from a satisfaction number.
+  complaintsCard();
+
   const c = card("The rail",
     "Every night, and every decision you made. Newest first. Walkouts and balks are trade you never got — and your own moves are marked, so you can see what you did just before the numbers turned.");
 
@@ -4795,17 +4962,67 @@ function panelBuild(){
   store.appendChild(sShop);
 }
 
+/* Morale as words plus the reason, because "0.42" is not something a player can act on and
+   "underpaid" is. The market rate is shown so the fix has a number attached to it. */
+function moraleLabel(p){
+  const m = p.morale == null ? moraleTarget(p) : p.morale;
+  const market = marketWage(p);
+  const word = m >= 0.85 ? "happy here" : m >= 0.6 ? "content" : m >= 0.4 ? "grumbling" : "on the way out";
+  const why = p.wage < market*0.9 ? ` — paid $${p.wage.toFixed(2)} against $${market.toFixed(2)} going rate`
+            : openHours() > MORALE.longShift ? ` — ${openHours()}h days` : "";
+  return `<span class="${m < 0.4 ? "bad" : m < 0.6 ? "warn" : "good"}">${word}</span>${why}`;
+}
+
+/* WHAT PEOPLE ACTUALLY SAID, ranked. A satisfaction score of 0.61 cannot be acted on; "18
+   people said the food took too long" can. */
+function complaintsCard(){
+  const rows = complaintsLastNight();
+  const d = G.metrics && G.metrics.length ? G.metrics[G.metrics.length-1] : null;
+  if(!d || !d.covers) return;
+
+  if(!rows.length){
+    card("What people said", "Nobody had a bad word last night. That is what a service that went right looks like.");
+    return;
+  }
+
+  const c = card("What people said",
+    `Out of ${d.covers} covers last night. Ranked by how much it mattered, not by how many said it — one furious table is worth more than five mild ones.`);
+
+  const t = document.createElement("div");
+  t.className = "scroll";
+  t.innerHTML = `<table>
+    <thead><tr><th>What they said</th><th>How many</th><th>How badly</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+        <td>${r.text}</td>
+        <td class="num">${r.count}</td>
+        <td class="num ${r.severity>=3?"bad":r.severity>=2?"warn":""}">${"\u2605".repeat(r.severity)}</td>
+      </tr>`).join("")}</tbody></table>`;
+  c.appendChild(t);
+
+  if(d.tables && d.tables.length){
+    const sample = d.tables.filter(x => x.said.length).slice(0,4);
+    if(sample.length){
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.innerHTML = "<b>A few tables, in their own words:</b><br>" + sample.map(x =>
+        `&middot; ordered the ${x.dish}, waited ${x.wait} min — &ldquo;${x.said.join("; ")}&rdquo;`).join("<br>");
+      c.appendChild(p);
+    }
+  }
+}
+
 function panelTeam(){
   const c = card("Who works here",
     `A cook works a line, not a pan — each one keeps ${PLATES_PER_COOK} plates moving. A server covers about ${SEATS_PER_SERVER} seats. Staff you cannot fill are the fastest way to go broke.`);
   const t = document.createElement("div");
   t.className = "scroll";
   t.innerHTML = `<table>
-    <thead><tr><th>Who</th><th>Role</th><th>Rate</th><th>Turned out</th></tr></thead>
+    <thead><tr><th>Who</th><th>Role</th><th>Rate</th><th>Turned out</th><th>How they feel</th></tr></thead>
     <tbody>${[...G.cooks,...G.servers].map(p=>`<tr>
         <td>${p.name}</td><td>${p.role}</td>
         <td class="num">$${p.wage.toFixed(2)}/hr</td>
         <td class="num">${(p.skill*5).toFixed(1)}/5${p.skill < p.claim-0.08 ? " — worse than the CV" : p.skill > p.claim+0.08 ? " — better than the CV" : ""}</td>
+        <td class="num">${moraleLabel(p)}</td>
       </tr>`).join("")}</tbody></table>`;
   c.appendChild(t);
 

@@ -64,6 +64,62 @@ namespace RestaurantEmpire.Core.Model
         public decimal Skill { get; private set; }
 
         /// <summary>
+        /// How this person feels about working here, 0 to 1. Driven by what they are paid
+        /// against the going rate for their skill, and by how long the doors are open.
+        ///
+        /// It only ever DRAGS what they can do — see <see cref="Payroll.MoraleFactor"/> — so
+        /// this can never become a way to buy skill with money. It moves slowly, like a
+        /// reputation, because a pay rise does not buy a good week overnight.
+        /// </summary>
+        public decimal Morale { get; private set; } = -1m;
+
+        /// <summary>What the market pays somebody this good. The number a wage is judged against.</summary>
+        public decimal MarketWage
+        {
+            get
+            {
+                return Role == StaffRole.Cook
+                    ? Tuning.CookFloorWage + (Skill * Tuning.CookSkillPremium)
+                    : Tuning.ServerFloorWage + (Skill * Tuning.ServerSkillPremium);
+            }
+        }
+
+        /// <summary>
+        /// Where their morale is heading, given today's pay and hours. Paying the going rate
+        /// lands at 1.0 and nothing above it buys more; underpay 20% and it roughly halves.
+        /// </summary>
+        public decimal MoraleTarget(int openHours)
+        {
+            var market = MarketWage;
+            var paidWell = market <= 0m ? 1m : HourlyWage / market;
+
+            var pay = Clamp((paidWell - 0.55m) / 0.45m);
+
+            // Long hours cost morale whatever you pay, which is the other half of the
+            // opening-hours decision — until now trading late cost only wages.
+            var strain = Clamp((openHours - Tuning.MoraleComfortableHours) / 6m) * 0.35m;
+
+            var target = pay - strain;
+            return Clamp(target < Tuning.MoraleFloor ? Tuning.MoraleFloor : target);
+        }
+
+        /// <summary>Move morale toward where the current pay and hours are taking it.</summary>
+        public void SettleMorale(int openHours)
+        {
+            var target = MoraleTarget(openHours);
+
+            // Start where they are heading rather than at an arbitrary number, so a restaurant
+            // that pays properly is not dragged for its first months by a fixed starting value.
+            if (Morale < 0m) { Morale = target; return; }
+
+            Morale = Clamp(Morale + ((target - Morale) * Tuning.MoraleDrift));
+        }
+
+        public void RestoreMorale(decimal morale) { Morale = Clamp(morale); }
+
+        private static decimal Clamp(decimal v) { return v < 0m ? 0m : v > 1m ? 1m : v; }
+
+        /// <summary>
         /// What they could become with the hours in. Never shown, never below current skill.
         ///
         /// Aaron: *"cheap labor can also be good, like have high potential to learn but start
@@ -119,6 +175,32 @@ namespace RestaurantEmpire.Core.Model
         internal Payroll() { }
 
         public IReadOnlyList<Employee> Staff { get { return _staff; } }
+
+        /// <summary>Average morale of everyone in a role, 1.0 when nobody is employed.</summary>
+        public decimal MoraleOf(StaffRole role)
+        {
+            var total = 0m;
+            var n = 0;
+            for (var i = 0; i < _staff.Count; i++)
+                if (_staff[i].Role == role) { total += _staff[i].Morale < 0m ? 1m : _staff[i].Morale; n++; }
+
+            return n == 0 ? 1m : total / n;
+        }
+
+        /// <summary>
+        /// What a resentful team is worth against a contented one. It only ever DRAGS: full
+        /// morale is exactly 1.0, never a bonus above what somebody can actually do.
+        /// </summary>
+        public decimal MoraleFactor(StaffRole role)
+        {
+            return 0.85m + (MoraleOf(role) * 0.15m);
+        }
+
+        /// <summary>Move everyone's morale toward where their pay and the hours are taking it.</summary>
+        public void SettleMorale(int openHours)
+        {
+            for (var i = 0; i < _staff.Count; i++) _staff[i].SettleMorale(openHours);
+        }
         public int Headcount { get { return _staff.Count; } }
 
         public int CountOf(StaffRole role)

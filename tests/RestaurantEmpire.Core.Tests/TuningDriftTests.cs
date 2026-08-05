@@ -45,6 +45,7 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("GRUMBLE", (double)Tuning.GrumbleThreshold, "below this, a guest mentions it");
             yield return ("EXTRA_DIMINISH", (double)Tuning.ExtraDiminishing, "what each further thing on a plate is worth");
             yield return ("WOM_FLOOR", (double)Tuning.WordOfMouthFloor, "what a forgettable meal still does for word of mouth");
             yield return ("WOM_FROM", (double)Tuning.WordOfMouthFrom, "where word of mouth starts to grow");

@@ -111,6 +111,24 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public const decimal ExtraDiminishing = 0.62m;
 
+        // ---- What it is like to work here ----
+        //
+        // Both Restaurant Empire games tie morale to wages and hours, and let low morale both
+        // slow people down AND generate complaints of its own. That second half is what makes
+        // it a decision rather than a tax: an underpaid dining room is not merely cheaper, it
+        // is visibly worse to sit in, and the player can see which it is because the complaint
+        // says so.
+        //
+        // Paying the going rate lands at 1.0 and nothing above it buys more — deliberate, so
+        // the lever is avoiding a bad wage rather than bidding for a bonus, and paying over
+        // the odds never becomes a mechanical optimum. Underpay 20% and morale halves.
+        public const decimal MoraleFloor = 0.15m;
+        public const decimal MoraleDrift = 0.18m;
+        public const int MoraleComfortableHours = 6;
+
+        /// <summary>Below this, a component of the meal is worth complaining about.</summary>
+        public const decimal GrumbleThreshold = 0.55m;
+
         public const decimal WordOfMouthFloor = 0.25m;
         public const decimal WordOfMouthFrom = 0.40m;
         public const decimal WordOfMouthDelight = 0.85m;
