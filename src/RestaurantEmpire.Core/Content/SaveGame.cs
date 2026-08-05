@@ -111,6 +111,13 @@ namespace RestaurantEmpire.Core.Content
         public int ReputationMeals { get; set; }
 
         /// <summary>
+        /// Meals weighted by how much they pleased — what actually decides awareness. A save
+        /// written before word of mouth existed leaves this null, and loading then falls back
+        /// to the raw meal count, which is exactly what that older save meant.
+        /// </summary>
+        public decimal? ReputationWordOfMouth { get; set; }
+
+        /// <summary>
         /// Who works here. This was missing entirely, so loading a save quietly emptied the
         /// payroll and left a restaurant with equipment nobody could work and tables nobody
         /// could serve. It went unnoticed because staff carried no state worth keeping — a

@@ -3349,6 +3349,120 @@ for is intact and still asserted — worse food, worse satisfaction, worse stand
 ceiling. What is NOT yet true is that the chain costs more money than the saving is worth, and
 that is a live balance finding sitting alongside "you could not lose" rather than a broken test.
 
+### Getting your name out is EARNED now, and the RE2 manual is what pointed at it (Aaron)
+
+> *"I think it might need to be harder to get your name out in the first place potentially,
+> it just feels very easy... I'm curious if the users manual of the second Restaurant Empire
+> would be helpful to review?"*
+
+Right on both counts. Measured before changing anything, 400 days on the suburban pitch:
+
+| | 50% known | 75% | 90% | 100% |
+|---|---:|---:|---:|---:|
+| run it properly | day 55 | 132 | 176 | **204** |
+| budget stock | day 55 | 134 | 178 | **206** |
+
+**Two days apart over two hundred.** `MealsRemembered++` fired once per meal whether the meal
+was excellent or barely edible, so a restaurant became famous on a schedule that had nothing
+to do with whether it was any good. Standing differentiated the two (42 against 24). Awareness
+did not differentiate them at all. **Seventh instance of the recurring shape** — a value that
+is computed and then not read on the side of the decision it exists to inform, after
+`PriceSensitivity`, `IngredientQuality`, `PartiesTurnedAway`, `Employee.Skill`,
+`PartiesLostToMenu` and `servableSeats`.
+
+**The manual states the rule this project should have had from the start:** *"the more
+completely satisfied customers there are, the higher your customer awareness"*, and *"nothing
+markets your restaurant better than good word-of-mouth. And 100% satisfied customers are your
+best source of advertising."*
+
+`Reputation.WordOfMouth` accumulates meals WEIGHTED by how much they pleased, and Awareness
+reads that instead of the raw count. A forgettable dinner still scores the floor (0.25),
+because you were there and you mentioned it — **being dull is slow, not silent.** A delightful
+one scores a full 1.0.
+
+| 700 days, departures replaced | 50% | 75% | 90% | **100%** | satisfaction | covers/day |
+|---|---:|---:|---:|---:|---:|---:|
+| excellent — premium and skill | 58 | 143 | 192 | **223** | 0.815 | 62 |
+| run it properly | 82 | 210 | 284 | **335** | 0.612 | 63 |
+| budget stock | 139 | 357 | 486 | **574** | 0.421 | 59 |
+
+Covers land within 6% of each other across all three, so this is word of mouth doing the work
+rather than volume. **The old universal pace of ~204 days is now the BEST case** (excellent
+lands at 223), and everything worse takes longer — which is the shape to preserve if these
+numbers are ever revisited. It is a modelling fix rather than a difficulty dial, and worth
+holding that distinction: CLAUDE.md has warned twice against making the economy harsher to
+chase a number, and this changes what awareness MEANS rather than how fast a constant ticks.
+
+Saved as its own field, and an older save with no word-of-mouth figure falls back to the raw
+meal count — which is exactly what that save meant. Ported to the browser build in the same
+commit, with `WOM_FLOOR` / `WOM_FROM` / `WOM_DELIGHT` added to `TuningDriftTests`.
+
+**The drift guard caught its own gap on the first run**, which is the best possible outcome for
+it: the three constants were declared as one `const A = .., B = .., C = ..;` statement and the
+regex reads one name per statement. It reported *"WOM_FROM — not found in the browser build"*
+rather than silently passing on a constant it could not see.
+
+### What else is worth taking from the Restaurant Empire 2 manual
+
+It is the design document of the game this one succeeds, so where it agrees it is
+confirmation, and where it differs it is a decision someone already made and shipped.
+
+**Already independently arrived at, which is reassuring rather than useful:** optional
+ingredients that raise cost, rating and price (our `EXTRAS`); per-ingredient quality tiers;
+a liquor licence as a capital gate (theirs $20,000, and the manual's own justification is
+ours — *"alcoholic beverages offer the most profit"*); advertising as media with different
+reach and targeting; staff morale and resignation; opening hours as a policy with a staff
+cost.
+
+**Genuinely worth stealing, in rough order:**
+
+- **COMPLAINTS AS A NAMED, RANKED LIST.** Their customer panel itemises what people disliked
+  with a severity per line. We have satisfaction as a scalar and nothing that says *why* in
+  the player's own words. This is Binding Principle 2 in its most legible possible form, and
+  it is the thing CLAUDE.md already predicted we would need: *"if it needs to bite harder the
+  honest fix is a visible consequence (a complaint, a bad review) rather than a bigger
+  divisor."* Highest value item on this list.
+- **Expectation is per-CUSTOMER, not just per-campaign.** *"A customer's satisfaction is high
+  when the customer's food quality meets or surpasses the customer's expectation."* Ours only
+  creates expectation through a marketing claim. Theirs carries one on every guest, set by the
+  restaurant's rating — so a chic room disappoints with mediocre food and a modest one is
+  punished for being too fancy. That generalises our marketing mechanic into the whole game.
+- **Set meals — lunch and dinner sets.** *"Many customers will only order one or two food
+  courses. By providing set meal options, you can sell more recipes at the same time."* A real
+  revenue mechanic that pairs directly with drinks, and a decision (bundle discount against
+  attach rate) rather than a number.
+- **Chef skill is per-CUISINE and per-RECIPE, and improves by cooking that specific dish.**
+  Ours is one number per person. Theirs makes specialisation concrete and makes "assign this
+  chef to this dish" a lever. Note it also means a chef is not portable between concepts.
+- **Table sharing** — accommodates more covers, costs restaurant rating. Cheap, legible, and
+  exactly the kind of small trade-off this game is short of.
+
+**Deliberately NOT taking:** kitchen porters and dish-washing as a staffed station, and
+receptionists, both of which are headcount whose absence produces complaints. That is the
+micromanagement tax anti-pattern — a correct decision that costs manual labour. Their
+*consequences* are worth having; the staffing slots are not.
+
+**One caution on reading it at all:** RE2 is the game whose most-criticised flaw is the reason
+Architecture Rule 1 exists (re-editing every recipe after a supplier change). It is a source of
+ideas, not of architecture.
+
+### A restaurant can lose its last server and quietly serve nobody
+
+Found while measuring the awareness ramp: the budget run was serving **zero covers a day with
+$31,891 in the bank**. Cause is not the sourcing — staff leave every month through the
+attrition system, nothing in a headless run re-hires, and at zero servers `servableSeats()` is
+zero, so nobody can be seated at all.
+
+**The Advisor does speak, and that matters — it is not silent.** `floorstaff` fires. But it is
+ranked THIRD and worded as advice about furniture — *"More chairs would not help — there is
+nobody to wait on them"* — when the actual situation is that the business has stopped
+trading entirely. **A restaurant serving nobody is not a ranking-three note about tables**, and
+the wording was written for a room that is merely under-served rather than shut. Not yet fixed.
+
+It also confounded two rows of the first ramp measurement, which is the same lesson as the
+sabotage probe one section up: **replacing somebody who quit is not a strategy, it is opening
+the doors**, and a probe that does not do it measures attrition instead of whatever it meant to.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

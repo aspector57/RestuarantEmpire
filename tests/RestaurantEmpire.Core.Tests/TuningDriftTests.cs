@@ -45,6 +45,9 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("WOM_FLOOR", (double)Tuning.WordOfMouthFloor, "what a forgettable meal still does for word of mouth");
+            yield return ("WOM_FROM", (double)Tuning.WordOfMouthFrom, "where word of mouth starts to grow");
+            yield return ("WOM_DELIGHT", (double)Tuning.WordOfMouthDelight, "the meal that spreads fully");
             yield return ("LICENCE_FEE", (double)LiquorLicense.ApplicationFee, "what a liquor licence costs to get");
             yield return ("LICENCE_RENEWAL", (double)LiquorLicense.MonthlyRenewal, "and to keep, monthly");
         }

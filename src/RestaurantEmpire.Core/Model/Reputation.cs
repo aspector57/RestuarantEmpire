@@ -145,6 +145,13 @@ namespace RestaurantEmpire.Core.Model
         public int MealsRemembered { get; private set; }
 
         /// <summary>
+        /// Accumulated word of mouth — meals WEIGHTED by how much they pleased. This, not the
+        /// raw count, is what decides how many people have heard of you. See
+        /// <see cref="Tuning.WordOfMouthFloor"/> for why.
+        /// </summary>
+        public decimal WordOfMouth { get; private set; }
+
+        /// <summary>
         /// Word of mouth from one meal.
         ///
         /// Per MEAL rather than per night, so a busy restaurant's reputation moves faster than
@@ -177,6 +184,18 @@ namespace RestaurantEmpire.Core.Model
             if (Standing > Ceiling) Standing -= (Standing - Ceiling) * BadNewsRate;
 
             MealsRemembered++;
+            WordOfMouth += WordOfMouthFrom(heard);
+        }
+
+        /// <summary>
+        /// How much a single meal does to spread the word. A forgettable dinner still counts
+        /// for something — you were there — but a delightful one counts for four times as much.
+        /// </summary>
+        public static decimal WordOfMouthFrom(decimal satisfaction)
+        {
+            var span = Tuning.WordOfMouthDelight - Tuning.WordOfMouthFrom;
+            var delight = span <= 0m ? 1m : Clamp((Clamp(satisfaction) - Tuning.WordOfMouthFrom) / span);
+            return Tuning.WordOfMouthFloor + ((1m - Tuning.WordOfMouthFloor) * delight);
         }
 
         /// <summary>
@@ -219,9 +238,9 @@ namespace RestaurantEmpire.Core.Model
         {
             get
             {
-                if (MealsRemembered >= MealsToBecomeKnown) return 1m;
+                if (WordOfMouth >= MealsToBecomeKnown) return 1m;
                 return UnknownTrafficShare
-                     + ((1m - UnknownTrafficShare) * ((decimal)MealsRemembered / MealsToBecomeKnown));
+                     + ((1m - UnknownTrafficShare) * (WordOfMouth / MealsToBecomeKnown));
             }
         }
 
@@ -275,10 +294,17 @@ namespace RestaurantEmpire.Core.Model
         }
 
         /// <summary>Restores a saved standing. Loading is the only reason to set this directly.</summary>
-        public void Restore(decimal standing, int mealsRemembered)
+        public void Restore(decimal standing, int mealsRemembered, decimal? wordOfMouth = null)
         {
             Standing = Clamp(standing);
             MealsRemembered = mealsRemembered < 0 ? 0 : mealsRemembered;
+
+            // An older save has no word-of-mouth figure, and a fixture that says
+            // Restore(Neutral, MealsToBecomeKnown) means "this place is established". Taking
+            // the meal count as the word of mouth is right in both cases — it degrades
+            // gracefully per Architecture Rule 3, and it keeps every existing fixture honest.
+            var w = wordOfMouth ?? MealsRemembered;
+            WordOfMouth = w < 0m ? 0m : w;
         }
 
         private static decimal Clamp(decimal v)

@@ -82,6 +82,31 @@ namespace RestaurantEmpire.Core.Model
         public const decimal BadNewsRate = 0.0002m;
         public const int MealsToBecomeKnown = 12000;
         public const decimal UnknownTrafficShare = 0.35m;
+
+        // ---- Word of mouth: HOW you become known, not just how fast ----
+        //
+        // Awareness used to be a pure meal COUNTER, so a restaurant became famous on exactly
+        // the same schedule whether it was any good or not. Measured over 400 days: a
+        // well-run kitchen and one on budget stock with a single cook both hit 100% known
+        // within two days of each other. Standing differentiated them (42 against 24);
+        // awareness did not differentiate them at all.
+        //
+        // Restaurant Empire 2's manual states the rule this project should have had from the
+        // start: "the more completely satisfied customers there are, the higher your customer
+        // awareness", and "100% satisfied customers are your best source of advertising."
+        //
+        // So a meal now spreads word of mouth in proportion to how much it pleased. The floor
+        // exists because being fed at all is worth SOMETHING — you were there, you told
+        // someone. Reaching the delight mark scores a full 1.0, which means the old pace is
+        // now the BEST case rather than everybody's case: a great restaurant becomes known
+        // exactly as fast as before, and every worse one takes longer.
+        //
+        // This is a modelling fix, not a difficulty dial. It closes the same defect this
+        // project keeps finding — a value that is computed, and then not read on the side of
+        // the decision it exists to inform.
+        public const decimal WordOfMouthFloor = 0.25m;
+        public const decimal WordOfMouthFrom = 0.40m;
+        public const decimal WordOfMouthDelight = 0.85m;
         public const decimal WorstTrafficMultiplier = 0.60m;
         public const decimal BestTrafficMultiplier = 1.40m;
 

@@ -906,7 +906,7 @@ function newSite(site, id, name){
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
-    rep: { standing: REP.neutral, meals: 0, ceiling: 1 },
+    rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
     ledger: { revenue:0, food:0, labor:0, rent:0, capex:0 },
@@ -1472,8 +1472,9 @@ function awareness(){
   // A campaign is worth a share of the whole journey to being known, on top of the meals you
   // have actually served. It buys people HEARING of you and nothing else.
   const bought = campaign() ? CHANNELS[G.campaign.channel].reach : 0;
-  if(G.rep.meals >= REP.mealsToBecomeKnown) return 1;
-  const earned = REP.unknownShare + (1-REP.unknownShare)*(G.rep.meals/REP.mealsToBecomeKnown);
+  const word = G.rep.word == null ? G.rep.meals : G.rep.word;
+  if(word >= REP.mealsToBecomeKnown) return 1;
+  const earned = REP.unknownShare + (1-REP.unknownShare)*(word/REP.mealsToBecomeKnown);
   return Math.min(1, earned + bought * (1 - earned));
 }
 function opinionMultiplier(){
@@ -1490,6 +1491,21 @@ function recordMeal(sat){
   G.rep.standing = clamp01(G.rep.standing + (sat - G.rep.standing)*rate);
   if(G.rep.standing > ceiling) G.rep.standing -= (G.rep.standing - ceiling)*REP.bad;
   G.rep.meals++;
+
+  // WORD OF MOUTH IS EARNED, NOT COUNTED. See Tuning.WordOfMouthFloor in the engine for the
+  // measurement -- awareness used to be a pure meal counter, so a budget kitchen with one
+  // cook became famous on the same schedule as a good one. A forgettable dinner still counts
+  // for something; a delightful one counts for four times as much.
+  G.rep.word = (G.rep.word || 0) + wordOfMouthFrom(sat);
+}
+
+const WOM_FLOOR = 0.25;
+const WOM_FROM = 0.40;
+const WOM_DELIGHT = 0.85;
+function wordOfMouthFrom(sat){
+  const span = WOM_DELIGHT - WOM_FROM;
+  const delight = span <= 0 ? 1 : clamp01((clamp01(sat) - WOM_FROM) / span);
+  return WOM_FLOOR + (1 - WOM_FLOOR) * delight;
 }
 function livingOnPastGlory(){ return G.rep.standing > G.rep.ceiling + 0.02; }
 function atCeiling(){ return G.rep.standing >= G.rep.ceiling-0.01 && G.rep.standing <= G.rep.ceiling+0.02; }

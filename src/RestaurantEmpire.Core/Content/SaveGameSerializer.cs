@@ -120,6 +120,7 @@ namespace RestaurantEmpire.Core.Content
                     Inventory = new List<StockState>(),
                     ReputationStanding = restaurant.Reputation.Standing,
                     ReputationMeals = restaurant.Reputation.MealsRemembered,
+                    ReputationWordOfMouth = restaurant.Reputation.WordOfMouth,
                     Staff = new List<StaffState>()
                 };
 
@@ -366,7 +367,7 @@ namespace RestaurantEmpire.Core.Content
 
             // Accumulated history, restored as-is. A save written before reputation existed
             // has no value here and lands at neutral — an unknown restaurant, not a hated one.
-            restaurant.Reputation.Restore(state.ReputationStanding, state.ReputationMeals);
+            restaurant.Reputation.Restore(state.ReputationStanding, state.ReputationMeals, state.ReputationWordOfMouth);
 
             if (state.Staff != null)
             {

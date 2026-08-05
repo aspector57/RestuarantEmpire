@@ -366,14 +366,57 @@ namespace RestaurantEmpire.Core.Tests
             // Aaron: "perhaps I had too much traffic right away?" A restaurant that opened
             // this morning used to draw the full footfall of the street, because standing
             // began at neutral and neutral meant 1.0. Its first job should be to be found.
+            // AND HOW LONG THAT SEASON IS NOW DEPENDS ON THE FOOD, which is the half this
+            // test could not say before. Awareness used to be a pure meal COUNTER, so a
+            // budget kitchen became famous on exactly the same schedule as a good one —
+            // measured over 400 days, the two reached 100% known two days apart. Word of
+            // mouth is earned per meal now, in proportion to how much it pleased.
             var rep = new Reputation();
             Assert.Equal(Reputation.UnknownTrafficShare, rep.Awareness);
 
             for (var i = 0; i < Reputation.MealsToBecomeKnown / 2; i++) rep.RecordMeal(0.7m);
-            Assert.InRange(rep.Awareness, 0.6m, 0.75m);
+            Assert.InRange(rep.Awareness, 0.55m, 0.70m);
 
-            for (var i = 0; i < Reputation.MealsToBecomeKnown; i++) rep.RecordMeal(0.7m);
+            // Enough good trading and you are known. The multiplier is what a merely decent
+            // dinner costs you in reach: it takes more of them.
+            for (var i = 0; i < Reputation.MealsToBecomeKnown * 2; i++) rep.RecordMeal(0.7m);
             Assert.Equal(1m, rep.Awareness);
+        }
+
+        /// <summary>
+        /// THE SAME NUMBER OF DINNERS, TWO DIFFERENT REPUTATIONS — this is the claim the old
+        /// counter could not make. Serving people is not the same as being worth talking
+        /// about, and Restaurant Empire 2's manual puts the rule plainly: *"the more
+        /// completely satisfied customers there are, the higher your customer awareness"*,
+        /// and *"100% satisfied customers are your best source of advertising."*
+        ///
+        /// The floor matters as much as the slope: a forgettable meal still spreads SOME
+        /// word, because you were there and you mentioned it. Being dull is slow, not silent.
+        /// </summary>
+        [Fact]
+        public void GoodFoodGetsYourNameOutFasterThanMerelyFeedingPeople()
+        {
+            var delightful = new Reputation();
+            var forgettable = new Reputation();
+
+            for (var i = 0; i < Reputation.MealsToBecomeKnown; i++)
+            {
+                delightful.RecordMeal(0.90m);
+                forgettable.RecordMeal(0.30m);
+            }
+
+            Assert.Equal(delightful.MealsRemembered, forgettable.MealsRemembered);
+            Assert.True(delightful.Awareness > forgettable.Awareness + 0.25m,
+                $"the same {Reputation.MealsToBecomeKnown} dinners should not make the two equally " +
+                $"known: delightful {delightful.Awareness:P0} against forgettable {forgettable.Awareness:P0}");
+
+            // Being dull is slow, not silent — it still moves off the opening share.
+            Assert.True(forgettable.Awareness > Reputation.UnknownTrafficShare,
+                "a forgettable meal still spreads some word; nobody is invisible for serving dinner");
+
+            // And the ceiling: a delightful restaurant is not made to wait longer than the
+            // old universal pace. Today's speed is the BEST case now, not everybody's.
+            Assert.Equal(1m, delightful.Awareness);
         }
 
         [Fact]
