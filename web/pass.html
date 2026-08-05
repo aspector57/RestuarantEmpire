@@ -5242,12 +5242,39 @@ function buildSitePicker(){
     const b = document.createElement("button");
     b.className = "site";
 
-    // What this street thinks of THIS card, before you sign anything.
+    // What this street thinks of THIS card, and whether the concept keeps hours the street is
+    // awake for. Both before you sign anything.
     let fit = "";
     if(chosenConcept){
       const draw = conceptFitAt(chosenConcept, s);
       const cls = draw >= 1.05 ? "good" : draw < 0.90 ? "bad" : "warn";
       fit = `<br><span class="${cls}">card suits this street ${Math.round(draw*100)}%</span>`;
+
+      // THE HOURS ARE THE EXPENSIVE HALF, and nothing said a word about them.
+      //
+      // Measured: six of seven concepts BUST on the business district, and the only survivor
+      // is the one whose hours cover breakfast and lunch. Every other concept ships
+      // dinner-led hours onto a lunch street. That is the same mistake Aaron made by hand --
+      // sixty days at eleven covers a night before he changed them -- except baked into the
+      // concept, where the player never chose it and cannot see it.
+      //
+      // Warned rather than auto-corrected, per Binding Principle 5. A concept that opens at
+      // the wrong time is a real and recoverable mistake; silently rewriting its hours would
+      // delete the most expensive decision available on day one.
+      // THE LINE IS ZERO, NOT "WORSE THAN THE BEST AVAILABLE". Scored against the best
+      // possible hours it warned on City Center for every concept -- dinner scores 60 there
+      // against all-day's 120 -- and dinner on the city pitch is comfortably profitable. A
+      // warning that fires on a good decision is noise, and this Advisor is allowed to say
+      // nothing.
+      //
+      // Negative means every open hour sits below the floor that pays for itself, which maps
+      // exactly onto the BUST rows in the concept sweep: the six concepts that die on the
+      // business district all score negative there, and the one that survives scores +65.
+      const h = hoursFitAt(chosenConcept, s);
+      if(h.worth <= 0){
+        fit += `<br><span class="bad">this street is empty at those hours — ` +
+               `${h.best.preset.name.toLowerCase()} is what it wants</span>`;
+      }
     }
 
     b.innerHTML = `<span><h3>${s.name}</h3><p>${s.blurb}</p></span>
@@ -5262,6 +5289,23 @@ function buildSitePicker(){
  * SAME function the service uses, on a throwaway game state -- pointing the real machinery at
  * a hypothetical rather than writing a second, simpler version of it that would drift.
  */
+/*
+ * How well a concept's HOURS suit a street, against the best hours available on it. Scored the
+ * same way the in-game advice scores them -- against a floor set by the street's own peak, so
+ * a dead hour counts against you rather than merely adding nothing. Ranking by raw traffic
+ * answers "open round the clock" for every pitch, which is how that advice was wrong the first
+ * time it shipped.
+ */
+function hoursFitAt(concept, site){
+  const saved = G;
+  try {
+    G = newGame(site, 1);
+    return { worth: hoursAreWorth(concept.windows), best: bestHoursForThisStreet() };
+  } finally {
+    G = saved;
+  }
+}
+
 function conceptFitAt(concept, site){
   const saved = G;
   try {
