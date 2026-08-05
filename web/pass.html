@@ -1620,7 +1620,14 @@ function complaintsFrom(ctx){
 
   if(ctx.speed < GRUMBLE) add("wait", "the food took too long", ctx.speed);
   if(ctx.value < GRUMBLE) add("price", "dear for what it was", ctx.value);
-  if(ctx.room  < GRUMBLE) add("room",  "the room is tired", ctx.room);
+  if(ctx.room  < GRUMBLE){
+    // A tired room and an empty one are different complaints with different fixes -- one is
+    // decor, the other is having bought more seats than the street can fill.
+    if(ctx.occupancy != null && ctx.occupancy <= ROOM_FEEL.thin)
+      add("empty", "the place was half empty — it felt like nobody wanted to be there", ctx.room);
+    else
+      add("room", "the room is tired", ctx.room);
+  }
 
   // The food line splits, because "the food was poor" is not actionable and the three
   // things underneath it are. Freshness and the claim are separately visible.
@@ -1733,6 +1740,41 @@ function reads(claim){
   if(claim>=0.45) return "competent, nothing remarkable";
   if(claim>=0.25) return "green, but cheap";
   return "no real experience";
+}
+
+/*
+ * HOW FULL THE ROOM LOOKS WHEN YOU WALK IN.
+ *
+ * Aaron's call, and it fixes a one-sided decision. Seats were a pure ratchet: too few cost you
+ * covers, too many cost only the price of the chairs, so the only mistake buying tables could
+ * make was a slow one. Measured, profit peaked at 30 seats on the nightlife pitch and fell to
+ * $164k at 100 -- and nothing in the game ever said why, or that anything was wrong at all.
+ *
+ * *"Unless we can have customers say something like, this restaurant is so empty, and it
+ * impacts their experience?"* -- which is exactly how it works. A dining room with four people
+ * in a hundred seats is a bad night out however good the food is, and restaurants really are
+ * designed to look busy. So a half-empty room reads as dead, and that lands on the ROOM score
+ * where decor already lives.
+ *
+ * The shape is deliberate. Being quiet is forgiven up to a point -- a new place is quiet
+ * because nobody has heard of it yet, and punishing that would be punishing the opening. Past
+ * that it bites. A busy room gets a small lift, because a full house genuinely is part of what
+ * people come out for, but nothing like the size of the penalty: this is a mistake to be
+ * discovered, not a bonus to farm.
+ *
+ * DELIBERATELY NOT WARNED ABOUT IN ADVANCE (Aaron): "discovering you overbuilt should be part
+ * of the game." So there is no Advisor rule telling you the ceiling. The complaint tells you
+ * afterwards, in the guests' words, which is the same bargain every other mistake here gets.
+ */
+const ROOM_FEEL = { dead:0.20, thin:0.45, buzzing:0.70, lift:0.06 };
+
+function roomFeel(occupancy){
+  const o = occupancy < 0 ? 0 : occupancy > 1 ? 1 : occupancy;
+  if(o >= ROOM_FEEL.buzzing) return 1 + ROOM_FEEL.lift;          // a full house is part of it
+  if(o >= ROOM_FEEL.thin)    return 1;                            // normal, nobody notices
+  if(o <= ROOM_FEEL.dead)    return 0.55;                         // cavernous, and it shows
+  // Between dead and thin it slides, so there is no cliff to fall off.
+  return 0.55 + 0.45 * ((o - ROOM_FEEL.dead) / (ROOM_FEEL.thin - ROOM_FEEL.dead));
 }
 
 function comfortOf(){
@@ -2417,11 +2459,17 @@ function runDay(){
       const cFood  = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick) + extrasLift(pick.id)));
       const cSpeed = judgedAgainstClaim("speed", scoreSpeed(wait, patience));
       const cValue = judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing));
-      const cRoom  = judgedAgainstClaim("room",  comfortOf());
+      // How full it LOOKS at the moment this party sits down -- not an average over the night,
+      // because walking into an empty room is a first impression and first impressions are
+      // when they happen.
+      const occupancy = G.seats > 0 ? seatsBusy.length / G.seats : 1;
+      const feel = roomFeel(occupancy);
+      const cRoom  = judgedAgainstClaim("room",  clamp01(comfortOf() * feel));
 
       const s = cFood*W.food + cSpeed*W.speed + cValue*W.value + cRoom*W.room;
       logComplaints(d, { food:cFood, speed:cSpeed, value:cValue, room:cRoom,
                          dish:pick, wait:wait, fresh:recipeFreshness(pick),
+                         occupancy: occupancy,
                          floorMorale: avgMorale(G.servers) });
       sat += s;
       // Kept at DAY level too. Satisfaction is the leading indicator — it moves the night a

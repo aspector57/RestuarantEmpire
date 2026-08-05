@@ -102,7 +102,7 @@ namespace RestaurantEmpire.Core.Tests
             return new MealVerdict
             {
                 Food = 0.80m, Speed = 0.80m, Value = 0.80m, Room = 0.80m,
-                Freshness = 1m, FloorMorale = 1m, ClaimsItsIngredients = false
+                Freshness = 1m, FloorMorale = 1m, ClaimsItsIngredients = false, Occupancy = 0.75m
             };
         }
 
@@ -158,6 +158,60 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.DoesNotContain(Complaints.From(quiet), c => c.Code == "claim");
             Assert.Contains(Complaints.From(loud), c => c.Code == "claim");
+        }
+
+        /// <summary>
+        /// AN EMPTY ROOM IS A BAD NIGHT OUT, and until now buying too many seats cost only the
+        /// price of the chairs. Aaron: *"can we have customers say something like, this
+        /// restaurant is so empty, and it impacts their experience?"*
+        ///
+        /// Deliberately no Advisor warning in advance — his call was that *"discovering you
+        /// overbuilt should be part of the game"*, so the complaint is how you find out.
+        /// </summary>
+        [Fact]
+        public void ARoomThatLooksEmptyIsWorseToSitIn()
+        {
+            var cavernous = SatisfactionModel.RoomFeel(0.05m);
+            var quiet = SatisfactionModel.RoomFeel(0.32m);
+            var normal = SatisfactionModel.RoomFeel(0.55m);
+            var full = SatisfactionModel.RoomFeel(0.90m);
+
+            _out.WriteLine($"  5% {cavernous:F2}   32% {quiet:F2}   55% {normal:F2}   90% {full:F2}");
+
+            Assert.True(cavernous < quiet, "four people in a hundred seats is worse than a thin night");
+            Assert.True(quiet < normal, "and it slides rather than falling off a cliff");
+            Assert.Equal(1m, normal);
+
+            // A full house lifts, but nothing like the size of the penalty — a mistake to
+            // discover, not a bonus to farm.
+            Assert.True(full > normal);
+            Assert.True(full - normal < normal - cavernous,
+                "the reward for a busy room must be far smaller than the cost of an empty one");
+        }
+
+        /// <summary>
+        /// Being quiet because nobody has heard of you yet must not be punished as if you had
+        /// overbuilt — that would punish the opening, which is already the hardest part.
+        /// </summary>
+        [Fact]
+        public void AQuietOpeningIsForgiven()
+        {
+            Assert.Equal(1m, SatisfactionModel.RoomFeel(Tuning.RoomFeelsThin));
+            Assert.True(SatisfactionModel.RoomFeel(0.46m) >= 1m,
+                "a room just under half full is a normal evening, not a complaint");
+        }
+
+        /// <summary>An empty room and a shabby one are different complaints with different fixes.</summary>
+        [Fact]
+        public void AnEmptyRoomIsNotTheSameComplaintAsATiredOne()
+        {
+            var shabby = Good(); shabby.Room = 0.20m; shabby.Occupancy = 0.80m;
+            Assert.Contains(Complaints.From(shabby), c => c.Code == "room");
+            Assert.DoesNotContain(Complaints.From(shabby), c => c.Code == "empty");
+
+            var deserted = Good(); deserted.Room = 0.20m; deserted.Occupancy = 0.10m;
+            Assert.Contains(Complaints.From(deserted), c => c.Code == "empty");
+            Assert.DoesNotContain(Complaints.From(deserted), c => c.Code == "room");
         }
 
         [Fact]

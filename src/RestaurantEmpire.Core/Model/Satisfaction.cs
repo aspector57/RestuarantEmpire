@@ -194,6 +194,23 @@ namespace RestaurantEmpire.Core.Model
         /// same belief to what somebody will PAY — so the two halves of the same judgement
         /// finally agree instead of one running on reputation alone.
         /// </summary>
+        /// <summary>
+        /// What a room that empty does to the evening. A dining room with four people in a
+        /// hundred seats is a bad night out however good the food is, and restaurants really
+        /// are designed to look busy.
+        /// </summary>
+        public static decimal RoomFeel(decimal occupancy)
+        {
+            var o = Clamp(occupancy);
+            if (o >= Tuning.RoomFeelsBuzzing) return 1m + Tuning.RoomBuzzLift;
+            if (o >= Tuning.RoomFeelsThin) return 1m;
+            if (o <= Tuning.RoomFeelsDead) return 0.55m;
+
+            // Between dead and thin it slides, so there is no cliff to fall off.
+            return 0.55m + (0.45m * ((o - Tuning.RoomFeelsDead)
+                                     / (Tuning.RoomFeelsThin - Tuning.RoomFeelsDead)));
+        }
+
         public static decimal ValueOnOffer(decimal ingredientQuality, decimal kitchenSkill,
                                            decimal comfort, decimal standing)
         {

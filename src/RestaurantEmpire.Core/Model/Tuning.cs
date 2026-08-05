@@ -126,6 +126,24 @@ namespace RestaurantEmpire.Core.Model
         public const decimal MoraleDrift = 0.18m;
         public const int MoraleComfortableHours = 6;
 
+        // ---- How full the room LOOKS ----
+        //
+        // Aaron's call, and it fixes a one-sided decision. Seats were a pure ratchet: too few
+        // cost you covers, too many cost only the price of the chairs. Measured, profit peaked
+        // at 30 seats on the nightlife pitch and fell to $164k at 100, and nothing ever said
+        // why. *"Unless we can have customers say something like, this restaurant is so empty,
+        // and it impacts their experience?"*
+        //
+        // Being quiet is forgiven up to a point — a new place is quiet because nobody has
+        // heard of it, and punishing that would punish the opening. A full house gets a small
+        // lift, far smaller than the penalty: this is a mistake to discover, not a bonus to
+        // farm. Deliberately NOT warned about in advance, per Aaron: "discovering you
+        // overbuilt should be part of the game."
+        public const decimal RoomFeelsDead = 0.20m;
+        public const decimal RoomFeelsThin = 0.45m;
+        public const decimal RoomFeelsBuzzing = 0.70m;
+        public const decimal RoomBuzzLift = 0.06m;
+
         /// <summary>Below this, a component of the meal is worth complaining about.</summary>
         public const decimal GrumbleThreshold = 0.55m;
 

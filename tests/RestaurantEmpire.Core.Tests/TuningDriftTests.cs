@@ -45,6 +45,9 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("dead", (double)Tuning.RoomFeelsDead, "occupancy at which a room reads as empty");
+            yield return ("thin", (double)Tuning.RoomFeelsThin, "occupancy below which people notice");
+            yield return ("buzzing", (double)Tuning.RoomFeelsBuzzing, "occupancy that feels like a full house");
             yield return ("GRUMBLE", (double)Tuning.GrumbleThreshold, "below this, a guest mentions it");
             yield return ("EXTRA_DIMINISH", (double)Tuning.ExtraDiminishing, "what each further thing on a plate is worth");
             yield return ("WOM_FLOOR", (double)Tuning.WordOfMouthFloor, "what a forgettable meal still does for word of mouth");
@@ -80,7 +83,11 @@ namespace RestaurantEmpire.Core.Tests
 
             foreach (var (js, expected, note) in Shared())
             {
+                // Some constants live in an object literal (ROOM_FEEL = { dead:0.20, ... }),
+                // so accept `name: value` as well as `const NAME = value`.
                 var match = Regex.Match(source, @"\b(?:const|var|let)\s+" + Regex.Escape(js) + @"\s*=\s*(-?[0-9.]+)");
+                if (!match.Success)
+                    match = Regex.Match(source, @"\b" + Regex.Escape(js) + @"\s*:\s*(-?[0-9.]+)");
                 if (!match.Success)
                 {
                     wrong.Add($"{js} — not found in the browser build ({note})");

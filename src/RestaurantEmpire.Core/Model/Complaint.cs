@@ -57,6 +57,12 @@ namespace RestaurantEmpire.Core.Model
 
         /// <summary>Whether the restaurant is currently claiming its ingredients are exceptional.</summary>
         public bool ClaimsItsIngredients;
+
+        /// <summary>
+        /// How full the room looked when they sat down, 0 to 1. Separates "the room is tired"
+        /// from "the room is empty" — decor and overbuilding are different mistakes.
+        /// </summary>
+        public decimal Occupancy;
     }
 
     public static class Complaints
@@ -83,7 +89,16 @@ namespace RestaurantEmpire.Core.Model
                 said.Add(new Complaint("price", "dear for what it was", SeverityOf(meal.Value)));
 
             if (meal.Room < Tuning.GrumbleThreshold)
-                said.Add(new Complaint("room", "the room is tired", SeverityOf(meal.Room)));
+            {
+                // A tired room and an empty one are different complaints with different fixes:
+                // one is decor, the other is having bought more seats than the street can fill.
+                if (meal.Occupancy <= Tuning.RoomFeelsThin)
+                    said.Add(new Complaint("empty",
+                        "the place was half empty — it felt like nobody wanted to be there",
+                        SeverityOf(meal.Room)));
+                else
+                    said.Add(new Complaint("room", "the room is tired", SeverityOf(meal.Room)));
+            }
 
             // The food line SPLITS, because "the food was poor" is not actionable and the three
             // things underneath it are: old stock, a claim the kitchen cannot live up to, and
