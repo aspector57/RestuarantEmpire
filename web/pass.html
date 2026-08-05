@@ -2842,11 +2842,26 @@ function advise(){
         // playthrough harness asserts — deliberately, so the advice and the invariant agree
         // by construction rather than by coincidence. At dead parity (pass 16, room 16) a
         // block adds thirteen covers an hour, which is most of the kitchen again.
-        const roomIsAhead = bind.kind === "room" && (bind.room + blockAdds) <= bind.pass * 1.5;
+        // TWO DIFFERENT QUESTIONS, AND THEY WERE ONE VARIABLE.
+        //
+        // "Is the room the short side?" and "would a block of tables outrun the pass?" are not
+        // the same question, and collapsing them cost Aaron a whole run. At 50 seats, ONE
+        // server and 14 servable, the room bound at 19/hr against a pass of 21 -- but a block
+        // of ten tables adds 13 covers an hour, so `room + blockAdds` exceeded `pass * 1.5`
+        // and the old single flag read FALSE. The advice then fell through to the kitchen
+        // branch and told him to hire a COOK, while its own header said the room was the
+        // limit and 154 covers a night were being turned away.
+        //
+        // The granularity guard is about TABLES. When the floor staff are the cap you are not
+        // buying tables, you are hiring one server, and a server adds far less than a block of
+        // ten seats. Buying a cook can never help you seat somebody.
+        const roomIsShort = bind.kind === "room";
+        const tablesWouldFit = roomIsShort && (bind.room + blockAdds) <= bind.pass * 1.5;
+        const staffIsTheCap = roomIsShort && bind.cappedByStaff;
 
         // Tables are only the answer when the chairs are what is short. If the floor staff
         // cannot work the seats already bought, more seats are furniture.
-        const fit = (roomIsAhead && !bind.cappedByStaff)
+        const fit = (tablesWouldFit && !bind.cappedByStaff)
           ? FURNITURE.filter(x => freeArea() >= x.foot*10 && G.cash >= x.perSeat*10)
                      .sort((a,b)=>a.perSeat-b.perSeat)[0]
           : null;
@@ -2858,10 +2873,10 @@ function advise(){
                `${Math.round(f.demand)} would come, ${Math.round(f.covers)} can be served. ` +
                `Lifting one half alone just moves the bottleneck across, so this wants growing on ` +
                `both sides — ` +
-               (roomIsAhead
-                 ? (bind.cappedByStaff
-                     ? `and it is the room — but not the tables. You own ${G.seats} seats and ${G.servers.length} server${G.servers.length===1?"":"s"} can work ${bind.servable} of them, so the other ${G.seats - bind.servable} are furniture. Another server opens them up; more tables would not.`
-                     : `and the pass is far enough ahead now that the room is the half to lift.`)
+               (staffIsTheCap
+                 ? `and it is the room — but not the tables. You own ${G.seats} seats and ${G.servers.length} server${G.servers.length===1?"":"s"} can work ${bind.servable} of them, so the other ${G.seats - bind.servable} are furniture. Another server opens them up; more tables would not, and nor would another cook.`
+                 : tablesWouldFit
+                 ? `and the pass is far enough ahead now that the room is the half to lift.`
                  : brigade
                    ? `starting with the kitchen, and it is hands rather than equipment: ` +
                      `${lim.cooks} cook${lim.cooks===1?"":"s"} moving about ${Math.round(lim.allows)} covers an hour. ` +
@@ -2869,17 +2884,28 @@ function advise(){
                    : `starting with the kitchen. A seat you cannot feed is worse than no seat at all, ` +
                      `so the pass goes first and the tables follow it.`) +
                ` You have ${money(G.cash)}.`,
-          needsWage: (brigade && !roomIsAhead) || (roomIsAhead && bind.cappedByStaff),
-          role: (roomIsAhead && bind.cappedByStaff) ? "server" : "cook",
+          // FOUR CASES, NOT TWO, and collapsing them left a hole that cost the harness 180
+          // covers a day. Separating "is the room short" from "would tables fit" correctly
+          // routed the staff-capped case to a server -- and silently dropped the case where
+          // the room is short, staff are NOT the cap, and a block of tables WOULD outrun the
+          // pass. There the answer is still a cook (lift the kitchen, then the tables follow),
+          // and offering nothing at all left the harness stuck on twelve seats.
+          //
+          //   staff are the cap              -> a server
+          //   room short, tables fit         -> tables
+          //   room short, tables outrun pass -> a cook, kitchen first
+          //   kitchen-bound                  -> a cook, or equipment
+          needsWage: staffIsTheCap || (brigade && (!roomIsShort || !tablesWouldFit)),
+          role: staffIsTheCap ? "server" : "cook",
           seats: fit || null,
           // The floor itself is the move when nothing fits on it. Six square feet short of a
           // table block is not a reason to say nothing.
           // Not when STAFF are the cap. Offering to buy floor space to a restaurant whose
           // problem is one server contradicts the sentence directly above it, which says so.
-          extend: (!fit && roomIsAhead && !bind.cappedByStaff && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
-          buy:      (!roomIsAhead && !brigade && lim && fitsNow(lim)) ? bestFor(lim.station) : null,
+          extend: (!fit && tablesWouldFit && !bind.cappedByStaff && blockedByFloorOnly(FURNITURE[0].foot*10)) ? true : null,
+          buy:      (!roomIsShort && !brigade && lim && fitsNow(lim)) ? bestFor(lim.station) : null,
           alt: lim ? cheapestFor(lim.station) : null,
-          upgrade:  (!roomIsAhead && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
+          upgrade:  (!roomIsShort && !brigade && lim && !fitsNow(lim)) ? upgradeFor(lim.station) : null });
       }
     }
   }
@@ -4045,9 +4071,36 @@ function fullTranscript(){
   /* And the raw rows, so nothing is taken on trust. */
   rule("EVERY METRIC, EVERY DAY (comma separated)");
   if(G.metrics.length){
-    const cols = Object.keys(G.metrics[0]);
+    // COMPLAINTS AND TABLES ARE NOT CSV CELLS, and putting them in destroyed the file.
+    //
+    // `complaints` is an object and `tables` an array of objects, so every row rendered them
+    // as a run of "[object Object]" -- and because the array has a different length each day,
+    // every row had a DIFFERENT number of columns. The header said 32 fields; the rows said
+    // anything from 32 to 45. A spreadsheet cannot read it and neither can a person.
+    //
+    // They are summarised instead: how many complaints were made, and the worst thing said.
+    // The full text belongs in the nightly card, which is where the player reads it.
+    const skip = { complaints:1, tables:1 };
+    const cols = Object.keys(G.metrics[0]).filter(k => !skip[k]).concat(["complaints","worstSaid"]);
+
+    const cell = v => {
+      if(v == null) return "";
+      const s = String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+
     L.push(cols.join(","));
-    G.metrics.forEach(m => L.push(cols.map(k=>m[k]).join(",")));
+    G.metrics.forEach(m => {
+      const said = m.complaints ? Object.keys(m.complaints) : [];
+      let count = 0, worst = "", worstAt = 0;
+      for(const k of said){
+        count += m.complaints[k].count;
+        if(m.complaints[k].severity > worstAt){ worstAt = m.complaints[k].severity; worst = m.complaints[k].text; }
+      }
+      L.push(cols.map(k =>
+        k === "complaints" ? count :
+        k === "worstSaid"  ? cell(worst) : cell(m[k])).join(","));
+    });
   }
 
   rule("EVERY DAY, OLDEST FIRST");
