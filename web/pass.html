@@ -129,6 +129,9 @@ button{font:inherit; color:inherit; cursor:pointer}
   font-family:var(--mono); font-size:11.5px; line-height:1.5; white-space:pre; resize:vertical;
 }
 #company{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:2px}
+.steph{font-size:15px; letter-spacing:.04em; text-transform:uppercase; opacity:.75;
+  margin:22px 0 10px; font-weight:600}
+.site.picked{border-color:var(--good); box-shadow:inset 0 0 0 1px var(--good)}
 #sitestrip{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
 #sitestrip button{
   background:var(--panel); border:1px solid var(--line); color:var(--dim);
@@ -429,6 +432,10 @@ body::before{
     sold a thing, so the pitch you choose decides how much you have left to trade with — and
     the busiest streets leave you the least room to grow.
   </p>
+  <h2 class="steph">First — what are you building?</h2>
+  <div class="sites" id="concepts"></div>
+
+  <h2 class="steph">Then — where do you put it?</h2>
   <div class="sites" id="sites"></div>
   <p class="hint" style="margin-top:18px">
     Nothing here is winnable by accident. A new restaurant loses money until it is big enough
@@ -906,6 +913,7 @@ function newSite(site, id, name){
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
+    concept: null,
     rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -941,7 +949,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics","rivals","supplierOut","leaseSetOn","extras"
+  "metrics","rivals","supplierOut","leaseSetOn","extras","concept"
 ];
 
 function bindActiveSite(G){
@@ -5159,15 +5167,100 @@ function drawChart(cv){
 
 /* ---------- setup ---------- */
 
+/*
+ * TWO DECISIONS BEFORE YOU OPEN: what you are building, and where you put it.
+ *
+ * The concept comes FIRST because it decides the shape of the restaurant -- the card, the
+ * prices, the hours, how many covers you fit and what the kitchen has to be. The site then
+ * decides whether the street wants it, and how much capital survives opening day.
+ *
+ * The scouting figure under each pitch is the honest one: `menuDrawAt` for the concept's own
+ * card against that street's crowd, at the hours the concept actually keeps. It is the same
+ * function the service uses, pointed at a site you do not own yet -- which is what makes it a
+ * forecast you can be wrong about rather than a recommendation.
+ */
+let chosenConcept = null;
+
 function buildSetup(){
+  buildConceptPicker();
+  buildSitePicker();
+}
+
+function buildConceptPicker(){
+  const box = $("#concepts");
+  if(!box) return;
+
+  for(const c of CONCEPTS){
+    const b = document.createElement("button");
+    b.className = "site";
+    const hours = c.windows.map(w => `${w.from}:00–${w.to}:00`).join(", ");
+    const check = c.card.reduce((a,id)=>{
+      const r = RECIPES.filter(x=>x.id===id)[0];
+      return a + (r ? r.base * c.pricePosition : 0);
+    }, 0) / Math.max(1, c.card.length);
+
+    b.innerHTML = `<span><h3>${c.name}</h3><p>${c.blurb}</p></span>
+      <span class="fig"><b>${c.seats} covers</b>to open with<br>~$${check.toFixed(0)} a head<br>${hours}</span>`;
+    b.onclick = ()=>{
+      chosenConcept = c;
+      for(const other of box.children) other.classList.remove("picked");
+      b.classList.add("picked");
+      buildSitePicker();
+      const sites = $("#sites");
+      if(sites) sites.scrollIntoView({behavior:"smooth", block:"nearest"});
+    };
+    box.appendChild(b);
+  }
+}
+
+function buildSitePicker(){
   const box = $("#sites");
+  box.innerHTML = "";
+
   for(const s of SITES){
     const b = document.createElement("button");
     b.className = "site";
+
+    // What this street thinks of THIS card, before you sign anything.
+    let fit = "";
+    if(chosenConcept){
+      const draw = conceptFitAt(chosenConcept, s);
+      const cls = draw >= 1.05 ? "good" : draw < 0.90 ? "bad" : "warn";
+      fit = `<br><span class="${cls}">card suits this street ${Math.round(draw*100)}%</span>`;
+    }
+
     b.innerHTML = `<span><h3>${s.name}</h3><p>${s.blurb}</p></span>
-      <span class="fig"><b>${money(30000-s.key)}</b>left to trade<br>$${s.rent.toLocaleString()}/mo rent<br>${s.maxArea.toLocaleString()} sq ft ceiling</span>`;
-    b.onclick = ()=>start(s);
+      <span class="fig"><b>${money(30000-s.key)}</b>left to trade<br>$${s.rent.toLocaleString()}/mo rent<br>${s.maxArea.toLocaleString()} sq ft ceiling${fit}</span>`;
+    b.onclick = ()=>start(s, chosenConcept ? chosenConcept.id : null);
     box.appendChild(b);
+  }
+}
+
+/*
+ * How well a concept's card suits a street, at the hours that concept keeps. Measured with the
+ * SAME function the service uses, on a throwaway game state -- pointing the real machinery at
+ * a hypothetical rather than writing a second, simpler version of it that would drift.
+ */
+function conceptFitAt(concept, site){
+  const saved = G;
+  try {
+    G = newGame(site, 1);
+    G.onMenu = new Set(concept.card);
+    G.windows = concept.windows.map(w => ({name:w.name, from:w.from, to:w.to}));
+    for(const id of concept.card){
+      const r = RECIPES.filter(x => x.id === id)[0];
+      if(r) G.prices[id] = +(designedPrice(r) * concept.pricePosition).toFixed(2);
+    }
+
+    let total = 0, n = 0;
+    for(const w of G.windows){
+      for(let h = w.from; n < 48 && h !== w.to; h = (h+1) % 24){
+        total += menuDrawAt(daypartAt(h)); n++;
+      }
+    }
+    return n ? total / n : 1;
+  } finally {
+    G = saved;
   }
 }
 
@@ -5185,6 +5278,81 @@ function buildSetup(){
  * landlord. Same lesson as everywhere else on this project: two places doing the same job
  * from different code will eventually disagree, so there is one of them now.
  */
+/* ---------- CONCEPTS ---------- */
+/*
+ * WHAT YOU ARE ATTEMPTING, chosen before you open — mirrored from data/concepts.json.
+ *
+ * These were fixtures in a test file for months, doing real work (the whole distinct-winners
+ * measurement runs on them) while being invisible to the game. They became data in the engine;
+ * this is the half where a player picks one.
+ *
+ * A concept is a CARD, a PRICE POSITION, HOURS, and an opening shape — deliberately no
+ * staffing beyond the fit-out and no floor plan. It says what you are attempting, not how well
+ * you execute it, because Aaron's bar is "you should be able to win with any concept anywhere
+ * if you run the restaurant properly" and that only means something if running it properly
+ * stays the player's job.
+ *
+ * THE OPENING SHAPE IS THE POINT. Every restaurant used to open identically: twelve covers, the
+ * same four boxes, the same cheap card — which measured at 67 covers a night at $11.33 a head
+ * on the city pitch. Restaurant Empire's first scenario asked the player to REACH 35 covers at
+ * about $29. We handed them 67 at a third of the check. Now a pizzeria opens wide and cheap and
+ * a fine-dining room opens small and dear, and the covers-times-check arithmetic follows from
+ * what you said you were building rather than from one default nobody chose.
+ */
+const CONCEPTS = [
+  { id:"cheap-and-cheerful", name:"Cheap and cheerful",
+    blurb:"A short card, priced under the odds. Nothing on it is hard to cook and nothing on it is exciting.",
+    card:["margherita", "house-focaccia", "caprese-salad"],
+    pricePosition:0.9,
+    windows:[{name:"Dinner", from:18, to:23}],
+    seats:20, comfort:0.4, seatSpend:200,
+    kit:["oven-secondhand", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"neighborhood-standard", name:"Neighborhood standard",
+    blurb:"A short card of things people already like, priced a shade above the obvious. Hard to love, hard to get wrong.",
+    card:["margherita", "house-focaccia", "caprese-salad", "sea-bass"],
+    pricePosition:1.1,
+    windows:[{name:"Dinner", from:18, to:23}],
+    seats:16, comfort:0.55, seatSpend:240,
+    kit:["oven-secondhand", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"pizzeria", name:"Pizza and sharing plates",
+    blurb:"Two things, done fast and cheap. Families and locals; nobody comes for the wine list.",
+    card:["margherita", "house-focaccia"],
+    pricePosition:0.95,
+    windows:[{name:"Dinner", from:18, to:23}],
+    seats:24, comfort:0.45, seatSpend:220,
+    kit:["oven-secondhand", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"fine-dining", name:"Fine dining",
+    blurb:"Expensive ingredients, long prep, and a price to match. Loved by more people than can afford it.",
+    card:["sea-bass", "truffle-risotto", "caprese-salad"],
+    pricePosition:1.9,
+    windows:[{name:"Dinner", from:18, to:23}],
+    seats:10, comfort:0.85, seatSpend:520,
+    kit:["grill-flat", "saute-basic", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"coffee-counter", name:"Coffee and counter",
+    blurb:"Breakfast and lunch, out fast. Lives or dies on whether anyone walks past before two.",
+    card:["flat-white", "house-focaccia", "eggs-benedict"],
+    pricePosition:1.0,
+    windows:[{name:"Breakfast", from:7, to:11}, {name:"Lunch", from:12, to:15}],
+    seats:14, comfort:0.5, seatSpend:210,
+    kit:["coffee-filter", "grill-flat", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"wine-bar", name:"Wine bar and small plates",
+    blurb:"A bar that feeds you rather than a restaurant that pours. Needs a liquor license before it is anything at all.",
+    card:["house-wine", "cellar-wine", "negroni", "caprese-salad", "house-focaccia"],
+    pricePosition:1.2,
+    windows:[{name:"Dinner", from:18, to:23}, {name:"Late", from:23, to:2}],
+    seats:14, comfort:0.7, seatSpend:380,
+    kit:["bar-speedrail", "gm-basic", "cold-underbar", "dry-shelving"] },
+  { id:"broad-card", name:"The whole card",
+    blurb:"Everything on the menu. Something for everyone, and a kitchen that pays for it in ticket time and mistakes.",
+    card:["margherita", "house-focaccia", "caprese-salad", "sea-bass", "truffle-risotto", "eggs-benedict"],
+    pricePosition:1.1,
+    windows:[{name:"Dinner", from:18, to:23}],
+    seats:16, comfort:0.55, seatSpend:260,
+    kit:["oven-secondhand", "grill-flat", "saute-basic", "gm-basic", "cold-underbar", "dry-shelving"] }
+];
+
+function conceptById(id){ return CONCEPTS.filter(c => c.id === id)[0] || null; }
+
 const FIT_OUT_KIT = ["oven-secondhand", "gm-basic", "cold-underbar", "dry-shelving"];
 const FIT_OUT_TABLES = 1400;
 
@@ -5194,30 +5362,68 @@ function fitOutCost(){
   return total;
 }
 
-function fitOutOpening(){
-  for(const id of FIT_OUT_KIT) buyEquipSilent(id);
+function fitOutOpening(concept){
+  // No concept means the old default, so every existing probe and save keeps working.
+  const kit = concept ? concept.kit : FIT_OUT_KIT;
+  const seats = concept ? concept.seats : 12;
+  const comfort = concept ? concept.comfort : 0.55;
+  const spend = concept ? concept.seatSpend : 180;
 
-  G.seats = 12; G.seatSpend = 180; G.fittings.push({seats:12, comfort:0.55});
+  for(const id of kit) buyEquipSilent(id);
+
+  G.seats = seats; G.seatSpend = spend;
+  G.fittings.push({seats: seats, comfort: comfort});
+
+  if(concept){
+    // A CONCEPT BUILT ON DRINK COMES WITH THE LICENCE, AND PAYS FOR IT.
+    //
+    // Without this, opening as a wine bar hands you a card where three of the five items
+    // cannot legally be sold, and nothing says so until you notice the takings — which is
+    // exactly the silent failure Aaron hit when he put alcohol on the menu without a licence.
+    // Nobody opens a wine bar and then wonders about the paperwork. It comes out of the
+    // opening capital, so a drinks-led concept is dear to start and earns it back at the bar.
+    if(concept.card.some(id => (RECIPES.filter(x=>x.id===id)[0]||{}).licence)){
+      G.cash -= LICENCE_FEE; G.ledger.capex += LICENCE_FEE;
+      G.licence = true;
+    }
+
+    // THE CARD, THE PRICE AND THE HOURS ARE THE CONCEPT. Everything else -- who you hire, how
+    // big the kitchen gets, what you source -- stays the player's job, because "you should be
+    // able to win with any concept anywhere if you run it properly" only means something if
+    // running it properly is still something you do.
+    G.onMenu = new Set(concept.card);
+    G.windows = concept.windows.map(w => ({name:w.name, from:w.from, to:w.to}));
+    for(const id of concept.card){
+      const r = RECIPES.filter(x => x.id === id)[0];
+      if(r) G.prices[id] = +(designedPrice(r) * concept.pricePosition).toFixed(2);
+    }
+  }
+
   G.cooks.push(makeStaff("cook", 0.5));
   G.servers.push(makeStaff("server", 0.5));
   for(let i=0;i<5;i++) G.applicants.push(makeStaff(i%2===0 ? "cook" : "server"));
 
-  G.cash -= FIT_OUT_TABLES; G.ledger.capex += FIT_OUT_TABLES;
+  // A bigger, better-appointed room costs more to fit out. A fine-dining room is not a
+  // pizzeria with fewer tables in it.
+  const tables = Math.round(FIT_OUT_TABLES * (seats/12) * (0.7 + comfort*0.6));
+  G.cash -= tables; G.ledger.capex += tables;
 
   // And something to cook. An empty pantry is the same problem one layer down.
   for(const id of menuIngredients()) orderStock(id, 30);
 }
 
-function start(site){
+function start(site, conceptId){
   const seed = (Date.now() ^ 0x9e3779b9) >>> 0;
+  const concept = conceptId ? conceptById(conceptId) : null;
   G = newGame(site, seed);
-  fitOutOpening();
-  say("", `Opened on the ${site.name} with ${money(G.cash)} and twelve covers.`);
+  if(concept) G.concept = concept.id;
+  fitOutOpening(concept);
+  say("", `Opened ${concept ? "\u201c" + concept.name + "\u201d " : ""}on the ${site.name} with ${money(G.cash)} and ${G.seats} covers.`);
 
   $("#setup").hidden = true;
   $("#game").hidden = false;
   $("#brand").textContent = "The Pass";
-  $("#brandsub").textContent = site.name + " · dinner service";
+  $("#brandsub").textContent = site.name + (concept ? " · " + concept.name : " · dinner service");
   $("#seedline").textContent = "seed " + seed.toString(16);
   render();
 }

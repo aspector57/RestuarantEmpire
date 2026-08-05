@@ -311,6 +311,64 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         /// <summary>
+        /// CONCEPTS EXIST TWICE NOW — data/concepts.json and CONCEPTS in the browser build.
+        ///
+        /// They were fixtures in a test file before they were data, and consolidating them
+        /// caught a real bug: the wine bar's late service was written 23-&gt;26, the browser
+        /// build's convention, where the engine expresses a midnight wrap as 23-&gt;2. Two
+        /// builds, two conventions for the same idea.
+        ///
+        /// Checks the card and the price position, which are what a concept IS. The opening
+        /// shape (seats, kit, comfort) is browser-only for now and deliberately not checked —
+        /// the engine has no fit-out.
+        /// </summary>
+        [Fact]
+        public void TheBrowserBuildOffersTheSameConcepts()
+        {
+            var path = BrowserBuildPath();
+            Assert.True(path != null, "web/pass.html not found");
+
+            var source = File.ReadAllText(path);
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "data", "concepts.json")))
+                dir = dir.Parent;
+            Assert.True(dir != null, "data/concepts.json not found");
+
+            var json = File.ReadAllText(Path.Combine(dir.FullName, "data", "concepts.json"));
+            var wrong = new List<string>();
+
+            foreach (Match m in Regex.Matches(json,
+                @"""id""\s*:\s*""([^""]+)""(.*?)""pricePosition""\s*:\s*([0-9.]+)", RegexOptions.Singleline))
+            {
+                var id = m.Groups[1].Value;
+                var body = m.Groups[2].Value;
+                var position = decimal.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
+
+                var entry = Regex.Match(source,
+                    @"id:""" + Regex.Escape(id) + @""".*?card:\[(.*?)\].*?pricePosition:\s*([0-9.]+)",
+                    RegexOptions.Singleline);
+                if (!entry.Success) { wrong.Add(id + " — not offered in the browser build"); continue; }
+
+                var actual = decimal.Parse(entry.Groups[2].Value, CultureInfo.InvariantCulture);
+                if (actual != position)
+                    wrong.Add($"{id} price position — browser says {actual}, engine says {position}");
+
+                foreach (Match dish in Regex.Matches(body, @"""([a-z-]+)""(?=\s*[,\]])"))
+                {
+                    var recipeId = dish.Groups[1].Value;
+                    if (recipeId == "recipeIds") continue;
+                    if (!entry.Groups[1].Value.Contains("\"" + recipeId + "\""))
+                        wrong.Add($"{id} — the browser build's card is missing {recipeId}");
+                }
+
+                _out.WriteLine($"  ok   {id,-24} at {position}x");
+            }
+
+            Assert.True(wrong.Count == 0,
+                "Concepts have drifted between the two builds:\n  " + string.Join("\n  ", wrong));
+        }
+
+        /// <summary>
         /// The satisfaction weights must sum to exactly one, in both builds. They are shares of
         /// a single judgement, and a set that sums to 0.98 silently makes every meal worse.
         /// </summary>
