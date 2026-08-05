@@ -602,6 +602,11 @@ function bestHoursForThisStreet(){
                      .sort((a,b) => b.worth - a.worth)[0];
 }
 
+/* How long the same problem stays old news before it is worth stopping a jump for again.
+   Long enough that ignoring something deliberately is respected; short enough that a
+   worsening situation still gets back in front of you. */
+const INTERRUPT_QUIET_DAYS = 14;
+
 const STORAGE_STATIONS_JS = { "cold-storage":1, "dry-storage":1 };
 const STATION_NAMES = {
   "oven":"oven", "saute":"range", "garde-manger":"cold section",
@@ -919,7 +924,7 @@ function newSite(site, id, name){
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
-    concept: null,
+    concept: null, spoiltBy: {},
     rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -955,7 +960,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics","rivals","supplierOut","leaseSetOn","extras","concept"
+  "metrics","rivals","supplierOut","leaseSetOn","extras","concept","spoiltBy"
 ];
 
 function bindActiveSite(G){
@@ -2318,6 +2323,13 @@ function runDay(){
         for(const x of extrasOn(pick.id)) for(const k in x.ing) consume(k, x.ing[k]);
       for(const x of extrasOn(pick.id)) for(const k in x.ing) consume(k, x.ing[k]);
         d.food += cost; d.wasted = (d.wasted||0) + cost; d.remakes = (d.remakes||0) + 1;
+
+        // WHICH DISH, not just how many. Aaron's day-64 log has roughly twenty comps in it and
+        // almost every one is the Black Truffle Risotto -- two cooks at 3.5/5 against the most
+        // complex thing on the card. The number was recorded and the CULPRIT was thrown away,
+        // so the player saw a steady bleed with no name on it and nothing to act on.
+        G.spoiltBy = G.spoiltBy || {};
+        G.spoiltBy[pick.id] = (G.spoiltBy[pick.id] || 0) + 1;
         slots[booked.si] += booked.cookTime;
         if(G.rand() < 0.35){
           d.comped = (d.comped||0) + 1;
@@ -2600,6 +2612,34 @@ function advise(){
     out.push({ rank:1, id:"floor", head:"We are paying for more floor staff than the room needs.",
       body:`${G.servers.length} servers can hold ${seatsHeld} covers and there are ${G.seats} seats. One fewer would not be noticed.` });
 
+  // A DISH YOUR KITCHEN CANNOT COOK IS A DECISION, AND IT HAD NO VOICE.
+  //
+  // Mistake chance is skill AND complexity, so a cheap brigade on a demanding dish
+  // wastes food relentlessly -- that mechanic works and is measured. What was missing is
+  // that nothing ever NAMED the dish. The player sees "3 plates remade" every night for
+  // two months and cannot tell it is one item doing it, so the two real moves -- take it
+  // off the card, or hire a kitchen that can cook it -- never occur to them.
+  const spoilt = G.spoiltBy || {};
+  let worstDish = null, worstCount = 0, totalSpoilt = 0;
+  for(const id in spoilt){
+  totalSpoilt += spoilt[id];
+  if(spoilt[id] > worstCount && G.onMenu.has(id)){ worstCount = spoilt[id]; worstDish = id; }
+  }
+  if(worstDish && worstCount >= 8 && worstCount >= totalSpoilt * 0.4){
+  const r = RECIPES.filter(x => x.id === worstDish)[0];
+  const share = totalSpoilt > 0 ? Math.round(worstCount/totalSpoilt*100) : 0;
+  if(r) out.push({ rank:2, id:"cannotcook",
+  head: `The kitchen keeps getting the ${r.name} wrong.`,
+  body: `${worstCount} of them have gone back so far — ${share}% of everything this ` +
+  `kitchen has spoiled, off one dish. It is the most demanding thing on the card ` +
+  `at ${r.prep} minutes, and ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ` +
+  `${(avgSkill(G.cooks)*5).toFixed(1)}/5 ${G.cooks.length===1?"is":"are"} not yet good enough to send it out ` +
+  `reliably. Every one costs the ingredients twice and the cover as well. Either ` +
+  `take it off the card until the kitchen has grown into it, or hire someone who ` +
+  `can already cook it — a better brigade is the only thing that fixes this.`,
+  needsWage: true, role: "cook" });
+  }
+
   // --- 2. Runway. Know before you spend. ---
   // NOT BEFORE IT HAS OPENED. With no trading history the burn falls back to gross outgoings,
   // so every new game began with a death warning before serving a single cover — and the brake
@@ -2607,7 +2647,7 @@ function advise(){
   // You cannot be running out of money at a rate nobody has measured yet.
   const traded = G.recent.length >= 5;
   if(traded && runway < 2 && monthlyBurn() > 0)
-    out.push({ rank:2, id:"runway", head:"There is less than two months of money left.",
+  out.push({ rank:2, id:"runway", head:"There is less than two months of money left.",
       body:`${money(G.cash)} against about ${money(monthlyBurn())} a month going out. Anything that adds a wage is a bad idea until this turns.` });
 
   // --- 3. The bottleneck, named. This is the one that pays. ---
@@ -2998,6 +3038,28 @@ function advise(){
   // --- 6. Prime cost. The number that decides whether a restaurant lives. ---
   if(G.ledger.revenue > 1000){
     const prime = (G.ledger.food + G.ledger.labor) / G.ledger.revenue;
+
+    // FOOD ON ITS OWN, because cheap labour hides expensive food and prime cost cannot see it.
+    //
+    // Aaron's day-64 run: food $96,781 on revenue $206,271 -- 47%, well outside the trade's
+    // 28-35% band -- but labour was only 8%, so prime came to 55% and the rule below stayed
+    // quiet all the way through. The trade tracks the two separately for exactly this reason.
+    // Premium stock at 1.37x is a real strategy; running it at a 47% food cost while turning
+    // 154 covers a night away is a decision nobody put in front of him.
+    const foodShare = G.ledger.food / G.ledger.revenue;
+    if(foodShare > 0.40){
+      const band = Math.round(foodShare * 100);
+      out.push({ rank:5, id:"foodcost",
+        head: `The ingredients are eating ${band}% of everything we take.`,
+        body: `A kitchen usually runs 28-35% and this one is at ${band}%, on ${supplierOf().name}. ` +
+              `Labour is only ${Math.round(G.ledger.labor/G.ledger.revenue*100)}% here, so the ` +
+              `books look survivable and the food bill is the thing quietly taking the money. ` +
+              `Three ways out, and they are genuinely different: charge more for what you are ` +
+              `already buying, drop a tier on the things guests cannot tell apart, or take the ` +
+              `dearest dish off the card. Sourcing well is a real strategy — it just has to be ` +
+              `priced like one.` });
+    }
+
     if(prime > 0.70)
       out.push({ rank:6, id:"prime", head:"Food and wages are eating almost everything we take.",
         body:`${Math.round(prime*100)}% of revenue goes on food and staff before rent. Under 65% is where a restaurant can breathe.` });
@@ -3425,6 +3487,7 @@ function withSite(i, fn){
  */
 function advance(days, stopOnInterrupt){
   let stoppedOn = null;
+  if(G.stoppedFor === undefined){ G.stoppedFor = null; G.stoppedOnDay = -999; }
 
   for(let i=0;i<days;i++){
     let interrupted = null;
@@ -3490,10 +3553,35 @@ function advance(days, stopOnInterrupt){
         // noticed, and the first harness to pass false got one day of trading and four
         // failed assertions. A parameter that does not do what it says is worse than no
         // parameter: it makes a caller confident about behaviour it is not getting.
+        // THE SAME SENTENCE FORTY TIMES IS NOT FORTY INTERRUPTIONS.
+        //
+        // Aaron's day-64 log reads "Stopped after 1 day of 7 — something needs you" on nearly
+        // every day of the run, always for the same underlying problem, and CLAUDE.md recorded
+        // this exact failure at M1(b): "almost every stop was the same sentence... perhaps
+        // fifteen times across twenty days." Fast-forward compresses in-game time, so
+        // repetition arrives far sooner in real playtime than a per-night design suggests.
+        //
+        // A jump is a bet that nothing needs you, and the game owes you the moment that bet is
+        // wrong -- ONCE. Being told again tomorrow about a problem you have already seen and
+        // chosen not to fix is not information, it is nagging, and it trains the player to
+        // stop reading the stops entirely. So an interrupt halts a jump when it is NEW, or
+        // when it has been long enough that it counts as news again.
         const int_ = checkInterrupts(d);
         if(int_ && stopOnInterrupt !== false && !interrupted){
           G.interrupt = int_;
-          interrupted = { at: siteIndex, kind: int_ };
+
+          // `kind` is the stable one. Falling back to `title` made every interrupt look new,
+          // because the title carries the nightly count -- "26 parties looked at the wait and
+          // left" is a different string tomorrow for the identical problem.
+          const kind = int_.kind || "interrupt";
+          const seenBefore = G.stoppedFor === kind;
+          const staleEnough = (G.day - (G.stoppedOnDay || -999)) >= INTERRUPT_QUIET_DAYS;
+
+          if(!seenBefore || staleEnough){
+            G.stoppedFor = kind;
+            G.stoppedOnDay = G.day;
+            interrupted = { at: siteIndex, kind: int_ };
+          }
         }
       });
     }
@@ -4052,13 +4140,32 @@ function fullTranscript(){
              standing:w[w.length-1].standing, known:avg("known"),
              walkouts:avg("walkouts"), balkPrice:avg("balkPrice") };
   };
-  const moves = G.log.filter(e => e.kind === "you").slice().reverse();
-  if(!moves.length) L.push("(no decisions recorded yet)");
-  moves.forEach(m => {
+  // GROUPED BY DAY, because a day is the smallest thing this can actually resolve.
+  //
+  // Aaron made fifteen changes on day 16 -- a hire, a chargrill, five extras, a supplier
+  // switch -- and the report printed the SAME "+21.4 covers, +411 profit" fifteen times, once
+  // under each. Read literally that says the chargrill was worth +21 covers and so was the
+  // basil, which is worse than saying nothing: it is fifteen confident wrong attributions.
+  //
+  // A fortnight either side cannot separate two changes made the same afternoon, and
+  // pretending otherwise is the whole problem. So the day is the unit, everything done that
+  // day is listed together, and the numbers are stated once as what the DAY did.
+  const byDay = {};
+  G.log.filter(e => e.kind === "you").forEach(e => (byDay[e.day] = byDay[e.day] || []).push(e.text));
+  const days = Object.keys(byDay).map(Number).sort((a,b) => a-b);
+
+  if(!days.length) L.push("(no decisions recorded yet)");
+  days.forEach(day => {
+    const m = { day: day };
     const before = window_(m.day-14, m.day), after = window_(m.day, m.day+14);
     if(!before || !after) return;
     const d2 = (a,b,dp) => { const x = b-a; return (x>=0?"+":"") + x.toFixed(dp===undefined?1:dp); };
-    L.push(`d${String(m.day).padStart(4,"0")}  ${m.text}`);
+
+    const what = byDay[day];
+    L.push(`d${String(m.day).padStart(4,"0")}  ${what.length === 1 ? what[0] : what.length + " changes made this day:"}`);
+    if(what.length > 1) what.forEach(x => L.push(`          - ${x}`));
+    if(what.length > 1)
+      L.push(`        (these cannot be told apart — a fortnight either side measures the DAY, not any one of them)`);
     L.push(`        covers ${before.covers.toFixed(1)} -> ${after.covers.toFixed(1)} (${d2(before.covers,after.covers)})` +
            `   profit ${Math.round(before.profit)} -> ${Math.round(after.profit)} (${d2(before.profit,after.profit,0)})`);
     L.push(`        satisfaction ${before.sat.toFixed(3)} -> ${after.sat.toFixed(3)} (${d2(before.sat,after.sat,3)})` +
