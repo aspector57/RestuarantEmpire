@@ -11,19 +11,23 @@
     "rich",
     "classic"
   ],
-  "menuPrice": 13.0,
+  "menuPrice": 16.0,
   "ingredients": [
     {
       "ingredientId": "eggs",
-      "quantity": 0.17
+      "quantity": 0.14
+    },
+    {
+      "ingredientId": "cured-ham",
+      "quantity": 0.09
+    },
+    {
+      "ingredientId": "muffin",
+      "quantity": 0.11
     },
     {
       "ingredientId": "butter",
-      "quantity": 0.04
-    },
-    {
-      "ingredientId": "flour",
-      "quantity": 0.08
+      "quantity": 0.05
     }
   ],
   "category": "main"

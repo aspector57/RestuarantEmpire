@@ -21,11 +21,11 @@
         "olive-oil": 6.0,
         "arborio-rice": 3.0,
         "parmesan": 12.0,
-        "truffle": 1.8,
+        "truffle": 1.5,
         "coffee-beans": 9.0,
         "eggs": 2.4,
         "butter": 5.0,
-        "sea-bass": 11.0,
+        "sea-bass": 22.0,
         "lemon": 1.6,
         "house-red": 11.0,
         "house-white": 10.0,
@@ -33,7 +33,9 @@
         "draught-beer": 3.2,
         "gin": 18.0,
         "vermouth": 11.0,
-        "citrus": 2.4
+        "citrus": 2.4,
+        "cured-ham": 14.0,
+        "muffin": 4.5
       }
     },
     {
@@ -48,11 +50,11 @@
         "olive-oil": 11.0,
         "arborio-rice": 4.5,
         "parmesan": 18.0,
-        "truffle": 2.6,
+        "truffle": 2.3,
         "coffee-beans": 15.0,
         "eggs": 3.6,
         "butter": 8.0,
-        "sea-bass": 18.0,
+        "sea-bass": 32.0,
         "lemon": 2.4,
         "house-red": 16.0,
         "house-white": 15.0,
@@ -60,7 +62,9 @@
         "draught-beer": 4.4,
         "gin": 26.0,
         "vermouth": 16.0,
-        "citrus": 3.4
+        "citrus": 3.4,
+        "cured-ham": 21.0,
+        "muffin": 6.0
       }
     },
     {
@@ -75,11 +79,11 @@
         "olive-oil": 22.0,
         "arborio-rice": 7.0,
         "parmesan": 28.0,
-        "truffle": 6.5,
+        "truffle": 3.4,
         "coffee-beans": 26.0,
         "eggs": 5.4,
         "butter": 13.0,
-        "sea-bass": 29.0,
+        "sea-bass": 46.0,
         "lemon": 3.8,
         "house-red": 24.0,
         "house-white": 23.0,
@@ -87,7 +91,9 @@
         "draught-beer": 6.0,
         "gin": 38.0,
         "vermouth": 24.0,
-        "citrus": 4.8
+        "citrus": 4.8,
+        "cured-ham": 31.0,
+        "muffin": 8.5
       }
     },
     {
@@ -116,11 +122,11 @@
         "olive-oil": 9.02,
         "arborio-rice": 3.69,
         "parmesan": 14.76,
-        "truffle": 2.13,
+        "truffle": 1.9,
         "coffee-beans": 12.3,
         "eggs": 2.95,
         "butter": 6.56,
-        "sea-bass": 14.76,
+        "sea-bass": 27.0,
         "lemon": 1.97,
         "house-red": 13.12,
         "house-white": 12.3,
@@ -128,7 +134,9 @@
         "draught-beer": 3.61,
         "gin": 21.32,
         "vermouth": 13.12,
-        "citrus": 2.79
+        "citrus": 2.79,
+        "cured-ham": 17.0,
+        "muffin": 5.2
       }
     }
   ]

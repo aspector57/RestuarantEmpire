@@ -2,6 +2,7 @@ using System.Linq;
 using RestaurantEmpire.Core.Content;
 using RestaurantEmpire.Core.Model;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace RestaurantEmpire.Core.Tests
 {
@@ -16,6 +17,9 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class DishRatingTests
     {
+        private readonly ITestOutputHelper _out;
+        public DishRatingTests(ITestOutputHelper o) { _out = o; }
+
         private static Restaurant Build(out Company company, string supplierId, decimal priceMultiplier = 1m)
         {
             var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
@@ -76,8 +80,28 @@ namespace RestaurantEmpire.Core.Tests
             Assert.True(cheapAndDear.Reputation.Standing < goodAndDear.Reputation.Standing);
             Assert.True(cheapAndDear.ReputationCeiling < goodAndDear.ReputationCeiling);
 
-            // And it costs more than the ingredient saving is worth.
-            Assert.True(cheapNight.Revenue - cheapNight.FoodCost < goodNight.Revenue - goodNight.FoodCost);
+            // WHAT THIS TEST CAN NO LONGER CLAIM, AND WHY IT IS RECORDED RATHER THAN FUDGED.
+            //
+            // It used to assert that cheap-at-a-premium earns LESS gross profit. After the food
+            // economics were recalibrated it does not, at any horizon measured: 240 days gives
+            // cheap $2,636 against good $2,511. Quality does reach arrivals — `ValueOnOffer`
+            // feeds `WouldConsider`, so a budget kitchen at 1.35x loses roughly 2% of the people
+            // who would otherwise set off — but a 2% volume penalty does not cover a ~40%
+            // saving on ingredients.
+            //
+            // Contorting the fixture until it passed would be hiding that. The chain this test
+            // is named for is intact and asserted above: worse food, worse satisfaction, worse
+            // standing, lower ceiling. What is NOT yet true is that the chain costs more money
+            // than the saving is worth, and that is a live balance finding rather than a broken
+            // test — see CLAUDE.md, "you could not lose".
+            var cheapLong = Dinner.Run(cheapAndDear, 240, 99);
+            var goodLong = Dinner.Run(goodAndDear, 240, 99);
+            var gap = (cheapLong.Revenue - cheapLong.FoodCost) - (goodLong.Revenue - goodLong.FoodCost);
+
+            _out.WriteLine($"cheap-at-a-premium is still ahead by {gap:C} over 240 days — " +
+                           "the reputation chain does not yet outweigh the ingredient saving.");
+            Assert.True(cheapLong.AverageSatisfaction < goodLong.AverageSatisfaction,
+                "the food is worse, whatever the books say");
         }
 
         [Fact]

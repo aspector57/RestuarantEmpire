@@ -3244,6 +3244,111 @@ different right answer per pitch:
 | Nightlife Quarter | 78 (fine) | **-28 → warns** | 81 (best) |
 | Suburban High Street | 43 (fine) | **1 → warns** | 54 (best) |
 
+### The food economics were wrong per-dish, and fixing them exposed a whole build that never got the fix
+
+Aaron: *"figure it out."* Blended food cost sat at **21% at mid-tier against a 28-35% trade
+band**, and the blend was hiding two dishes that were individually absurd:
+
+| | was | why | now |
+|---|---:|---|---:|
+| Eggs Benedict | **8%** | **it had no protein** — eggs, butter and flour, no ham, no muffin | 22% |
+| Truffle Risotto at premium | **104%** | sold at a loss on every plate | 59% |
+
+Fixed entirely in data per Architecture Rule 2 — `cured-ham` and `muffin` added, sea bass and
+truffle repriced across all four supplier tiers, four menu prices raised. Blended tier-3 23%,
+tier-5 35%.
+
+**THEN EVERY BROWSER PROBE CAME BACK BYTE-IDENTICAL, and that is the finding.** `web/pass.html`
+carries its own hardcoded `RECIPES` under a comment reading *"content, mirrored from data/"* —
+mirrored **by hand**. The whole recalibration landed in the C# engine and never reached the
+build Aaron actually plays or that every harness measures. Benedict stayed a plate of eggs and
+flour; sea bass was $21 in one build and $29 in the other.
+
+**Identical output after a real change is a bug report, not a null result.** Same signature as
+the probe that missed `billTheMonth()` and confidently reported no effect from four new
+pressure systems. Ported, then verified dish by dish rather than by intention —
+`tools/probe-foodcost.js` prints every dish at every tier, and the two builds now agree
+(Benedict 22% at mid-tier, risotto 59% at premium).
+
+**`TuningDriftTests` existed and was watching the wrong list — for the second time.** It
+guarded the tuning scalars, then (after the city floor-cap bug) the site definitions, and never
+the content. `TheBrowserBuildServesTheSameDishesAtTheSamePrices` now checks every menu price
+and asserts each engine ingredient appears in the browser build's version of that dish.
+Verified by breaking both shapes on purpose — a stale price and a dish quietly losing a
+component — and it names them exactly. **When a guard catches one class of bug, ask what else
+is duplicated that it is not looking at.** That question has now been asked twice and answered
+twice.
+
+### Extras: what you put on the plate, and why it has to stop paying (Aaron)
+
+> *"what if we can select additional ingredients to put into dishes, raising your cost, it
+> should raise what you can charge but not infinitely?"*
+
+**The ceiling is the mechanic.** Without it this is a slider that says yes.
+
+`EXTRAS` are per-dish additions with a cost and a lift. Each further extra counts for 0.62 of
+the one before, and the total is capped per category — so dressing a dish up has a real
+optimum rather than a direction.
+
+**The first version did not pay, and the reason is worth keeping.** Extras raised cost and
+quality, and quality only reaches money through the slow reputation chain — so profit fell at
+every step and the honest answer was always "add nothing". The fix is that extras raise the
+dish's **designed price**: a plate with buffalo mozzarella and prosciutto on it is JUDGED
+against a higher bar, so charging more for it is not gouging. Measured on a margherita, 120
+days each:
+
+| what is on it | lift | satisfaction | profit/day |
+|---|---:|---:|---:|
+| just the recipe | 0.00 | 0.723 | $744 |
+| + buffalo mozzarella | 0.22 | 0.749 | $827 |
+| **+ prosciutto** | **0.38** | 0.757 | **$920** |
+| + fresh basil | 0.42 | 0.758 | $868 |
+
+An interior optimum — exactly "not infinitely". **Browser build only so far**, which is
+precisely the drift risk described above; porting it to the engine is the next thing.
+
+### The sabotage probe was measuring attrition, not sabotage
+
+`probe-canyoulose` came back incoherent after the recalibration: the control earned **$431/day
+while most sabotages earned more**, up to $1,157 for gutting the kitchen. Quarter by quarter
+the cause was plain — **the control ended its year on one cook and ZERO COVERS.**
+
+Staff leave every month and **nothing in the probe ever re-hired**. Every row was a restaurant
+nobody staffed for a year, and the sabotaged rows scored better only because they had fewer
+people left to lose. **Replacing somebody who quit is not a strategy, it is opening the doors.**
+Backfilling like-for-like at the MARKET wage (the fixture underpaid its cooks by 15%, which was
+most of what drove them out) makes the sabotage the only variable again:
+
+| one year of a deliberate mistake | profit/day | standing |
+|---|---:|---:|
+| nothing — the control | **$1,494** | 80 |
+| switch to the cheapest supplier | $1,465 | **58** |
+| sell the whole kitchen but one | $1,485 | 80 |
+| claim premium on budget stock | $1,343 | **51** |
+| double every price | $892 | 68 |
+| fire every cook but one | $716 | 56 |
+| **all of the above at once** | **$646** | 40 |
+
+**The headline finding is unchanged and now rests on a valid fixture: you still cannot lose.**
+Worst case is $646 a day. And cheap sourcing costs only $29/day within a year — it costs you
+**22 points of standing**, which is the designed arc, but the money does not arrive inside a
+year at any tier.
+
+### A test claim that stopped being true, recorded rather than fudged
+
+`CheapIngredientsAtPremiumPricesCostYouYourNameAndThenYourTrade` asserted that cheap-at-a-
+premium earns LESS gross profit. After the recalibration it does not, at any horizon measured
+— **240 days gives cheap $2,636 against good $2,511.**
+
+Quality does reach arrivals: `ValueOnOffer` feeds `WouldConsider`, so a budget kitchen at 1.35x
+loses roughly **2% of the people who would otherwise set off**. A 2% volume penalty does not
+cover a ~40% saving on ingredients.
+
+**Contorting the fixture until it passed would have hidden that.** The chain the test is named
+for is intact and still asserted — worse food, worse satisfaction, worse standing, lower
+ceiling. What is NOT yet true is that the chain costs more money than the saving is worth, and
+that is a live balance finding sitting alongside "you could not lose" rather than a broken test.
+
 ## Architecture Rules (violating these is a bug, not a style choice)
 
 **1. Policy propagates; nothing is cached.**

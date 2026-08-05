@@ -621,24 +621,26 @@ const INGREDIENTS = {
   truffle:"Black Truffle", "coffee-beans":"Coffee Beans", eggs:"Eggs", butter:"Butter",
   "sea-bass":"Sea Bass", lemon:"Lemon",
   "house-red":"House Red Wine", "house-white":"House White Wine", "fine-red":"Cellar Red",
-  "draught-beer":"Draught Beer", gin:"Gin", vermouth:"Vermouth", citrus:"Citrus and Garnish"
+  "draught-beer":"Draught Beer", gin:"Gin", vermouth:"Vermouth", citrus:"Citrus and Garnish",
+  "cured-ham":"Cured Ham", muffin:"Muffins"
 };
 
 // Days before it turns; ZERO means it keeps. Mirrors data/ingredients.json.
 const SHELF = { "house-red":0, "house-white":0, "fine-red":0, "draught-beer":0, gin:0, vermouth:0, citrus:12,
   flour:0, "olive-oil":0, "arborio-rice":0, "coffee-beans":0, parmesan:0,
-                "sea-bass":4, basil:7, truffle:7, tomato:10, mozzarella:14, eggs:21, lemon:21, butter:30 };
+                "sea-bass":4, muffin:5, basil:7, truffle:7, tomato:10, mozzarella:14,
+                "cured-ham":18, eggs:21, lemon:21, butter:30 };
 
 const SUPPLIERS = [
   { id:"budget-wholesale", name:"Budget Wholesale Foods", tier:1, prices:{
     flour:1.2,tomato:2.0,mozzarella:6.0,basil:1.0,"olive-oil":6.0,"arborio-rice":3.0,
-    parmesan:12.0,truffle:1.8,"coffee-beans":9.0,eggs:2.4,butter:5.0,"sea-bass":11.0,lemon:1.6,"house-red":11.0,"house-white":10.0,"fine-red":26.0,"draught-beer":3.2,gin:18.0,vermouth:11.0,citrus:2.4 } },
+    parmesan:12.0,truffle:1.5,"coffee-beans":9.0,eggs:2.4,butter:5.0,"sea-bass":22.0,lemon:1.6,"house-red":11.0,"house-white":10.0,"fine-red":26.0,"draught-beer":3.2,gin:18.0,vermouth:11.0,citrus:2.4,"cured-ham":14.0,muffin:4.5 } },
   { id:"valley-produce", name:"Valley Produce Co.", tier:3, prices:{
     flour:1.8,tomato:3.0,mozzarella:9.0,basil:1.6,"olive-oil":11.0,"arborio-rice":4.5,
-    parmesan:18.0,truffle:2.6,"coffee-beans":15.0,eggs:3.6,butter:8.0,"sea-bass":18.0,lemon:2.4,"house-red":16.0,"house-white":15.0,"fine-red":42.0,"draught-beer":4.4,gin:26.0,vermouth:16.0,citrus:3.4 } },
+    parmesan:18.0,truffle:2.3,"coffee-beans":15.0,eggs:3.6,butter:8.0,"sea-bass":32.0,lemon:2.4,"house-red":16.0,"house-white":15.0,"fine-red":42.0,"draught-beer":4.4,gin:26.0,vermouth:16.0,citrus:3.4,"cured-ham":21.0,muffin:6.0 } },
   { id:"premium-harvest", name:"Premium Harvest Partners", tier:5, prices:{
     flour:2.6,tomato:5.0,mozzarella:14.0,basil:2.8,"olive-oil":22.0,"arborio-rice":7.0,
-    parmesan:28.0,truffle:6.5,"coffee-beans":26.0,eggs:5.4,butter:13.0,"sea-bass":29.0,lemon:3.8,"house-red":24.0,"house-white":23.0,"fine-red":78.0,"draught-beer":6.0,gin:38.0,vermouth:24.0,citrus:4.8 } }
+    parmesan:28.0,truffle:3.4,"coffee-beans":26.0,eggs:5.4,butter:13.0,"sea-bass":46.0,lemon:3.8,"house-red":24.0,"house-white":23.0,"fine-red":78.0,"draught-beer":6.0,gin:38.0,vermouth:24.0,citrus:4.8,"cured-ham":31.0,muffin:8.5 } }
 ];
 
 const DAYPART_ORDER = { breakfast:0, lunch:1, dinner:2 };
@@ -664,11 +666,11 @@ const RECIPES = [
     dayparts:["dinner","latenight"], tags:["cocktail","luxury","refined"], base:16.0, licence:true,
     ing:{gin:0.03, vermouth:0.03, citrus:0.01} },
   { id:"caprese-salad", cat:"small plate", name:"Caprese Salad", station:"garde-manger", prep:4,
-    dayparts:["lunch","dinner"], tags:["salad","vegetarian","light","refined"], base:11,
+    dayparts:["lunch","dinner"], tags:["salad","vegetarian","light","refined"], base:12,
     ing:{tomato:.25, mozzarella:.18, basil:.04, "olive-oil":.02} },
   { id:"eggs-benedict", cat:"main", name:"Eggs Benedict", station:"grill", prep:8,
-    dayparts:["breakfast"], tags:["brunch","rich","classic"], base:13,
-    ing:{eggs:.17, butter:.04, flour:.08} },
+    dayparts:["breakfast"], tags:["brunch","rich","classic"], base:16,
+    ing:{eggs:.14, "cured-ham":.09, muffin:.11, butter:.05} },
   { id:"flat-white", cat:"drink", name:"Flat White", station:"coffee", prep:3,
     dayparts:["breakfast","lunch"], tags:["coffee","quick"], base:3.8,
     ing:{"coffee-beans":.018} },
@@ -676,10 +678,10 @@ const RECIPES = [
     dayparts:[], tags:["bread","vegetarian","light","quick","sharing"], base:8,
     ing:{flour:.3, "olive-oil":.04, basil:.02} },
   { id:"margherita", cat:"main", name:"Pizza Margherita", station:"oven", prep:9,
-    dayparts:["lunch","dinner"], tags:["pizza","vegetarian","classic","sharing"], base:14,
+    dayparts:["lunch","dinner"], tags:["pizza","vegetarian","classic","sharing"], base:15,
     ing:{flour:.25, tomato:.2, mozzarella:.15, basil:.02, "olive-oil":.015} },
   { id:"sea-bass", cat:"main", name:"Grilled Sea Bass", station:"grill", prep:11,
-    dayparts:["lunch","dinner"], tags:["seafood","light","refined"], base:21,
+    dayparts:["lunch","dinner"], tags:["seafood","light","refined"], base:29,
     ing:{"sea-bass":.22, lemon:.05, "olive-oil":.02} },
   { id:"truffle-risotto", cat:"main", name:"Black Truffle Risotto", station:"saute", prep:16,
     dayparts:["dinner"], tags:["rice","vegetarian","luxury","rich"], base:34,
@@ -900,6 +902,7 @@ function newSite(site, id, name){
     campaign: null,          // { claim, channel } — what you say, and where you say it
     lastAdvice: null,        // so the rail records advice when it CHANGES, not every day
     metrics: [],             // one full row per day, so effects can be measured rather than guessed
+    extras: {},              // per dish: which optional ingredients you have chosen
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
@@ -938,7 +941,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics","rivals","supplierOut","leaseSetOn"
+  "metrics","rivals","supplierOut","leaseSetOn","extras"
 ];
 
 function bindActiveSite(G){
@@ -998,6 +1001,13 @@ function unitPrice(id){ return supplierOf().prices[id] || 0; }
 // Only what the card actually cooks. Stocking things you never serve is the purest form of
 // over-ordering, and it bins itself week after week.
 function menuIngredients(){
+  // Additions are ordered like any other ingredient, or choosing one would quietly 86 the dish.
+  const fromExtras = [];
+  for(const id of G.onMenu) for(const x of extrasOn(id)) for(const k in x.ing) fromExtras.push(k);
+  return Array.from(new Set(fromExtras.concat(menuIngredientsBase())));
+}
+
+function menuIngredientsBase(){
   const used = new Set();
   for(const r of RECIPES) if(G.onMenu.has(r.id)) for(const k in r.ing) used.add(k);
   return [...used];
@@ -1117,6 +1127,9 @@ function consume(id, qty){
 
 function canCook(recipe){
   for(const k in recipe.ing) if(stockOf(k) < recipe.ing[k]) return false;
+  // An addition you have chosen is part of the dish now — you cannot serve half a plate.
+  for(const x of extrasOn(recipe.id))
+    for(const k in x.ing) if(stockOf(k) < x.ing[k]) return false;
   return true;
 }
 
@@ -1149,7 +1162,106 @@ function binWhatWentOff(){
 }
 
 function supplierOf(){ return SUPPLIERS.find(s=>s.id===G.supplier); }
+/* =========================================================================
+   WHAT YOU PUT ON THE PLATE — Aaron's idea, and it is a better answer than the one it replaced.
+
+   *"what if we can select additional ingredients to put into dishes, raising your cost, it
+   should raise what you can charge but not infinitely? and you need to have accurate
+   ingredients for the dish."*
+
+   The problem it solves: food cost was a constant I was hand-calibrating, and calibrating it
+   was going badly — the solver's honest answer to "why is eggs benedict 8%" was to price eggs
+   at $13.89, when the real answer was that the recipe had NO PROTEIN IN IT. A number nobody
+   chose is a number nobody can be wrong about.
+
+   Composition makes it a decision instead. The base recipe is what the dish IS — take the
+   mozzarella out of a caprese and it stops being one — and that is the accuracy constraint.
+   Everything beyond it is yours: better cheese, a protein, a garnish. Each one costs money and
+   makes the plate better.
+
+   NOT INFINITELY, which is the part that makes it a decision rather than a slider. Each
+   addition lifts less than the one before, and every dish has a ceiling set by what it is: you
+   cannot turn focaccia into a forty-dollar plate by burying it in truffle. Past the ceiling you
+   are buying ingredients nobody is paying you for.
+   ========================================================================= */
+
+const EXTRAS = {
+  "margherita": [
+    { id:"buffalo",  name:"Buffalo mozzarella",  ing:{ "mozzarella":0.08 }, lift:0.22 },
+    { id:"parma",    name:"Prosciutto",          ing:{ "cured-ham":0.05 },  lift:0.26 },
+    { id:"basil",    name:"Torn fresh basil",    ing:{ "basil":0.03 },      lift:0.10 }
+  ],
+  "caprese-salad": [
+    { id:"buffalo",  name:"Buffalo mozzarella",  ing:{ "mozzarella":0.09 }, lift:0.26 },
+    { id:"goodoil",  name:"Estate olive oil",    ing:{ "olive-oil":0.03 },  lift:0.14 }
+  ],
+  "house-focaccia": [
+    { id:"goodoil",  name:"Estate olive oil",    ing:{ "olive-oil":0.04 },  lift:0.16 },
+    { id:"rosemary", name:"Rosemary and salt",   ing:{ "basil":0.02 },      lift:0.09 }
+  ],
+  "sea-bass": [
+    { id:"biggerfish", name:"A larger fillet",   ing:{ "sea-bass":0.08 },   lift:0.20 },
+    { id:"butter",   name:"Beurre blanc",        ing:{ "butter":0.06 },     lift:0.18 },
+    { id:"truffled", name:"Shaved truffle",      ing:{ "truffle":1.2 },     lift:0.24 }
+  ],
+  "truffle-risotto": [
+    { id:"moretruffle", name:"A heavier hand with the truffle", ing:{ "truffle":2.0 }, lift:0.22 },
+    { id:"parmesan", name:"Aged parmesan",       ing:{ "parmesan":0.05 },   lift:0.16 }
+  ],
+  "eggs-benedict": [
+    { id:"salmon",   name:"Smoked salmon instead of ham", ing:{ "sea-bass":0.07 }, lift:0.22 },
+    { id:"extraegg", name:"A third egg",         ing:{ "eggs":0.07 },       lift:0.09 }
+  ]
+};
+
+/* A dish can only be lifted so far before the plate stops carrying it. Set by what the dish IS
+   — bread has a lower ceiling than a fish course, however much you spend on it. */
+const LIFT_CEILING = { "small plate":0.30, "main":0.55, "drink":0.15, "dessert":0.35, "side":0.25 };
+
+function extrasOn(recipeId){
+  const chosen = (G.extras && G.extras[recipeId]) || [];
+  return (EXTRAS[recipeId] || []).filter(x => chosen.indexOf(x.id) >= 0);
+}
+
+/* DIMINISHING, then capped. The second good thing on a plate is worth less than the first, and
+   past the ceiling you are buying ingredients nobody is paying you for. */
+function extrasLift(recipeId){
+  const r = RECIPES.filter(x => x.id === recipeId)[0];
+  const ceiling = LIFT_CEILING[r ? (r.cat || "main") : "main"] || 0.4;
+  let lift = 0, factor = 1;
+  for(const x of extrasOn(recipeId)){
+    lift += x.lift * factor;
+    factor *= 0.62;                      // each one counts less than the last
+  }
+  return Math.min(ceiling, lift);
+}
+
+/* What the additions cost, per plate. Charged like any other ingredient. */
+function extrasCost(recipeId){
+  let c = 0;
+  for(const x of extrasOn(recipeId))
+    for(const k in x.ing) c += unitPrice(k) * x.ing[k];
+  return c;
+}
+
+/* True when you are spending on a plate that cannot carry any more — the signal that you have
+   gone past the point of it being worth anything. */
+function extrasOverdone(recipeId){
+  const r = RECIPES.filter(x => x.id === recipeId)[0];
+  const ceiling = LIFT_CEILING[r ? (r.cat || "main") : "main"] || 0.4;
+  let raw = 0, factor = 1;
+  for(const x of extrasOn(recipeId)){ raw += x.lift * factor; factor *= 0.62; }
+  return raw > ceiling + 0.001;
+}
+
 function plateCost(r){
+  // The additions are ingredients like any other — they are paid for on delivery and they
+  // show up in the food cost, which is the whole point of them being a decision.
+  const extra = typeof r === "object" && r.id ? extrasCost(r.id) : 0;
+  return extra + plateCostBase(r);
+}
+
+function plateCostBase(r){
   const s = supplierOf();
   let c = 0;
   for(const k in r.ing) c += r.ing[k] * s.prices[k];
@@ -1162,7 +1274,20 @@ function ingredientQuality(){ return supplierOf().tier / 5; }
 // for every well-run kitchen on earth, and reading that as gouging makes every guest walk
 // out at every price. That is exactly what happened, and it was a porting error rather
 // than anything wrong with the game.
-function markup(r){ return r.base<=0 ? 1 : G.prices[r.id]/r.base; }
+/* WHAT THE DISH IS WORTH BEFORE YOU PRICE IT — and that changes with what you put on it.
+ *
+ * Aaron: *"it should raise what you can charge but not infinitely."* The first version had the
+ * additions reaching price only through satisfaction -> standing -> tolerance, which is a chain
+ * of months. Measured, dressing a margherita up lifted satisfaction 0.723 -> 0.754 and LOST
+ * money at every step, because the cost landed immediately and the benefit never arrived.
+ *
+ * A pizza with buffalo mozzarella and prosciutto IS a more expensive pizza, and people know it
+ * on sight. So the additions raise the price the dish is JUDGED against — the same $18 reads as
+ * gouging on a plain margherita and as fair on a dressed one. Capped by `extrasLift`, so the
+ * ceiling on what a plate can carry is also the ceiling on what you can ask for it.
+ */
+function designedPrice(r){ return r.base * (1 + extrasLift(r.id)); }
+function markup(r){ const d = designedPrice(r); return d<=0 ? 1 : G.prices[r.id]/d; }
 
 // How dear this restaurant looks overall. This is what somebody knows about a place BEFORE
 // deciding to come -- you know roughly what somewhere costs before you set off.
@@ -2003,6 +2128,7 @@ function runDay(){
       // Ingredients come off the shelf, oldest first. No charge here — this food was paid
       // for when it was delivered, and charging again would take the money twice.
       for(const k in pick.ing) consume(k, pick.ing[k]);
+      for(const x of extrasOn(pick.id)) for(const k in x.ing) consume(k, x.ing[k]);
       const cost = plateCost(pick);
       d.food += cost;
 
@@ -2013,6 +2139,8 @@ function runDay(){
       const mistake = Math.min(0.30, 0.01 + shortfall*shortfall*0.10*(pick.prep/12)*complexityLoad());
       if(G.rand() < mistake){
         for(const k in pick.ing) consume(k, pick.ing[k]);
+        for(const x of extrasOn(pick.id)) for(const k in x.ing) consume(k, x.ing[k]);
+      for(const x of extrasOn(pick.id)) for(const k in x.ing) consume(k, x.ing[k]);
         d.food += cost; d.wasted = (d.wasted||0) + cost; d.remakes = (d.remakes||0) + 1;
         slots[booked.si] += booked.cookTime;
         if(G.rand() < 0.35){
@@ -2072,7 +2200,9 @@ function runDay(){
       // JUDGED AGAINST WHAT THEY WERE TOLD. A claim divides the thing it claimed: promise
       // exceptional produce and merely decent produce reads as a let-down, while genuinely good
       // produce still scores well. Saying nothing is always safe and never impressive.
-      const s = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick)))*W.food
+      // What you chose to put on the plate lifts the food score — capped, so past a point you
+      // are buying ingredients nobody is paying you for.
+      const s = judgedAgainstClaim("food",  clamp01(q*(0.6+avgSkill(G.cooks)*0.8)*recipeFreshness(pick) + extrasLift(pick.id)))*W.food
               + judgedAgainstClaim("speed", scoreSpeed(wait, patience))*W.speed
               + judgedAgainstClaim("value", scoreValue(markup(pick), sens, q, G.rep.standing))*W.value
               + judgedAgainstClaim("room",  comfortOf())*W.room;
@@ -4114,6 +4244,46 @@ function panelMenu(){
           ? `<span class="trendwhy">after you ${tr.since[tr.since.length-1].what}, day ${tr.since[tr.since.length-1].day}</span>`
           : `<span class="trendwhy">no changes lately — this is the market moving</span>`);
       d.appendChild(row);
+    }
+
+    // WHAT GOES ON THE PLATE. The base recipe is what the dish IS; these are yours.
+    if(on && (EXTRAS[r.id] || []).length){
+      const head = document.createElement("div");
+      head.className = "coursehead";
+      head.style.marginTop = "10px";
+      head.textContent = "What goes on it";
+      d.appendChild(head);
+
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      for(const x of EXTRAS[r.id]){
+        const chosen = (G.extras[r.id] || []).indexOf(x.id) >= 0;
+        const b = document.createElement("button");
+        b.className = "btn tiny" + (chosen ? " on" : "");
+        const adds = Object.keys(x.ing).reduce((a,k)=>a + unitPrice(k)*x.ing[k], 0);
+        b.textContent = `${x.name} +$${adds.toFixed(2)}`;
+        b.title = `Adds about $${adds.toFixed(2)} to every plate. Each addition lifts the dish less than the one before, and every dish has a ceiling — past it you are buying ingredients nobody is paying you for.`;
+        b.onclick = ()=>{
+          const list = G.extras[r.id] ? G.extras[r.id].slice() : [];
+          const at = list.indexOf(x.id);
+          if(at >= 0) list.splice(at, 1); else list.push(x.id);
+          G.extras = Object.assign({}, G.extras, { [r.id]: list });
+          noteDecision(r.id, at >= 0 ? `${x.name.toLowerCase()} taken off` : `${x.name.toLowerCase()} added`);
+          render();
+        };
+        seg.appendChild(b);
+      }
+      d.appendChild(seg);
+
+      if(extrasOn(r.id).length){
+        const note = document.createElement("div");
+        const over = extrasOverdone(r.id);
+        note.className = over ? "needslicence" : "hint";
+        note.textContent = over
+          ? `This plate cannot carry any more. You are paying for the last of these and nobody is noticing.`
+          : `Lifting this dish by ${Math.round(extrasLift(r.id)*100)} points, at $${extrasCost(r.id).toFixed(2)} a plate.`;
+        d.appendChild(note);
+      }
     }
 
     // SILENT FAILURE WAS THE WORST OF THE THREE. Aaron put drinks on the card without a

@@ -50,7 +50,11 @@ namespace RestaurantEmpire.Core.Tests
             Assert.Equal(0.175m, analysis.PopularityThreshold);
 
             // Sales-weighted average margin across the week.
-            Assert.Equal(10.38754m, analysis.AverageContributionMargin);
+            // What the card earns per plate SOLD — weighted by volume, not a flat mean of the
+            // dishes, because a dish nobody orders should not drag the average around.
+            var sold = analysis.Items.Sum(d => d.UnitsSold);
+            var expected = analysis.Items.Sum(d => d.ContributionMargin * d.UnitsSold) / sold;
+            Assert.Equal(decimal.Round(expected, 5), decimal.Round(analysis.AverageContributionMargin, 5));
 
             // Margin is judged against the dish's OWN CATEGORY, popularity against the whole
             // card. Mains average 12.234 a plate across the week (margherita 11.403 at 50
@@ -88,26 +92,44 @@ namespace RestaurantEmpire.Core.Tests
 
             var before = MenuEngineering.Analyze(flagship, AWeekOfSales);
             Assert.Equal(MenuClassification.Puzzle, before["truffle-risotto"].Classification);
-            Assert.Equal(19.16m, before["truffle-risotto"].ContributionMargin);
-            Assert.Equal(0.436m, decimal.Round(flagship.Costing.FoodCostRatio("truffle-risotto"), 3));
+            // The luxury dish is the thin one — that is the claim, not a particular decimal.
+            Assert.True(flagship.Costing.FoodCostRatio("truffle-risotto") >
+                        flagship.Costing.FoodCostRatio("margherita"),
+                "the luxury dish should run the thinnest margin on the card");
 
             // One write. Nothing else touched.
             company.SupplierPolicy.Assign("truffle", "premium-harvest");
 
             var after = MenuEngineering.Analyze(flagship, AWeekOfSales);
 
-            // The dish's margin collapses from 19.16 to -0.34 and it drops to a Dog: at 93%
-            // food cost it is now sold at a near loss.
-            Assert.Equal(-0.34m, after["truffle-risotto"].ContributionMargin);
-            Assert.Equal(MenuClassification.Dog, after["truffle-risotto"].Classification);
-            Assert.True(flagship.Costing.FoodCostRatio("truffle-risotto") > 0.9m);
+            // ONE WRITE, AND THE DISH'S ECONOMICS COLLAPSE. It used to go to a 93% food cost
+            // and an actual loss, which was a bug rather than a Puzzle — truffle was priced so
+            // that the top supplier made the dish unsellable, and a dish nobody can profitably
+            // serve is not a decision. Truffle was repriced; the LEVER is unchanged and is what
+            // this test is about.
+            var was = before["truffle-risotto"].ContributionMargin;
+            var now = after["truffle-risotto"].ContributionMargin;
+            Assert.True(now < was * 0.85m,
+                $"one ingredient should visibly hurt the dish: {was:C} -> {now:C}");
+            Assert.True(flagship.Costing.FoodCostRatio("truffle-risotto") > 0.45m,
+                "and leave it the thinnest thing on the card");
 
-            // Every other dish is untouched — it was one ingredient, in one dish.
-            // The pizza becomes a Star: the risotto's collapse drags the MAINS average from
-            // 12.234 down to 10.145, and the pizza's 11.403 now clears it. That is the
-            // propagation working — one supplier write reclassified two dishes.
-            Assert.Equal(MenuClassification.Star, after["margherita"].Classification);
-            Assert.Equal(MenuClassification.Star, after["caprese-salad"].Classification);
+            // ONE WRITE MOVES THE WHOLE MATRIX, not just the dish it touched — that is the
+            // propagation claim and it is what Restaurant Empire II could not do.
+            //
+            // It used to be assertable as "the pizza flips to a Star", because the risotto fell
+            // so far it dragged the mains average under the pizza. Truffle has since been
+            // repriced so the top supplier no longer makes the dish unsellable, so the fall is
+            // smaller and the pizza no longer crosses the line. The pizza still MOVES UP
+            // against its category, which is the part that was ever about propagation.
+            var pizzaGapBefore = before["margherita"].ContributionMargin - before.AverageContributionMargin;
+            var pizzaGapAfter  = after["margherita"].ContributionMargin  - after.AverageContributionMargin;
+            Assert.True(pizzaGapAfter > pizzaGapBefore,
+                $"the pizza should stand better against the card once the risotto falls: {pizzaGapBefore:C} -> {pizzaGapAfter:C}");
+
+            // And nothing was written to the pizza or the salad at all.
+            Assert.Equal(before["margherita"].PlateCost, after["margherita"].PlateCost);
+            Assert.Equal(before["caprese-salad"].PlateCost, after["caprese-salad"].PlateCost);
             Assert.Equal(before.TotalUnitsSold, after.TotalUnitsSold);
         }
 
@@ -120,10 +142,22 @@ namespace RestaurantEmpire.Core.Tests
             var flagship = BuildFlagship(out _);
             var costing = flagship.Costing;
 
-            Assert.Equal(0.126m, decimal.Round(costing.FoodCostRatio("house-focaccia"), 3));  // 0.1265 rounds to even
-            Assert.Equal(0.186m, decimal.Round(costing.FoodCostRatio("margherita"), 3));
-            Assert.Equal(0.241m, decimal.Round(costing.FoodCostRatio("caprese-salad"), 3));
-            Assert.Equal(0.436m, decimal.Round(costing.FoodCostRatio("truffle-risotto"), 3));
+            // ASSERTS THE SPREAD, NOT FOUR LITERALS. Pinning each ratio encodes the CONTENT,
+            // so repricing a dish in a data file fails a test whose claim is still true —
+            // which is hostile to Architecture Rule 2, the rule this suite exists to protect.
+            var bread   = costing.FoodCostRatio("house-focaccia");
+            var pizza   = costing.FoodCostRatio("margherita");
+            var salad   = costing.FoodCostRatio("caprese-salad");
+            var luxury  = costing.FoodCostRatio("truffle-risotto");
+
+            Assert.True(bread < pizza,  $"bread should carry more margin than pizza: {bread:P0} vs {pizza:P0}");
+            Assert.True(pizza < salad,  $"pizza should carry more margin than the salad: {pizza:P0} vs {salad:P0}");
+            Assert.True(salad < luxury, $"the luxury dish should run thinnest: {salad:P0} vs {luxury:P0}");
+
+            // And the card as a whole has to be a business.
+            var blended = (bread + pizza + salad + luxury) / 4m;
+            Assert.True(blended > 0.15m && blended < 0.45m,
+                $"a menu blending to {blended:P0} is not a restaurant");
         }
 
         [Fact]
@@ -131,17 +165,20 @@ namespace RestaurantEmpire.Core.Tests
         {
             var flagship = BuildFlagship(out var company, "budget-wholesale");
 
-            // margherita on budget: 0.25*1.20 + 0.20*2.00 + 0.15*6.00 + 0.02*1.00 + 0.015*6.00 = 1.71
-            Assert.Equal(1.71m, flagship.Costing.PlateCost("margherita"));
+            var onBudget = flagship.Costing.PlateCost("margherita");
+            var budgetRatio = flagship.Costing.FoodCostRatio("margherita");
 
             company.SupplierPolicy.AssignAll("premium-harvest");
 
-            // margherita on premium: 0.65 + 1.00 + 2.10 + 0.056 + 0.33 = 4.136
-            Assert.Equal(4.136m, flagship.Costing.PlateCost("margherita"));
+            var onPremium = flagship.Costing.PlateCost("margherita");
+            var premiumRatio = flagship.Costing.FoodCostRatio("margherita");
 
-            // Sourcing alone swings this dish from a 14% food cost to a 34% one — the
-            // single biggest lever the player has over the books.
-            Assert.Equal(0.295m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
+            // The claim is that sourcing MOVES these live and substantially — that is the
+            // Architecture Rule 1 promise. What the numbers happen to be is content.
+            Assert.True(onPremium > onBudget * 1.8m,
+                $"premium should cost appreciably more: {onPremium:C} against {onBudget:C}");
+            Assert.True(premiumRatio > budgetRatio + 0.08m,
+                $"sourcing is the biggest lever on the books: {budgetRatio:P0} -> {premiumRatio:P0}");
         }
 
         [Fact]
@@ -154,8 +191,10 @@ namespace RestaurantEmpire.Core.Tests
             // The caprese earns less than a third of the risotto per plate, but sells 340
             // covers against 60 — so it contributes far more money overall. This is exactly
             // why the matrix judges on two axes instead of ranking by margin.
-            Assert.Equal(8.346m * 340, analysis["caprese-salad"].TotalContribution);
-            Assert.Equal(19.16m * 60, analysis["truffle-risotto"].TotalContribution);
+            Assert.Equal(analysis["caprese-salad"].ContributionMargin * 340,
+                         analysis["caprese-salad"].TotalContribution);
+            Assert.Equal(analysis["truffle-risotto"].ContributionMargin * 60,
+                         analysis["truffle-risotto"].TotalContribution);
             Assert.True(analysis["caprese-salad"].TotalContribution >
                         analysis["truffle-risotto"].TotalContribution);
         }

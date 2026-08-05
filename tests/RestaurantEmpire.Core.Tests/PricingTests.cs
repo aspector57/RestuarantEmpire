@@ -40,12 +40,35 @@ namespace RestaurantEmpire.Core.Tests
             return restaurant;
         }
 
+
+        /// <summary>
+        /// Margin computed from the CONTENT rather than pinned to it. Literals here encode the
+        /// menu, so repricing a dish in a data file fails tests whose claims are still true —
+        /// hostile to Architecture Rule 2, which this suite exists to protect.
+        /// </summary>
+        private static decimal MarginOf(string recipeId, string supplierId = "valley-produce")
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var recipe = definitions.GetRecipe(recipeId);
+            var supplier = definitions.GetSupplier(supplierId);
+
+            var cost = 0m;
+            foreach (var line in recipe.Ingredients)
+                cost += supplier.UnitPriceFor(line.IngredientId) * line.Quantity;
+
+            return recipe.MenuPrice - cost;
+        }
+
         [Fact]
         public void WithNoPricesSet_TheDishChargesWhatItShippedWith()
         {
             var flagship = Build(out _);
 
-            Assert.Equal(14.00m, flagship.Costing.MenuPrice("margherita"));
+            // ASSERTED AGAINST THE DEFINITION, NOT A LITERAL. The claim is "with nothing set,
+            // a dish charges what it shipped with" — pinning 14.00 encodes the CONTENT, so
+            // repricing the menu in a data file failed eighteen tests that were all still true.
+            var shipped = flagship.Company.Definitions.GetRecipe("margherita").MenuPrice;
+            Assert.Equal(shipped, flagship.Costing.MenuPrice("margherita"));
             Assert.Equal("menu default", flagship.Pricing.ResolvedFromScopeName("margherita"));
             Assert.Empty(flagship.Pricing.LocalPrices);
         }
@@ -104,8 +127,10 @@ namespace RestaurantEmpire.Core.Tests
             var flagship = Build(out var company);
 
             // margherita costs 2.597 at Valley Produce, and ships at 14.00.
-            Assert.Equal(11.403m, flagship.Costing.ContributionMargin("margherita"));
-            Assert.Equal(0.186m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
+            Assert.Equal(MarginOf("margherita"), flagship.Costing.ContributionMargin("margherita"));
+            var recipe = flagship.Company.Definitions.GetRecipe("margherita");
+            Assert.Equal(decimal.Round(flagship.Costing.PlateCost("margherita") / recipe.MenuPrice, 3),
+                         decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
 
             company.Pricing.SetPrice("margherita", 18.00m);
 
@@ -121,11 +146,13 @@ namespace RestaurantEmpire.Core.Tests
         {
             var flagship = Build(out var company);
 
+            var shipped = flagship.Company.Definitions.GetRecipe("margherita").MenuPrice;
+
             company.Pricing.AdjustPrice("margherita", 1.25m);
-            Assert.Equal(17.50m, flagship.Costing.MenuPrice("margherita"));   // 14.00 * 1.25
+            Assert.Equal(shipped * 1.25m, flagship.Costing.MenuPrice("margherita"));
 
             flagship.Pricing.AdjustPrice("margherita", 1.20m);
-            Assert.Equal(21.00m, flagship.Costing.MenuPrice("margherita"));   // 17.50 * 1.20, set locally
+            Assert.Equal(shipped * 1.25m * 1.20m, flagship.Costing.MenuPrice("margherita"));   // set locally
             Assert.True(flagship.Pricing.HasLocalOverride("margherita"));
         }
 

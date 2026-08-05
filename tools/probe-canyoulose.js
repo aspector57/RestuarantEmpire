@@ -31,14 +31,39 @@ function established(){
   G.rep.standing=0.96; G.rep.meals=40000;
   RECIPES.forEach(function(r){ if(!G.onMenu.has(r.id)) return; for(var k in r.ing) orderStock(k,400); });
 }
+// REPLACING SOMEBODY WHO QUIT IS NOT A STRATEGY, IT IS OPENING THE DOORS.
+//
+// Without this the probe measured attrition rather than sabotage. Staff leave every month
+// (skill makes them poachable, underpayment makes them willing), nobody here ever re-hired,
+// and so the CONTROL ended its year on one cook and ZERO COVERS while the sabotaged rows
+// looked healthy -- purely because they had fewer people left to lose. Every row was a
+// restaurant nobody staffed for a year, and the ranking inverted.
+//
+// Backfilling like-for-like at the market wage keeps the sabotage the only thing that differs.
+// Hiring at market rather than at the fixture's wage matters: the fixture underpays its cooks
+// by 15%, which is most of what was driving them out of the door.
+function backfill(want){
+  while(G.cooks.length < want.cooks){
+    var skill = 0.72;
+    G.cooks.push({ id:"c"+G.cooks.length+"r", name:"C", role:"cook",
+                   wage: HIRE.cookFloor + skill*HIRE.cookPremium, skill:skill, claim:skill, potential:0.8 });
+  }
+  while(G.servers.length < want.servers){
+    var s = 0.55;
+    G.servers.push({ id:"s"+G.servers.length+"r", name:"S", role:"server",
+                     wage: HIRE.serverFloor + s*HIRE.serverPremium, skill:s, claim:s, potential:0.6 });
+  }
+}
+
 function run(days){
   var start = G.cash;
+  var want = { cooks: G.cooks.length, servers: G.servers.length };
   for(var n=0;n<days;n++){
     runDay(); G.day++;
     // The month is where rivals, events, staff and the lease live. A probe that only calls
     // runDay() never reaches any of it -- which is why the first run of this reported
     // byte-identical numbers after four new pressure systems had been added.
-    if(G.day % 30 === 0) billTheMonth();
+    if(G.day % 30 === 0){ billTheMonth(); backfill(want); }
   }
   return { perDay: (G.cash-start)/days, standing: G.rep.standing, cash: G.cash,
            rivals: G.rivals||0, cooks: G.cooks.length, rent: G.site.rent };
@@ -76,7 +101,8 @@ console.log("--- why can't the worst case lose? ---");
 established();
 G.cooks=G.cooks.slice(0,1); G.servers=G.servers.slice(0,1); G.supplier="budget-wholesale";
 for(var s in G.stations){ if(s.indexOf("storage")<0) G.stations[s]=G.stations[s].slice(0,1); }
-for(var n=0;n<60;n++){ runDay(); G.day++; if(G.day%30===0) billTheMonth(); }
+var want = { cooks: G.cooks.length, servers: G.servers.length };
+for(var n=0;n<60;n++){ runDay(); G.day++; if(G.day%30===0){ billTheMonth(); backfill(want); } }
 var m = G.metrics.slice(-30);
 var rev = m.reduce(function(a,x){return a+x.revenue;},0)/30;
 var lab = m.reduce(function(a,x){return a+x.labor;},0)/30;

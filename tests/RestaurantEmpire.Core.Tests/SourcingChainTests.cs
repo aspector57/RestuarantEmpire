@@ -15,9 +15,36 @@ namespace RestaurantEmpire.Core.Tests
     /// </summary>
     public class SourcingChainTests
     {
-        private const decimal MargheritaOnValley = 11.403m;   // tomato at 3.00
-        private const decimal MargheritaOnPremium = 11.003m;  // tomato at 5.00
-        private const decimal MargheritaOnBudget = 11.603m;   // tomato at 2.00
+        // COMPUTED FROM THE CONTENT, NOT PINNED TO IT. These were literals, so repricing the
+        // menu in a data file failed every test in this class — and every one of them was still
+        // true. What this class is about is PROPAGATION: that a company-wide switch reaches
+        // every location. The exact margin is content, and Architecture Rule 2 says content must
+        // be changeable by editing a data file.
+        /// <summary>
+        /// The margin with everything on Valley and ONE ingredient switched — which is what
+        /// these tests actually exercise, and what the original literals meant when they were
+        /// annotated "tomato at 3.00".
+        /// </summary>
+        private static decimal MarginOn(string tomatoSupplierId)
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var recipe = definitions.GetRecipe("margherita");
+            var baseline = definitions.GetSupplier("valley-produce");
+            var swapped = definitions.GetSupplier(tomatoSupplierId);
+
+            var cost = 0m;
+            foreach (var line in recipe.Ingredients)
+            {
+                var from = line.IngredientId == "tomato" ? swapped : baseline;
+                cost += from.UnitPriceFor(line.IngredientId) * line.Quantity;
+            }
+
+            return recipe.MenuPrice - cost;
+        }
+
+        private static readonly decimal MargheritaOnValley  = MarginOn("valley-produce");
+        private static readonly decimal MargheritaOnPremium = MarginOn("premium-harvest");
+        private static readonly decimal MargheritaOnBudget  = MarginOn("budget-wholesale");
 
         private static Company BuildTwoLocations(out Restaurant flagship, out Restaurant truck)
         {

@@ -153,6 +153,85 @@ namespace RestaurantEmpire.Core.Tests
         }
 
         /// <summary>
+        /// THE DRIFT GUARD WAS WATCHING THE CONSTANTS AND NOT THE CONTENT.
+        ///
+        /// `web/pass.html` carries its own hardcoded `RECIPES`, under a comment reading
+        /// "content, mirrored from data/" — and that mirroring is done by hand. A whole food
+        /// economics recalibration was written into `data/recipes/*.json` and never reached the
+        /// browser build: Eggs Benedict got a protein in the engine and stayed a plate of eggs
+        /// and flour in the port, sea bass was repriced $21 -> $29 in one build only, and the
+        /// two disagreed for a full session.
+        ///
+        /// The tell was that every browser probe came back BYTE-IDENTICAL after the change,
+        /// which is the same signature as the probe that missed `billTheMonth()` and reported
+        /// no effect from four new pressure systems. **Identical output after a real change is
+        /// a bug report, not a null result.**
+        ///
+        /// This checks menu prices, because that is what the drift actually was and a full
+        /// structural comparison would be a JSON parser living in a test. Ingredient lists are
+        /// checked for PRESENCE of each id, which catches a dish losing a component — the
+        /// Benedict case — without pinning quantities in two places.
+        ///
+        /// The same rule as every other entry here: the C# core is the source of truth.
+        /// </summary>
+        [Fact]
+        public void TheBrowserBuildServesTheSameDishesAtTheSamePrices()
+        {
+            var path = BrowserBuildPath();
+            Assert.True(path != null, "web/pass.html not found");
+
+            var source = File.ReadAllText(path);
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "data", "recipes")))
+                dir = dir.Parent;
+            Assert.True(dir != null, "data/recipes not found");
+
+            var wrong = new List<string>();
+
+            foreach (var file in Directory.GetFiles(Path.Combine(dir.FullName, "data", "recipes"), "*.json"))
+            {
+                var json = File.ReadAllText(file);
+                var id = Regex.Match(json, @"""id""\s*:\s*""([^""]+)""").Groups[1].Value;
+                var price = decimal.Parse(Regex.Match(json, @"""menuPrice""\s*:\s*([0-9.]+)").Groups[1].Value,
+                                          CultureInfo.InvariantCulture);
+
+                // The browser entry runs from `id:"<id>"` to the end of its `ing:{...}` block.
+                var entry = Regex.Match(source, @"id:""" + Regex.Escape(id) + @""".*?ing:\{[^}]*\}", RegexOptions.Singleline);
+                if (!entry.Success)
+                {
+                    wrong.Add($"{id} — the browser build does not serve this dish at all");
+                    continue;
+                }
+
+                var basePrice = Regex.Match(entry.Value, @"base:\s*([0-9.]+)");
+                if (!basePrice.Success)
+                {
+                    wrong.Add($"{id} — no base price found in the browser build");
+                }
+                else
+                {
+                    var actual = decimal.Parse(basePrice.Groups[1].Value, CultureInfo.InvariantCulture);
+                    if (actual != price)
+                        wrong.Add($"{id} menu price — browser says {actual}, engine says {price}");
+                }
+
+                foreach (Match ing in Regex.Matches(json, @"""ingredientId""\s*:\s*""([^""]+)"""))
+                {
+                    var ingredient = ing.Groups[1].Value;
+                    if (!Regex.IsMatch(entry.Value, @"[{,\s]""?" + Regex.Escape(ingredient) + @"""?\s*:"))
+                        wrong.Add($"{id} — the browser build's version has no {ingredient} in it");
+                }
+
+                _out.WriteLine($"  ok   {id,-18} {price,8:C}");
+            }
+
+            Assert.True(wrong.Count == 0,
+                "The browser build's menu has drifted from the content files:\n  " + string.Join("\n  ", wrong) +
+                "\n\nweb/pass.html mirrors data/ BY HAND. Recalibrating one build and not the other " +
+                "is why every browser probe came back byte-identical after a real change.");
+        }
+
+        /// <summary>
         /// The satisfaction weights must sum to exactly one, in both builds. They are shares of
         /// a single judgement, and a set that sums to 0.98 silently makes every meal worse.
         /// </summary>

@@ -119,6 +119,18 @@
       "name": "Citrus and Garnish",
       "unit": "kg",
       "shelfLifeDays": 12
+    },
+    {
+      "id": "cured-ham",
+      "name": "Cured Ham",
+      "unit": "kg",
+      "shelfLifeDays": 18
+    },
+    {
+      "id": "muffin",
+      "name": "Muffins",
+      "unit": "kg",
+      "shelfLifeDays": 5
     }
   ]
 }

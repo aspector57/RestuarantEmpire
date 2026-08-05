@@ -26,16 +26,53 @@ namespace RestaurantEmpire.Core.Tests
         //   caprese-salad   0.25*3.00 + 0.18*9.00 + 0.04*1.60 + 0.02*11.00              = 2.654 -> 11.00 - 2.654 =  8.346
         //   truffle-risotto 0.12*4.50 + 5.00*2.60 + 0.06*18.00 + 0.02*11.00             = 14.84 -> 34.00 - 14.84 = 19.160
         //   house-focaccia  0.30*1.80 + 0.04*11.00 + 0.02*1.60                          = 1.012 ->  8.00 - 1.012 =  6.988
-        private const decimal MargheritaOnValley = 11.403m;
-        private const decimal CapreseOnValley = 8.346m;
-        private const decimal RisottoOnValley = 19.16m;
-        private const decimal FocacciaOnValley = 6.988m;
+        private static readonly decimal MargheritaOnValley = MarginOf("margherita");
+        private static readonly decimal CapreseOnValley = MarginOf("caprese-salad");
+        private static readonly decimal RisottoOnValley = MarginOf("truffle-risotto");
+
+        /// <summary>
+        /// Margin computed from the CONTENT rather than pinned to it. Literals here encode the
+        /// menu, so repricing a dish in a data file fails tests whose claims are still true —
+        /// hostile to Architecture Rule 2, which this suite exists to protect.
+        /// </summary>
+        /// <summary>Everything on Valley with one ingredient switched — the override case.</summary>
+        private static decimal MarginWithTomatoFrom(string recipeId, string tomatoSupplierId)
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var recipe = definitions.GetRecipe(recipeId);
+            var baseline = definitions.GetSupplier("valley-produce");
+            var swapped = definitions.GetSupplier(tomatoSupplierId);
+
+            var cost = 0m;
+            foreach (var line in recipe.Ingredients)
+            {
+                var from = line.IngredientId == "tomato" ? swapped : baseline;
+                cost += from.UnitPriceFor(line.IngredientId) * line.Quantity;
+            }
+
+            return recipe.MenuPrice - cost;
+        }
+
+        private static decimal MarginOf(string recipeId, string supplierId = "valley-produce")
+        {
+            var definitions = JsonDefinitionLoader.LoadFromDirectory(TestData.DataDirectory);
+            var recipe = definitions.GetRecipe(recipeId);
+            var supplier = definitions.GetSupplier(supplierId);
+
+            var cost = 0m;
+            foreach (var line in recipe.Ingredients)
+                cost += supplier.UnitPriceFor(line.IngredientId) * line.Quantity;
+
+            return recipe.MenuPrice - cost;
+        }
+
+        private static readonly decimal FocacciaOnValley = MarginOf("house-focaccia");
 
         // After tomato alone moves to Premium Harvest (5.00/kg instead of 3.00/kg):
         //   margherita      tomato line goes 0.60 -> 1.00, cost 2.997 -> 14.00 - 2.997 = 11.003
         //   caprese-salad   tomato line goes 0.75 -> 1.25, cost 3.154 -> 11.00 - 3.154 =  7.846
-        private const decimal MargheritaOnPremiumTomato = 11.003m;
-        private const decimal CapreseOnPremiumTomato = 7.846m;
+        private static readonly decimal MargheritaOnPremiumTomato = MarginWithTomatoFrom("margherita", "premium-harvest");
+        private static readonly decimal CapreseOnPremiumTomato = MarginWithTomatoFrom("caprese-salad", "premium-harvest");
 
         private static Restaurant BuildFlagship(out Company company)
         {
