@@ -2727,20 +2727,47 @@ function advise(){
   // that nothing ever NAMED the dish. The player sees "3 plates remade" every night for
   // two months and cannot tell it is one item doing it, so the two real moves -- take it
   // off the card, or hire a kitchen that can cook it -- never occur to them.
+  // WHAT A MISTAKE COSTS, NOT HOW OFTEN IT HAPPENS. Two wrong versions before this one, and
+  // the second was wrong for an interesting reason.
+  //
+  // First it compared raw counts and accused whichever dish SOLD most -- Aaron's run had it
+  // blaming the Pizza Margherita, his best seller. Then it compared RATES, and never fired,
+  // because measuring it showed the mistake rate barely varies by dish at all: a Black Truffle
+  // Risotto at sixteen minutes goes back 11.1% of the time against a nine-minute margherita's
+  // 10.9%. Skill dominates the mistake roll; complexity is a small term.
+  //
+  // But the original measurement behind this mechanic (a cheap brigade wasting sixteen times
+  // more on a complex menu) was about MONEY, not frequency. A ruined risotto costs ten times a
+  // ruined pizza, because the truffle is in the bin either way. That is the thing worth telling
+  // the player, and it is the thing they can act on: it is not that the kitchen fails at this
+  // dish more often, it is that it cannot afford to fail at it.
   const spoilt = G.spoiltBy || {};
-  let worstDish = null, worstCount = 0, totalSpoilt = 0;
-  for(const id in spoilt){
-  totalSpoilt += spoilt[id];
-  if(spoilt[id] > worstCount && G.onMenu.has(id)){ worstCount = spoilt[id]; worstDish = id; }
+  let worstDish = null, worstWasted = 0, worstCount = 0, totalWasted = 0, runnerUp = 0;
+  for(const r0 of RECIPES){
+    const count = (spoilt[r0.id] || 0);
+    if(!count) continue;
+    const wasted = count * plateCost(r0) * 2;     // ingredients twice: the ruined one and the remake
+    totalWasted += wasted;
+    if(!G.onMenu.has(r0.id)) continue;
+    if(wasted > worstWasted){
+      runnerUp = worstWasted;
+      worstWasted = wasted; worstDish = r0.id; worstCount = count;
+    } else if(wasted > runnerUp) runnerUp = wasted;
   }
-  if(worstDish && worstCount >= 8 && worstCount >= totalSpoilt * 0.4){
+
+  // TWICE THE NEXT WORST, not merely the largest. On a four-dish card an even split is 25%
+  // each, so "leads the table" is nearly meaningless -- Aaron's run had three dishes wasting
+  // roughly the same and the margherita edging it at 45%, which fired and told him his best
+  // seller was the problem. A dish worth naming is one carrying most of the damage on its own.
+  if(worstDish && worstCount >= 8 && worstWasted > 400 && worstWasted > runnerUp * 2){
   const r = RECIPES.filter(x => x.id === worstDish)[0];
-  const share = totalSpoilt > 0 ? Math.round(worstCount/totalSpoilt*100) : 0;
   if(r) out.push({ rank:2, id:"cannotcook",
   head: `The kitchen keeps getting the ${r.name} wrong.`,
-  body: `${worstCount} of them have gone back so far — ${share}% of everything this ` +
-  `kitchen has spoiled, off one dish. It is the most demanding thing on the card ` +
-  `at ${r.prep} minutes, and ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ` +
+  body: `${worstCount} have gone back, and at ${money(plateCost(r))} of ingredients each that is ` +
+  `${money(worstWasted)} in the bin — ${Math.round(worstWasted/totalWasted*100)}% of everything ` +
+  `this kitchen has wasted, off one dish. It is not that it goes wrong more often than the rest ` +
+  `of the card; it is that it cannot afford to. It takes ${r.prep} minutes, and ` +
+  `${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ` +
   `${(avgSkill(G.cooks)*5).toFixed(1)}/5 ${G.cooks.length===1?"is":"are"} not yet good enough to send it out ` +
   `reliably. Every one costs the ingredients twice and the cover as well. Either ` +
   `take it off the card until the kitchen has grown into it, or hire someone who ` +
