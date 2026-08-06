@@ -945,7 +945,7 @@ function newSite(site, id, name){
     rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
-    ledger: { revenue:0, food:0, labor:0, rent:0, capex:0 },
+    ledger: { revenue:0, food:0, labor:0, rent:0, capex:0, running:0 },
     sold: {}, soldToday: {}, dishHistory: {},
     pantry: {}, usage: {}, usedToday: {}, spoiled: 0, standingOrder: true,
     interrupt: null,
@@ -1816,6 +1816,66 @@ const ROOM_FEEL = { dead:0.20, thin:0.45, buzzing:0.70, lift:0.06 };
  * being decided, and because a passer-by is going on what the place looked like last time.
  */
 const DOOR_FEEL = { doorFloor:0.85, doorCeiling:1.05 };
+
+/* ---------- WHAT ELSE A RESTAURANT PAYS FOR ---------- */
+/*
+ * THE COST SIDE WAS MISSING MOST OF A REAL P&L, and that -- not any single mechanic -- is why
+ * doing nothing paid. Measured on the testbed: food 27%, labour 30%, rent 19%, leaving 27% of
+ * revenue as profit. A real restaurant keeps 3-6%. The gap is not somewhere clever; it is the
+ * dozen ordinary bills nobody puts in a game because none of them is interesting on its own.
+ *
+ * These are NOT a difficulty dial. Every line here is a real thing a restaurant pays every
+ * month, sized against the trade's own figures, and each scales with something the player
+ * controls -- so growing badly costs more than growing well, which is the whole point:
+ *
+ *   card fees      2.6% of takings. Every card payment costs the merchant.
+ *   utilities      gas, power, water. Scales with the KITCHEN -- more stations, more burn.
+ *   supplies       cleaning, laundry, paper, breakage. Scales with covers served.
+ *   admin          insurance, accountancy, licences, waste collection. Broadly fixed.
+ *   payroll tax    on top of every wage, which is why a big brigade costs more than it looks.
+ *   upkeep         equipment does not maintain itself. Scales with what you own.
+ *
+ * Together these come to roughly 12-15% of revenue, which is what the trade actually reports
+ * as "other operating costs" and exactly the hole in the books.
+ */
+const RUNNING = {
+  cardFeeShare:   0.026,
+  utilityPerUnit: 46,      // per kitchen unit, per month
+  suppliesPerCover: 0.55,
+  adminBase:      420,     // insurance, accountancy, licences, waste
+  adminPerHead:   38,
+  payrollTaxShare: 0.11,
+  upkeepShare:    0.008    // of what the kitchen cost, per month
+};
+
+/* Itemised on purpose. A single "overheads" line is a number the player cannot act on, and
+   Binding Principle 2 says every outcome traces to a named cause. */
+function runningCosts(){
+  const m = G.metrics.slice(-30);
+  const covers  = m.reduce((a,x) => a + (x.covers||0), 0);
+  const revenue = m.reduce((a,x) => a + (x.revenue||0), 0);
+  const labour  = m.reduce((a,x) => a + (x.labor||0), 0);
+
+  let units = 0, kitchenWorth = 0;
+  for(const st in G.stations){
+    if(STORAGE_STATIONS_JS[st]) continue;
+    for(const u of G.stations[st]){
+      units++;
+      const e = EQUIPMENT.filter(x => x.id === u.id)[0];
+      kitchenWorth += e ? e.cost : 0;
+    }
+  }
+
+  const lines = [
+    ["card fees",   revenue * RUNNING.cardFeeShare],
+    ["utilities",   units * RUNNING.utilityPerUnit],
+    ["supplies",    covers * RUNNING.suppliesPerCover],
+    ["admin and insurance", RUNNING.adminBase + (G.cooks.length + G.servers.length) * RUNNING.adminPerHead],
+    ["payroll tax", labour * RUNNING.payrollTaxShare],
+    ["upkeep",      kitchenWorth * RUNNING.upkeepShare]
+  ];
+  return { lines: lines, total: lines.reduce((a, l) => a + l[1], 0) };
+}
 
 function howFullWeLooked(){
   if(G.lookedFull == null) return null;        // no trading yet: judged on nothing
@@ -3620,6 +3680,16 @@ function billTheMonth(){
 
   G.cash -= G.site.rent;
   G.ledger.rent += G.site.rent;
+
+  // The bills that are not rent, food or wages — the ones that were simply missing.
+  const run = runningCosts();
+  if(run.total > 0){
+    G.cash -= run.total;
+    G.ledger.running = (G.ledger.running || 0) + run.total;
+    const worst = run.lines.slice().sort((a,b) => b[1]-a[1])[0];
+    say("money", `${siteLabel()}Running costs — ${money(run.total)} out, mostly ${worst[0]}.`);
+  }
+
   say("money", `${siteLabel()}Rent day — $${G.site.rent.toLocaleString()} out. Cash now ${money(G.cash)}.`);
 
   maybeTheRentGoesUp();

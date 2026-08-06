@@ -45,6 +45,13 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("cardFeeShare", (double)Tuning.CardFeeShare, "what every card payment costs the house");
+            yield return ("utilityPerUnit", (double)Tuning.UtilitiesPerKitchenUnit, "gas and power per kitchen unit");
+            yield return ("suppliesPerCover", (double)Tuning.SuppliesPerCover, "cleaning, laundry, breakage per cover");
+            yield return ("adminBase", (double)Tuning.AdminBase, "insurance, accountancy, licences");
+            yield return ("adminPerHead", (double)Tuning.AdminPerHead, "and what each person on the books adds");
+            yield return ("payrollTaxShare", (double)Tuning.PayrollTaxShare, "tax on top of every wage");
+            yield return ("upkeepShare", (double)Tuning.UpkeepShare, "equipment does not maintain itself");
             yield return ("doorFloor", (double)Tuning.DoorAppealFloor, "most that looking empty can cost you at the door");
             yield return ("doorCeiling", (double)Tuning.DoorAppealCeiling, "most that looking busy can buy you");
             yield return ("dead", (double)Tuning.RoomFeelsDead, "occupancy at which a room reads as empty");

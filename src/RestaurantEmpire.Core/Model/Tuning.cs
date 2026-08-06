@@ -154,6 +154,25 @@ namespace RestaurantEmpire.Core.Model
         // 15% of footfall and can never cost more, so a bad patch makes digging out slower and
         // never impossible. Measured in isolation on the nightlife pitch: a correctly-sized
         // room moves 0-1%, a hundred-seat room loses 10%, a hundred-and-forty-seat room 23%.
+        // ---- The bills nobody puts in a restaurant game ----
+        //
+        // The cost side was missing most of a real P&L, and that -- not any single mechanic --
+        // is why doing nothing paid. Measured on the testbed: food 27%, labour 30%, rent 19%,
+        // leaving 27% of revenue as profit against a real restaurant's 3-6%. The gap was not
+        // anywhere clever; it was the dozen ordinary bills, none of them interesting alone.
+        //
+        // NOT a difficulty dial. Every line is a real monthly cost sized against the trade's
+        // own figures, and each scales with something the player controls, so growing badly
+        // costs more than growing well. Together they come to 12-15% of revenue, which is what
+        // the trade reports as "other operating costs".
+        public const decimal CardFeeShare = 0.026m;
+        public const decimal UtilitiesPerKitchenUnit = 46m;
+        public const decimal SuppliesPerCover = 0.55m;
+        public const decimal AdminBase = 420m;
+        public const decimal AdminPerHead = 38m;
+        public const decimal PayrollTaxShare = 0.11m;
+        public const decimal UpkeepShare = 0.008m;
+
         public const decimal DoorAppealFloor = 0.85m;
         public const decimal DoorAppealCeiling = 1.05m;
 
