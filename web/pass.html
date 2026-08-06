@@ -924,7 +924,7 @@ function newSite(site, id, name){
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
-    concept: null, spoiltBy: {}, lookedFull: null,
+    concept: null, spoiltBy: {}, lookedFull: null, chefIsYou: true,
     rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -960,7 +960,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics","rivals","supplierOut","leaseSetOn","extras","concept","spoiltBy","lookedFull"
+  "metrics","rivals","supplierOut","leaseSetOn","extras","concept","spoiltBy","lookedFull","chefIsYou"
 ];
 
 function bindActiveSite(G){
@@ -1742,7 +1742,26 @@ function avgSkillRaw(list){ return list.length ? list.reduce((a,b)=>a+b.skill,0)
    working here. Every caller wants this rather than the raw figure: a resentful kitchen cooks
    worse food and a resentful floor is slower, which is the whole point of tracking morale. */
 function avgSkill(list){ return clamp01(avgSkillRaw(list) * moraleFactor(list)); }
-function wageBill(){ return [...G.cooks,...G.servers].reduce((a,b)=>a+b.wage,0); }
+/*
+ * YOU ARE A CHEF, AND YOU WERE PAYING SOMEBODY ELSE TO COOK.
+ *
+ * Aaron's run went BUST at day 241 -- sixteen seats, one cook, one server, thirty covers a
+ * night, bleeding about $67 a day from the first week. The arithmetic was never survivable:
+ * ~$450 of takings against $168 of wages, $120 rent, $77 running costs and $104 of food.
+ *
+ * A sixteen-seat dinner-only restaurant genuinely cannot carry two full-time salaries. Real
+ * ones of that size are owner-operated -- and this game's own design says the player IS a
+ * chef, opening one restaurant on a tight budget. Restaurant Empire says it outright in its
+ * tutorial: no need to hire a chef when you have got yourself to work the kitchen.
+ *
+ * So the first cook on the payroll is YOU, and you do not draw a wage. That makes a small
+ * opening viable without inventing generous numbers, and it turns hiring your first real cook
+ * into a genuine milestone -- the moment you stop being the kitchen and start running one.
+ */
+function wageBill(){
+  const paid = [...G.cooks.slice(G.chefIsYou ? 1 : 0), ...G.servers];
+  return paid.reduce((a,b)=>a+b.wage,0);
+}
 function plateCapacity(){
   return Math.floor(G.cooks.reduce((a,c)=>a + PLATES_PER_COOK*(0.7+c.skill*0.6), 0));
 }
