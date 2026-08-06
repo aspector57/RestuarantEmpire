@@ -4370,7 +4370,10 @@ function fullTranscript(){
 
   rule("THE BOOKS");
   L.push(`revenue ${money(G.ledger.revenue)}   food ${money(G.ledger.food)}   labor ${money(G.ledger.labor)}`);
-  L.push(`rent+fees ${money(G.ledger.rent)}   capital ${money(G.ledger.capex)}   binned ${money(G.spoiled)}`);
+  // Running costs are charged every month and were printed nowhere -- the same omission as
+  // the books panel, in the other place the player reads the accounts. A cost that moves the
+  // bank balance and appears in no statement is the worst kind of wrong number.
+  L.push(`rent ${money(G.ledger.rent)}   running ${money(G.ledger.running||0)}   capital ${money(G.ledger.capex)}   binned ${money(G.spoiled)}`);
   if(G.ledger.revenue > 0)
     L.push(`prime cost ${Math.round((G.ledger.food+G.ledger.labor)/G.ledger.revenue*100)}%`);
 
