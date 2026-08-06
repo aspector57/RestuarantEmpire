@@ -3504,6 +3504,24 @@ function blockedByFloorOnly(needsArea){
 function buySeats(f){
   const cost = f.perSeat*10, area = f.foot*10;
   if(G.cash < cost || freeArea() < area) return;
+
+  // CHAIRS NOBODY CAN WAIT ON ARE NOT SEATS, and the till never checked.
+  //
+  // Aaron bought ten blocks of tables and nine building extensions in a single sitting --
+  // about $109,000, cash from $111,352 down to $1,838 -- and finished with 126 seats of which
+  // 2 servers could work 32. Ninety-four of them were furniture. The Advisor has known about
+  // this for weeks and says so plainly; the BUTTON did not, so nothing stood between him and
+  // spending his entire balance on chairs nobody could be seated in.
+  //
+  // Refused with the reason named, the same way selling the last unit of a station the menu
+  // needs is refused. Not a hard rule about size -- buy all the seats you like once there is
+  // somebody to work them.
+  if(servableSeats() < G.seats){
+    say("warn", `${siteLabel()}Not while ${G.servers.length} server${G.servers.length===1?"":"s"} ` +
+        `can only work ${servableSeats()} of the ${G.seats} seats you already own. ` +
+        `Another ${G.seats - servableSeats()} chairs would be furniture. Hire first.`);
+    return;
+  }
   G.cash -= cost; G.ledger.capex += cost; G.seats += 10; G.seatSpend += area;
   G.fittings.push({ seats:10, comfort:f.comfort });
   didThat(`Ten more seats — ${f.name.toLowerCase()}, $${(f.perSeat*10).toLocaleString()}. ${G.seats} seats now (about ${tablesFrom(G.seats)} tables).`);
