@@ -1828,7 +1828,19 @@ const RUNNING = {
   adminBase:      420,     // insurance, accountancy, licences, waste
   adminPerHead:   38,
   payrollTaxShare: 0.11,
-  upkeepShare:    0.008    // of what the kitchen cost, per month
+  upkeepShare:    0.008,   // of what the kitchen cost, per month
+
+  // THE ROOM COSTS MONEY TO KEEP, and it did not. Aaron: "I bought as many seats as I could,
+  // didn't hire, and we crushed it with one server." He was right, and the reason is that
+  // seats and floor space were a ONE-OFF cost and free forever after -- a 2,620 sq ft dining
+  // room ran on exactly the same bills as a 900 sq ft one. So the optimal move was to spend
+  // every dollar on tables the moment you had it, because dead seats were harmless.
+  //
+  // They are not harmless. A big room is heated, lit, cleaned and maintained whether anybody
+  // sits in it, and the empty half costs the same as the full half. Sized so that the 94
+  // unusable seats in his run cost real money every month instead of nothing.
+  floorPerSqFt:   0.42,    // heat, light, cleaning, per sq ft per month
+  seatUpkeep:     3.10     // linen, breakage, wear, per seat per month
 };
 
 /* Itemised on purpose. A single "overheads" line is a number the player cannot act on, and
@@ -1851,7 +1863,8 @@ function runningCosts(){
 
   const lines = [
     ["card fees",   revenue * RUNNING.cardFeeShare],
-    ["utilities",   units * RUNNING.utilityPerUnit],
+    ["utilities",   units * RUNNING.utilityPerUnit + G.floorArea * RUNNING.floorPerSqFt],
+    ["the room",    G.seats * RUNNING.seatUpkeep],
     ["supplies",    covers * RUNNING.suppliesPerCover],
     ["admin and insurance", RUNNING.adminBase + (G.cooks.length + G.servers.length) * RUNNING.adminPerHead],
     ["payroll tax", labour * RUNNING.payrollTaxShare],
@@ -5541,7 +5554,11 @@ function panelTeam(){
 
 function panelBooks(){
   const L = G.ledger;
-  const net = L.revenue - L.food - L.labor - L.rent;
+  // Running costs are CHARGED in billTheMonth and were missing from here entirely, so the
+  // books understated the cost side and overstated what the place kept. A ledger line that
+  // moves the bank balance and does not appear in the accounts is the worst kind of wrong
+  // number: it is acted on and cannot be questioned.
+  const net = L.revenue - L.food - L.labor - L.rent - (L.running || 0);
   const prime = L.revenue>0 ? (L.food+L.labor)/L.revenue : 0;
   const band = prime<0.55?"Excellent":prime<0.65?"Healthy":prime<0.70?"Tight":"Unsustainable";
   const c = card("The books", `Everything booked across ${G.day} day${G.day===1?"":"s"} of trading. Prime cost is food plus labor over revenue — the number that actually decides whether a restaurant lives.`);
@@ -5554,6 +5571,7 @@ function panelBooks(){
       <tr><td>Food</td><td class="num">${money(L.food)}</td><td class="num">${L.revenue?Math.round(L.food/L.revenue*100):0}%</td></tr>
       <tr><td>Labor</td><td class="num">${money(L.labor)}</td><td class="num">${L.revenue?Math.round(L.labor/L.revenue*100):0}%</td></tr>
       <tr><td>Rent</td><td class="num">${money(L.rent)}</td><td class="num">${L.revenue?Math.round(L.rent/L.revenue*100):0}%</td></tr>
+      <tr><td>Running costs<br><span class="muted">card fees, utilities, supplies, insurance, payroll tax, upkeep</span></td><td class="num">${money(L.running||0)}</td><td class="num">${L.revenue?Math.round((L.running||0)/L.revenue*100):0}%</td></tr>
       <tr><td><b>Prime cost</b></td><td class="num"><b>${money(L.food+L.labor)}</b></td><td class="num"><b>${Math.round(prime*100)}% ${band}</b></td></tr>
       <tr><td><b>Net</b></td><td class="num"><b style="color:${net<0?"var(--bad)":"var(--good)"}">${money(net)}</b></td><td class="num">—</td></tr>
       <tr><td>Spent on the building</td><td class="num">${money(L.capex)}</td><td class="num">—</td></tr>

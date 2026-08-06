@@ -173,6 +173,15 @@ namespace RestaurantEmpire.Core.Model
         public const decimal PayrollTaxShare = 0.11m;
         public const decimal UpkeepShare = 0.008m;
 
+        // THE ROOM COSTS MONEY TO KEEP. Aaron: "I bought as many seats as I could, didn't
+        // hire, and we crushed it with one server." He was right, and the reason was that
+        // seats and floor space cost you ONCE and nothing thereafter -- a 2,620 sq ft dining
+        // room ran on the same bills as a 900 sq ft one, so spending every spare dollar on
+        // tables was free. A big room is heated, lit, cleaned and maintained whether or not
+        // anybody sits in it.
+        public const decimal FloorCostPerSquareFoot = 0.42m;
+        public const decimal SeatUpkeepPerMonth = 3.10m;
+
         public const decimal DoorAppealFloor = 0.85m;
         public const decimal DoorAppealCeiling = 1.05m;
 
