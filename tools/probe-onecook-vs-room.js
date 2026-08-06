@@ -30,7 +30,7 @@ console.log(pad("brigade",12)+pad("cook does/hr",14)+pad("room turns/hr",15)+pad
 [1,2,3].forEach(function(n){
   build(n, 3);
   var lim = passLimit("dinner");
-  var room = Math.round(servableSeats()*(60/DWELL));
+  var room = Math.round(servableSeats()*(60/dwellNow()));
   var c=0,w=0; for(var i=0;i<20;i++){ var d=runDay(); c+=d.covers; w+=d.walkouts; }
   console.log(pad(n+" cook"+(n===1?"":"s"),12)+pad(Math.round(lim.allows),14)+pad(room,15)+pad((c/20).toFixed(1),12)+(w/20).toFixed(1));
 });

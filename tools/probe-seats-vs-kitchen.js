@@ -31,7 +31,7 @@ console.log("  " + pad("seats",8)+pad("room/hr",9)+pad("pass/hr",9)+pad("covers/
 [12,16,20,30,40,60].forEach(function(s){
   build(s);
   var lim = passLimit("dinner");
-  var room = Math.round(servableSeats()*(60/DWELL));
+  var room = Math.round(servableSeats()*(60/dwellNow()));
   var c=0,w=0,n=0,r=0;
   for(var i=0;i<30;i++){ var d=runDay(); c+=d.covers; w+=d.walkouts; n+=d.noTable; r+=d.revenue; }
   console.log("  " + pad(s,8)+pad(room,9)+pad(Math.round(lim.allows),9)+pad((c/30).toFixed(1),12)+

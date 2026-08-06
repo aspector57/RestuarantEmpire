@@ -54,7 +54,7 @@ for(var day = 1; day <= DAYS; day++){
   var lim   = passLimit(daypartAt(G.windows[0].from));
   var note  = balanceNote();
   var list  = advise();
-  var room  = servableSeats() * (60/DWELL);
+  var room  = servableSeats() * (60/dwellNow());
 
   /* ---- INVARIANTS. Each one is a bug this session actually shipped. ---- */
 
@@ -100,7 +100,7 @@ for(var day = 1; day <= DAYS; day++){
   // premise was measured away. When a fix reverses the finding a guard was built on, the
   // guard is the next thing to go and read.
   var offersSeats = list.some(function(a){ return a.seats; });
-  check(day, !(offersSeats && lim && (room + 10*(60/DWELL)) > lim.allows * 1.5),
+  check(day, !(offersSeats && lim && (room + 10*(60/dwellNow())) > lim.allows * 1.5),
         "recommends seats that would grossly outrun the pass",
         "pass " + Math.round(lim.allows) + "/hr vs room " + Math.round(room) + "/hr");
 
