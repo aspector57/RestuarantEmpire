@@ -129,6 +129,11 @@ button{font:inherit; color:inherit; cursor:pointer}
   font-family:var(--mono); font-size:11.5px; line-height:1.5; white-space:pre; resize:vertical;
 }
 #company{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:2px}
+.who{display:flex; gap:18px; flex-wrap:wrap; margin-top:18px}
+.who label{display:flex; flex-direction:column; gap:5px; font-size:13px; color:var(--muted)}
+.who input{background:var(--surface); border:1px solid var(--line); color:var(--ink);
+  border-radius:7px; padding:9px 11px; font:inherit; min-width:230px}
+.who input:focus{outline:2px solid var(--heat); outline-offset:1px}
 .steph{font-size:15px; letter-spacing:.04em; text-transform:uppercase; opacity:.75;
   margin:22px 0 10px; font-weight:600}
 .site.picked{border-color:var(--good); box-shadow:inset 0 0 0 1px var(--good)}
@@ -1001,7 +1006,7 @@ function newGame(site, seed){
     // ONE BANK ACCOUNT FOR THE WHOLE COMPANY. This is the point of expansion existing at
     // all: Aaron's nineteen-year run ended with $2.4M and nothing to spend it on, and a
     // second restaurant is the sink. Per-site books live on each site's own ledger.
-    cash: 30000 - site.key,
+    cash: chefById(chosenChef).cash - site.key,
 
     sites: [newSite(site, "r0")],
     active: 0,
@@ -1588,6 +1593,9 @@ function marketWage(p){
 /* Where this person's morale is heading, given the pay and the hours right now. */
 function moraleTarget(p){
   const market = marketWage(p);
+  // The owner-chef is not "on a bad wage", they are the owner. Their morale is their own.
+  if(G.chefIsYou && p === G.cooks[0]) return 1;
+
   const paidWell = market <= 0 ? 1 : p.wage / market;               // 1.0 = the going rate
 
   // Paying the going rate is FINE, not generous -- it lands at 1.0 and nothing above it buys
@@ -2080,6 +2088,40 @@ const AVG_PARTY = 2.55;            // 1/2/3/4/5-7 at 15/45/20/15/5 percent
  */
 // Named uniquely on purpose: the drift guard matches `name: value` anywhere in the file, and
 // a bare `breakfast:` also appears in DAYPART_ORDER, which it happily matched instead.
+/* ---------- WHO YOU ARE ---------- */
+/*
+ * WHAT KIND OF CHEF YOU ARE, chosen before anything else (Aaron).
+ *
+ * The first cook on the payroll is you and draws no wage, so YOUR skill is the kitchen for the
+ * whole opening -- which makes "what sort of chef am I" the first decision that actually
+ * changes the game rather than a name on a save file. It also answers a question the design
+ * had left dangling: when do you hire a chef? A cook who can already cook delays it for
+ * months. Somebody who raised the money and can barely hold a pan needs one immediately, and
+ * has the cash to pay for one.
+ *
+ * The trade is money against skill, and it is deliberately not balanced to be equal -- the
+ * point is that they play differently, not that they score the same. Skill reaches the plate,
+ * the mistake rate and the pass; money reaches seats and equipment.
+ */
+const CHEFS = [
+  { id:"cook", name:"Line cook made good",
+    blurb:"You came up through other people's kitchens. You can cook, and you saved what you could.",
+    cash:30000, skill:0.55 },
+  { id:"master", name:"Master chef",
+    blurb:"You are the best cook you know, and you have spent every penny getting there. The food will be right from the first night; the room will have to wait.",
+    cash:23000, skill:0.88 },
+  { id:"restaurateur", name:"Restaurateur",
+    blurb:"You raised the money and you know the business. You can barely hold a pan — hiring a real cook is not optional, it is the plan.",
+    cash:39000, skill:0.28 }
+];
+function chefById(id){ return CHEFS.filter(c => c.id === id)[0] || CHEFS[0]; }
+
+/* WHO YOU ARE IS NOT PART OF A RESTAURANT. It survives selling one and opening another, and
+   `newGame` needs it before any game object exists, so it lives out here. */
+let chosenChef = "cook";
+let chosenName = "";
+let chosenHouse = "";
+
 const DWELL_BREAKFAST = 40;
 const DWELL_LUNCH = 55;
 const DWELL_DINNER = 90;
@@ -3726,6 +3768,12 @@ function maybeSomebodyLeaves(){
   if(all.length <= 1) return;
 
   for(const person of all){
+    // YOU DO NOT QUIT YOUR OWN RESTAURANT. The owner-chef draws no wage, and the poaching
+    // roll reads a wage of zero as maximally underpaid -- so the very first person to walk
+    // out was always the player, and the restaurant served nobody from that day on. It cost
+    // the "line cook made good" archetype its entire run before this was caught.
+    if(G.chefIsYou && person === G.cooks[0]) continue;
+
     const market = person.role === "cook"
       ? HIRE.cookFloor + person.skill * HIRE.cookPremium
       : HIRE.serverFloor + person.skill * HIRE.serverPremium;
@@ -5727,6 +5775,32 @@ function buildSetup(){
     SITES.filter(s => s.id === "suburban-high-street")[0], "neighborhood-standard");
 }
 
+/* Who you are comes first, because the first cook on the payroll is you and your ability IS
+   the kitchen until you can afford somebody better. */
+function buildChefPicker(){
+  const box = $("#chefs");
+  if(!box) return;
+
+  for(const c of CHEFS){
+    const b = document.createElement("button");
+    b.className = "site";
+    if(c.id === chosenChef) b.classList.add("picked");
+    b.innerHTML = `<span><h3>${c.name}</h3><p>${c.blurb}</p></span>
+      <span class="fig"><b>${money(c.cash)}</b>to start with<br>you cook at ${(c.skill*5).toFixed(1)}/5<br>and draw no wage</span>`;
+    b.onclick = ()=>{
+      chosenChef = c.id;
+      for(const other of box.children) other.classList.remove("picked");
+      b.classList.add("picked");
+      buildSitePicker();                       // the money left per pitch just changed
+    };
+    box.appendChild(b);
+  }
+
+  const who = $("#yourname"), house = $("#housename");
+  if(who) who.oninput = () => { chosenName = who.value.trim(); };
+  if(house) house.oninput = () => { chosenHouse = house.value.trim(); };
+}
+
 function buildConceptPicker(){
   const box = $("#concepts");
   if(!box) return;
@@ -5798,7 +5872,7 @@ function buildSitePicker(){
     }
 
     b.innerHTML = `<span><h3>${s.name}</h3><p>${s.blurb}</p></span>
-      <span class="fig"><b>${money(30000-s.key)}</b>left to trade<br>$${s.rent.toLocaleString()}/mo rent<br>${s.maxArea.toLocaleString()} sq ft ceiling${fit}</span>`;
+      <span class="fig"><b>${money(chefById(chosenChef).cash-s.key)}</b>left to trade<br>$${s.rent.toLocaleString()}/mo rent<br>${s.maxArea.toLocaleString()} sq ft ceiling${fit}</span>`;
     b.onclick = ()=>start(s, chosenConcept ? chosenConcept.id : null);
     box.appendChild(b);
   }
@@ -5984,7 +6058,12 @@ function fitOutOpening(concept){
     }
   }
 
-  G.cooks.push(makeStaff("cook", 0.5));
+  // The first cook is YOU, at your own ability — the whole opening is cooked by the player.
+  const me = chefById(chosenChef);
+  const chef = makeStaff("cook", me.skill);
+  chef.name = chosenName || "You";
+  chef.skill = me.skill; chef.claim = me.skill; chef.potential = Math.max(me.skill, 0.9);
+  G.cooks.push(chef);
   G.servers.push(makeStaff("server", 0.5));
   for(let i=0;i<5;i++) G.applicants.push(makeStaff(i%2===0 ? "cook" : "server"));
 
@@ -6003,7 +6082,9 @@ function start(site, conceptId){
   G = newGame(site, seed);
   if(concept) G.concept = concept.id;
   fitOutOpening(concept);
-  say("", `Opened ${concept ? "\u201c" + concept.name + "\u201d " : ""}on the ${site.name} with ${money(G.cash)} and ${G.seats} covers.`);
+  if(chosenHouse) G.house = chosenHouse;
+  say("", `${chosenHouse ? "\u201c" + chosenHouse + "\u201d opened" : "Opened"}${concept ? " as " + concept.name : ""} on the ${site.name} with ${money(G.cash)} and ${G.seats} covers` +
+          `${chosenName ? ", " + chosenName + " cooking" : ""}.`);
 
   $("#setup").hidden = true;
   $("#game").hidden = false;
