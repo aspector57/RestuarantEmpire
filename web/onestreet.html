@@ -2036,7 +2036,43 @@ const PRACTICAL_CAPACITY = 0.90;   // clumping only; abandoned plates no longer 
    fixing properly rather than absorbing into a fudge factor. */
 
 const AVG_PARTY = 2.55;            // 1/2/3/4/5-7 at 15/45/20/15/5 percent
-const DWELL = 45;
+/*
+ * HOW LONG A TABLE IS ACTUALLY HELD — and 45 minutes was a lunch, not a dinner.
+ *
+ * Aaron: "think about how many people you can actually serve with 16 seats over 5 hours...
+ * an oven wouldn't really change that." He is right, and the arithmetic is damning. At 45
+ * minutes a seat turns 6.7 times in a five-hour service, so sixteen seats could seat 107
+ * people a night. His run served 73-95 -- between four and six sittings per seat, every
+ * night, with no gaps. No restaurant does that at dinner.
+ *
+ * A real neighbourhood dinner holds a table 75-90 minutes. That halves the covers a small
+ * room can produce, which is where the whole margin problem has been hiding: revenue was
+ * roughly double what the room could physically make, against a cost base that did not move.
+ * It is also why an oven appeared to matter in a sixteen-seat restaurant -- with an honest
+ * dwell the ROOM binds first and the kitchen is nowhere near the limit, exactly as he says.
+ *
+ * By daypart, because it is genuinely different: people eat lunch quickly and linger over
+ * dinner. That also gives the opening-hours decision a second dimension -- a lunch service
+ * turns its room nearly twice as often as a dinner one.
+ *
+ * THE 45 EXISTED TWICE. This constant fed every readout, while the service loop had its own
+ * hardcoded 45 in `seatsBusy.push(m + 45 + longest)`. Changing one would have moved the
+ * advice and not the game.
+ */
+// Named uniquely on purpose: the drift guard matches `name: value` anywhere in the file, and
+// a bare `breakfast:` also appears in DAYPART_ORDER, which it happily matched instead.
+const DWELL_BREAKFAST = 40;
+const DWELL_LUNCH = 55;
+const DWELL_DINNER = 90;
+const DWELL_LATENIGHT = 70;
+const DWELL_BY_DAYPART = { breakfast:DWELL_BREAKFAST, lunch:DWELL_LUNCH,
+                           dinner:DWELL_DINNER, latenight:DWELL_LATENIGHT };
+function dwellFor(dp){ return DWELL_BY_DAYPART[dp] || 75; }
+
+/* The dwell of the service currently being kept — what the readouts should quote. */
+function dwellNow(){
+  return dwellFor(daypartAt(G.windows && G.windows[0] ? G.windows[0].from : 19));
+}
 
 /* Plates the kitchen can send in a stretch of minutes, governed by the TIGHTEST STATION.
    Counting cooks alone was the engine forecast's biggest error — three oven units cooking two
@@ -2145,7 +2181,7 @@ function forecastDay(){
     const wanted = parties * gate * AVG_PARTY;
     demand += wanted;
 
-    const seatsHere = servableSeats() * (60/DWELL);
+    const seatsHere = servableSeats() * (60/dwellNow());
 
     const kitchenHere = kitchenThroughput(60, dp) * PRACTICAL_CAPACITY;
     seatCeil += seatsHere;
@@ -2364,7 +2400,7 @@ function shareOfTheStreet(){
 function bindingConstraint(dp){
   const lim = passLimit(dp);
   const servable = servableSeats();
-  const room = servable * (60 / DWELL);
+  const room = servable * (60 / dwellNow());
   const cappedByStaff = servable < G.seats;
 
   if(!lim) return { kind:"room", allows:room, room:room, pass:0, cappedByStaff:cappedByStaff, servable:servable };
@@ -2623,7 +2659,17 @@ function runDay(){
       d.satTotal = (d.satTotal || 0) + s;
       recordMeal(s);
     }
-    seatsBusy.push(m + 45 + longest);
+    // A PARTY OF FOUR OCCUPIES FOUR SEATS, and it was occupying one.
+    //
+    // The check above reads `seatsBusy.length + size > seatCap` -- entries counted as PEOPLE.
+    // This pushed a single entry per party, so entries were PARTIES. A fourteen-seat room was
+    // holding fourteen tables, about thirty-six covers at the average party size, and the
+    // service quietly exceeded its own stated room ceiling all night.
+    //
+    // Aaron found it from the outside, with no code: "think about how many people you can
+    // actually serve with 16 seats over 5 hours." You cannot serve ninety. One entry per seat
+    // taken, so the two halves finally agree.
+    for(let s = 0; s < size; s++) seatsBusy.push(m + dwellFor(dp) + longest);
   }
 
   // Smoothed, so one dead Tuesday does not empty the street on Wednesday. This is the number
@@ -2885,7 +2931,7 @@ function advise(){
   // whole Advisor blank — the same shape as the `wrap` bug that hid the liquor licence for
   // two sessions. A brace-balanced file is not a file that runs.
   const perHour     = lim ? lim.allows : 0;
-  const roomPerHour = servableSeats() * (60/DWELL);
+  const roomPerHour = servableSeats() * (60/dwellNow());
 
   if(lim){
     if(perHour < roomPerHour * 0.8 && lim.kind === "brigade"){
@@ -2940,7 +2986,7 @@ function advise(){
       // The trap is granularity: headroom here was ~4 covers an hour and the smallest block of
       // tables adds 13. So only suggest seats the kitchen can actually feed.
       const headroom = perHour - roomPerHour;
-      const blockAdds = 10 * (60/DWELL);      // what +10 seats does to the turn rate
+      const blockAdds = 10 * (60/dwellNow());      // what +10 seats does to the turn rate
       const turned = d && d.noTable ? ` Last night ${d.noTable} parties were turned away with nowhere to sit.` : "";
 
       // CHAIRS NOBODY CAN WAIT ON ARE NOT SEATS. servableSeats() caps the room at what the
@@ -3111,7 +3157,7 @@ function advise(){
         // guard was measured away when abandoned plates stopped burning the pass: overshooting
         // the pass with seats is now neutral rather than harmful.
         const bind      = bindingConstraint(daypartAt(G.windows[0] ? G.windows[0].from : 19));
-        const blockAdds = 10 * (60/DWELL);
+        const blockAdds = 10 * (60/dwellNow());
 
         // The room is the answer when it is genuinely the tighter half AND a block of tables
         // would not grossly outrun the pass. That second clause is the SAME test the
@@ -3427,7 +3473,7 @@ function checkInterrupts(d){
     // another oven here is how a restaurant spends its last $7,000 on kit it cannot staff.
     if(lim && lim.kind === "brigade"){
       return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
-        body:`It is not the equipment — it is the people. ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 move about ${Math.round(lim.allows)} covers an hour between them, and ${G.seats} seats turn about ${Math.round(servableSeats()*(60/DWELL))} an hour. The stations are sitting idle waiting for hands.`,
+        body:`It is not the equipment — it is the people. ${G.cooks.length} cook${G.cooks.length===1?"":"s"} at ${(lim.skill*5).toFixed(1)}/5 move about ${Math.round(lim.allows)} covers an hour between them, and ${G.seats} seats turn about ${Math.round(servableSeats()*(60/dwellNow()))} an hour. The stations are sitting idle waiting for hands.`,
         why:`Another oven would change nothing. A cook, or a better one, is the only thing that lifts this.`,
         acts:[{ label:"Go to hiring", fn:()=>{ TAB="team"; } }] };
     }
@@ -3436,7 +3482,7 @@ function checkInterrupts(d){
     const cheapest = bestFor(busiest) || EQUIPMENT.filter(e=>e.station===busiest).sort((a,b)=>a.cost-b.cost)[0];
     const name = STATION_NAMES[busiest] || busiest;
     return { kind:"kitchen", title:`${d.balkedWait} parties looked at the wait and left.`,
-      body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour against ${Math.round(servableSeats()*(60/DWELL))} the room turns.`,
+      body:`The ${name} is the bottleneck — ${stationUnits(busiest)} of them cooking ${lim ? lim.dishes : "several"} of the card, which allows about ${lim ? Math.round(lim.allows) : "?"} covers an hour against ${Math.round(servableSeats()*(60/dwellNow()))} the room turns.`,
       why:(function(){
         if(!cheapest) return "";
         if(freeArea() >= cheapest.foot)
@@ -5100,7 +5146,7 @@ function balanceNote(){
   const lim = passLimit(dp);
   if(!lim) return "no kitchen at all";
 
-  const room = Math.round(servableSeats() * (60/DWELL));
+  const room = Math.round(servableSeats() * (60/dwellNow()));
   const allows = Math.round(lim.allows);
 
   if(allows < room * 0.8){

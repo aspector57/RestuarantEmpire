@@ -51,6 +51,10 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("adminBase", (double)Tuning.AdminBase, "insurance, accountancy, licences");
             yield return ("adminPerHead", (double)Tuning.AdminPerHead, "and what each person on the books adds");
             yield return ("payrollTaxShare", (double)Tuning.PayrollTaxShare, "tax on top of every wage");
+            yield return ("DWELL_BREAKFAST", Tuning.DwellBreakfast, "how long a breakfast table is held");
+            yield return ("DWELL_LUNCH", Tuning.DwellLunch, "how long a lunch table is held");
+            yield return ("DWELL_DINNER", Tuning.DwellDinner, "how long a dinner table is held");
+            yield return ("DWELL_LATENIGHT", Tuning.DwellLateNight, "and a late one");
             yield return ("floorPerSqFt", (double)Tuning.FloorCostPerSquareFoot, "heat, light and cleaning per sq ft");
             yield return ("seatUpkeep", (double)Tuning.SeatUpkeepPerMonth, "linen, breakage and wear per seat");
             yield return ("upkeepShare", (double)Tuning.UpkeepShare, "equipment does not maintain itself");

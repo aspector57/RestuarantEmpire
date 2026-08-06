@@ -59,8 +59,26 @@ namespace RestaurantEmpire.Core.Model
         /// </summary>
         public const int PlatesPerCook = 2;
 
-        /// <summary>How long a table is held for a sitting.</summary>
-        public const int DwellMinutes = 35;
+        /// <summary>
+        /// How long a table is held for a sitting, BY DAYPART — and 35 minutes was not a
+        /// dinner, it was barely a coffee.
+        ///
+        /// Aaron, from the outside and with no code: "think about how many people you can
+        /// actually serve with 16 seats over 5 hours... an oven wouldn't really change that."
+        /// At the old numbers a seat turned nearly seven times in a five-hour service, so
+        /// sixteen seats could seat over a hundred people a night. Nothing does that.
+        ///
+        /// People eat lunch quickly and linger over dinner, so this varies — which also gives
+        /// the opening-hours decision a second dimension, since a lunch service turns its room
+        /// close to twice as often as a dinner one.
+        /// </summary>
+        public const int DwellBreakfast = 40;
+        public const int DwellLunch = 55;
+        public const int DwellDinner = 90;
+        public const int DwellLateNight = 70;
+
+        /// <summary>The old single figure, kept for anything that has no daypart to hand.</summary>
+        public const int DwellMinutes = 75;
 
         // ---- Menu breadth ----
         public const int FreeMenuSize = 4;
