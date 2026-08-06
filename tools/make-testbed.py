@@ -52,6 +52,14 @@ brief = '''<div id="setup" class="setup">
     open <b>Service &rarr; Copy the whole run</b> and send the transcript back — it carries
     every decision you made, everything the Advisor told you, and what happened next.
   </p>
+  <div class="who">
+    <label>Your name <input id="yourname" type="text" maxlength="28" placeholder="Chef"></label>
+    <label>The restaurant <input id="housename" type="text" maxlength="34" placeholder="name it later"></label>
+  </div>
+
+  <h2 class="steph">Who are you?</h2>
+  <div class="sites" id="chefs"></div>
+
   <div style="margin-top:20px">
     <button class="btn primary" id="begin">Open the doors</button>
   </div>
@@ -63,6 +71,12 @@ old = re.search(r"function buildSetup\(\)\{.*?\n\}", src, re.S)
 if not old:
     sys.exit("could not find buildSetup() — has web/pass.html changed shape?")
 src = src[:old.start()] + '''function buildSetup(){
+  // The CONCEPT and the STREET are fixed -- that is the point of this build. WHO YOU ARE
+  // is not: the first cook on the payroll is the player, so this choice changes the
+  // kitchen itself. Leaving it out was an accident of this generator replacing buildSetup
+  // wholesale, and Aaron met the consequence: "there was no choice in the beginning."
+  buildChefPicker();
+
   // No choice to make here — the whole point of this build is that the setup is fixed.
   const go = $("#begin");
   if(go) go.onclick = () => start(

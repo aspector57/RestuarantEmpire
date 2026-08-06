@@ -5601,7 +5601,7 @@ function panelTeam(){
     <thead><tr><th>Who</th><th>Role</th><th>Rate</th><th>Turned out</th><th>How they feel</th></tr></thead>
     <tbody>${[...G.cooks,...G.servers].map(p=>`<tr>
         <td>${p.name}</td><td>${p.role}</td>
-        <td class="num">$${p.wage.toFixed(2)}/hr</td>
+        <td class="num">${G.chefIsYou && p === G.cooks[0] ? "<span class=\"muted\">no wage — it is your place</span>" : "$" + p.wage.toFixed(2) + "/hr"}</td>
         <td class="num">${(p.skill*5).toFixed(1)}/5${p.skill < p.claim-0.08 ? " — worse than the CV" : p.skill > p.claim+0.08 ? " — better than the CV" : ""}</td>
         <td class="num">${moraleLabel(p)}</td>
       </tr>`).join("")}</tbody></table>`;
@@ -5619,6 +5619,11 @@ function panelTeam(){
   const mk = (label, fn) => { const b = document.createElement("button"); b.className="btn"; b.textContent=label; b.onclick=()=>{fn(); render();}; seg.appendChild(b); };
   // Firing the most recent hire is not a decision, it is a queue. You pick the person.
   for(const person of [...G.cooks, ...G.servers]){
+    // YOU CANNOT LET YOURSELF GO. Aaron found the button on his own row. Walking out of your
+    // own restaurant is not a staffing decision -- it is closing, and that wants its own
+    // button somewhere else entirely.
+    if(G.chefIsYou && person === G.cooks[0]) continue;
+
     mk(`Let ${person.name} go`, ()=>{
       const list = person.role==="cook" ? G.cooks : G.servers;
       const i = list.indexOf(person);
