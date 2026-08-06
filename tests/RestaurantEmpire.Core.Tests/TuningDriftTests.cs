@@ -45,6 +45,8 @@ namespace RestaurantEmpire.Core.Tests
             yield return ("PRACTICAL_CAPACITY", (double)Tuning.PracticalCapacity, "throughput a real service gets");
             yield return ("AVG_PARTY", (double)Tuning.AveragePartySize, "mean party size");
             yield return ("QUOTE_OPTIMISM", Tuning.QuotedWaitOptimism / 100.0, "kitchens quote under the truth");
+            yield return ("doorFloor", (double)Tuning.DoorAppealFloor, "most that looking empty can cost you at the door");
+            yield return ("doorCeiling", (double)Tuning.DoorAppealCeiling, "most that looking busy can buy you");
             yield return ("dead", (double)Tuning.RoomFeelsDead, "occupancy at which a room reads as empty");
             yield return ("thin", (double)Tuning.RoomFeelsThin, "occupancy below which people notice");
             yield return ("buzzing", (double)Tuning.RoomFeelsBuzzing, "occupancy that feels like a full house");
@@ -373,6 +375,66 @@ namespace RestaurantEmpire.Core.Tests
 
             Assert.True(wrong.Count == 0,
                 "Concepts have drifted between the two builds:\n  " + string.Join("\n  ", wrong));
+        }
+
+        /// <summary>
+        /// WHAT AN INGREDIENT COSTS EXISTS TWICE, and the guard was not watching it.
+        ///
+        /// The menu-price guard passed cleanly while three olive-oil prices were out of step
+        /// between the builds — because it checks what a dish SELLS for and never what it
+        /// costs to make. Food cost is the ratio of the two, so half of it was unguarded, and
+        /// a food-economics change that lands in one build only is the exact failure this
+        /// whole family of tests exists to catch.
+        ///
+        /// The national distributor is skipped: it is Region-tier content that the browser
+        /// build deliberately does not carry yet.
+        /// </summary>
+        [Fact]
+        public void TheBrowserBuildPaysTheSamePricesForIngredients()
+        {
+            var path = BrowserBuildPath();
+            Assert.True(path != null, "web/pass.html not found");
+
+            var source = File.ReadAllText(path);
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "data", "suppliers.json")))
+                dir = dir.Parent;
+            Assert.True(dir != null, "data/suppliers.json not found");
+
+            var json = File.ReadAllText(Path.Combine(dir.FullName, "data", "suppliers.json"));
+            var wrong = new List<string>();
+            var checkedPrices = 0;
+
+            foreach (Match supplier in Regex.Matches(json,
+                @"""id""\s*:\s*""([^""]+)""(.*?)""prices""\s*:\s*\{(.*?)\}", RegexOptions.Singleline))
+            {
+                var id = supplier.Groups[1].Value;
+                if (id == "atlantic-national") continue;
+
+                var block = Regex.Match(source,
+                    @"id:""" + Regex.Escape(id) + @""".*?prices:\{(.*?)\}", RegexOptions.Singleline);
+                if (!block.Success) { wrong.Add(id + " — not offered in the browser build"); continue; }
+
+                foreach (Match line in Regex.Matches(supplier.Groups[3].Value,
+                    @"""([a-z-]+)""\s*:\s*([0-9.]+)"))
+                {
+                    var ingredient = line.Groups[1].Value;
+                    var price = decimal.Parse(line.Groups[2].Value, CultureInfo.InvariantCulture);
+
+                    var js = Regex.Match(block.Groups[1].Value,
+                        @"""?" + Regex.Escape(ingredient) + @"""?\s*:\s*([0-9.]+)");
+                    if (!js.Success) { wrong.Add($"{id} — no price for {ingredient}"); continue; }
+
+                    checkedPrices++;
+                    var actual = decimal.Parse(js.Groups[1].Value, CultureInfo.InvariantCulture);
+                    if (actual != price)
+                        wrong.Add($"{id} {ingredient} — browser pays {actual}, engine pays {price}");
+                }
+            }
+
+            Assert.True(wrong.Count == 0,
+                "Ingredient prices have drifted between the builds:\n  " + string.Join("\n  ", wrong));
+            _out.WriteLine($"  {checkedPrices} ingredient prices agree across both builds");
         }
 
         /// <summary>

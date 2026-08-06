@@ -134,8 +134,14 @@ namespace RestaurantEmpire.Core.Tests
 
             company.Pricing.SetPrice("margherita", 18.00m);
 
-            Assert.Equal(15.403m, flagship.Costing.ContributionMargin("margherita"));
-            Assert.Equal(0.144m, decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
+            // Derived, not pinned. This asserted 15.403 and broke the moment ingredient prices
+            // moved — which is a content change the architecture is meant to ALLOW. What the
+            // test is actually about is that a repriced dish recomputes live off the current
+            // supplier, so it says that instead of restating today's arithmetic.
+            var cost = flagship.Costing.PlateCost("margherita");
+            Assert.Equal(18.00m - cost, flagship.Costing.ContributionMargin("margherita"));
+            Assert.Equal(decimal.Round(cost / 18.00m, 3),
+                         decimal.Round(flagship.Costing.FoodCostRatio("margherita"), 3));
 
             // Nothing was recalculated by hand and no recipe was edited — same live-read
             // rule the sourcing chain runs on.

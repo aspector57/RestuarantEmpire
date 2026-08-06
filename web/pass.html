@@ -651,14 +651,14 @@ const SHELF = { "house-red":0, "house-white":0, "fine-red":0, "draught-beer":0, 
 
 const SUPPLIERS = [
   { id:"budget-wholesale", name:"Budget Wholesale Foods", tier:1, prices:{
-    flour:1.2,tomato:2.0,mozzarella:6.0,basil:1.0,"olive-oil":6.0,"arborio-rice":3.0,
-    parmesan:12.0,truffle:1.5,"coffee-beans":9.0,eggs:2.4,butter:5.0,"sea-bass":22.0,lemon:1.6,"house-red":11.0,"house-white":10.0,"fine-red":26.0,"draught-beer":3.2,gin:18.0,vermouth:11.0,citrus:2.4,"cured-ham":14.0,muffin:4.5 } },
+    flour:1.68,tomato:2.8,mozzarella:8.4,basil:1.4,"olive-oil":8.4,"arborio-rice":3.0,
+    parmesan:12.0,truffle:1.5,"coffee-beans":9.0,eggs:3.36,butter:7.0,"sea-bass":22.0,lemon:2.24,"house-red":11.0,"house-white":10.0,"fine-red":26.0,"draught-beer":3.2,gin:18.0,vermouth:11.0,citrus:3.36,"cured-ham":19.6,muffin:6.3 } },
   { id:"valley-produce", name:"Valley Produce Co.", tier:3, prices:{
-    flour:1.8,tomato:3.0,mozzarella:9.0,basil:1.6,"olive-oil":11.0,"arborio-rice":4.5,
-    parmesan:18.0,truffle:2.3,"coffee-beans":15.0,eggs:3.6,butter:8.0,"sea-bass":32.0,lemon:2.4,"house-red":16.0,"house-white":15.0,"fine-red":42.0,"draught-beer":4.4,gin:26.0,vermouth:16.0,citrus:3.4,"cured-ham":21.0,muffin:6.0 } },
+    flour:2.52,tomato:4.2,mozzarella:12.6,basil:2.24,"olive-oil":15.4,"arborio-rice":4.5,
+    parmesan:18.0,truffle:2.3,"coffee-beans":15.0,eggs:5.04,butter:11.2,"sea-bass":32.0,lemon:3.36,"house-red":16.0,"house-white":15.0,"fine-red":42.0,"draught-beer":4.4,gin:26.0,vermouth:16.0,citrus:4.76,"cured-ham":29.4,muffin:8.4 } },
   { id:"premium-harvest", name:"Premium Harvest Partners", tier:5, prices:{
-    flour:2.6,tomato:5.0,mozzarella:14.0,basil:2.8,"olive-oil":22.0,"arborio-rice":7.0,
-    parmesan:28.0,truffle:3.4,"coffee-beans":26.0,eggs:5.4,butter:13.0,"sea-bass":46.0,lemon:3.8,"house-red":24.0,"house-white":23.0,"fine-red":78.0,"draught-beer":6.0,gin:38.0,vermouth:24.0,citrus:4.8,"cured-ham":31.0,muffin:8.5 } }
+    flour:3.64,tomato:7.0,mozzarella:19.6,basil:3.92,"olive-oil":30.8,"arborio-rice":7.0,
+    parmesan:28.0,truffle:3.4,"coffee-beans":26.0,eggs:7.56,butter:18.2,"sea-bass":46.0,lemon:5.32,"house-red":24.0,"house-white":23.0,"fine-red":78.0,"draught-beer":6.0,gin:38.0,vermouth:24.0,citrus:6.72,"cured-ham":43.4,muffin:11.9 } }
 ];
 
 const DAYPART_ORDER = { breakfast:0, lunch:1, dinner:2 };
@@ -924,7 +924,7 @@ function newSite(site, id, name){
     rivals: 0,               // who else is on this street
     supplierOut: 0,          // days your supplier cannot deliver
     leaseSetOn: 0,           // when the rent was last agreed
-    concept: null, spoiltBy: {},
+    concept: null, spoiltBy: {}, lookedFull: null,
     rep: { standing: REP.neutral, meals: 0, word: 0, ceiling: 1 },
     recent: [], applicants: [],
     today: { covers:0, revenue:0, food:0, labor:0, walkouts:0, balkedWait:0, balkedPrice:0, noTable:0, lostMenu:0 },
@@ -960,7 +960,7 @@ const SITE_FIELDS = [
   // averaging two of them together would hide exactly the differences worth seeing. Left off
   // this list it simply did not exist at runtime, because the company object only proxies what
   // is named here: a field declared in `newGame` and absent from SITE_FIELDS is silently gone.
-  "metrics","rivals","supplierOut","leaseSetOn","extras","concept","spoiltBy"
+  "metrics","rivals","supplierOut","leaseSetOn","extras","concept","spoiltBy","lookedFull"
 ];
 
 function bindActiveSite(G){
@@ -1768,6 +1768,40 @@ function reads(claim){
  */
 const ROOM_FEEL = { dead:0.20, thin:0.45, buzzing:0.70, lift:0.06 };
 
+/*
+ * AND AN EMPTY-LOOKING RESTAURANT IS ONE PEOPLE WALK PAST.
+ *
+ * The room score alone could only ever disappoint the people already inside, and the room is
+ * the smallest of the four satisfaction weights on purpose -- so overbuilding cost about $5k a
+ * month, which is narration rather than a consequence. The real mechanism is at the door:
+ * given two restaurants you have not tried, you pick the busy one. That is how it works, and
+ * it is what actually punishes a room bigger than its street.
+ *
+ * SELF-REINFORCING, SO IT IS CAPPED HARD. Quiet begets quiet begets quiet is a death spiral,
+ * and this project has already shipped one of those and had to take it out again. The floor is
+ * 0.85: looking dead costs you 15% of your footfall and can never cost more, so a bad patch
+ * makes digging out slower and never impossible. The ceiling is small for the same reason a
+ * full house only lightly lifts satisfaction -- this is a mistake to discover, not an engine.
+ *
+ * It reads YESTERDAY's room, because tonight's cannot be known when tonight's arrivals are
+ * being decided, and because a passer-by is going on what the place looked like last time.
+ */
+const DOOR_FEEL = { doorFloor:0.85, doorCeiling:1.05 };
+
+function howFullWeLooked(){
+  if(G.lookedFull == null) return null;        // no trading yet: judged on nothing
+  return G.lookedFull;
+}
+
+/* What last night's room does to tonight's footfall. Clamped at both ends. */
+function doorAppeal(){
+  const looked = howFullWeLooked();
+  if(looked === null) return 1;
+  const feel = roomFeel(looked);               // 0.55 dead .. 1.06 buzzing
+  const scaled = 1 + (feel - 1) * 0.55;        // damped: the room is a nudge at the door
+  return Math.max(DOOR_FEEL.doorFloor, Math.min(DOOR_FEEL.doorCeiling, scaled));
+}
+
 function roomFeel(occupancy){
   const o = occupancy < 0 ? 0 : occupancy > 1 ? 1 : occupancy;
   if(o >= ROOM_FEEL.buzzing) return 1 + ROOM_FEEL.lift;          // a full house is part of it
@@ -2250,6 +2284,7 @@ function runDay(){
   let cookFree = new Array(Math.max(1, plateCapacity())).fill(0);
   let seatsBusy = [];
   let openMinutes = 0;
+  let peakOccupancy = 0;
   const seatCap = servableSeats();
 
   for(let m=0; m<1440; m++){
@@ -2259,9 +2294,16 @@ function runDay(){
 
     seatsBusy = seatsBusy.filter(t => t > m);
 
+    // How full the room looked at its busiest tonight — what a passer-by would have seen.
+    if(G.seats > 0){
+      const now = seatsBusy.length / G.seats;
+      if(now > peakOccupancy) peakOccupancy = now;
+    }
+
     const dp = daypartAt(h);
     const base = G.site.traffic[h] + (G.site.traffic[(h+1)%24]-G.site.traffic[h])*((m%60)/60);
-    const footfall = base * shareOfTheStreet() * rivalPressure() * trafficMultiplier() * menuDrawAt(dp);
+    const footfall = base * shareOfTheStreet() * rivalPressure() * trafficMultiplier()
+                          * menuDrawAt(dp) * doorAppeal();
     if(G.rand() >= footfall/60) continue;
 
     // a party arrives
@@ -2482,6 +2524,11 @@ function runDay(){
     seatsBusy.push(m + 45 + longest);
   }
 
+  // Smoothed, so one dead Tuesday does not empty the street on Wednesday. This is the number
+  // tomorrow's passers-by judge the place on.
+  G.lookedFull = G.lookedFull == null ? peakOccupancy : G.lookedFull*0.7 + peakOccupancy*0.3;
+  d.lookedFull = +peakOccupancy.toFixed(3);
+
   const hours = openMinutes/60;
   d.labor = hours * wageBill();
 
@@ -2550,7 +2597,8 @@ function runDay(){
     // and never survived the night -- which read as "nobody had a bad word" no matter how
     // badly the restaurant was run.
     complaints: d.complaints || null, tables: d.tables || null,
-    moraleKitchen: +avgMorale(G.cooks).toFixed(3), moraleFloor: +avgMorale(G.servers).toFixed(3)
+    moraleKitchen: +avgMorale(G.cooks).toFixed(3), moraleFloor: +avgMorale(G.servers).toFixed(3),
+    lookedFull: d.lookedFull || 0
   });
   if(G.metrics.length > 4000) G.metrics.shift();
 
@@ -5603,7 +5651,7 @@ const CONCEPTS = [
   { id:"fine-dining", name:"Fine dining",
     blurb:"Expensive ingredients, long prep, and a price to match. Loved by more people than can afford it.",
     card:["sea-bass", "truffle-risotto", "caprese-salad"],
-    pricePosition:1.9,
+    pricePosition:1.2,
     windows:[{name:"Dinner", from:18, to:23}],
     seats:10, comfort:0.85, seatSpend:520,
     kit:["grill-flat", "saute-basic", "gm-basic", "cold-underbar", "dry-shelving"] },

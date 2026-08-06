@@ -144,6 +144,19 @@ namespace RestaurantEmpire.Core.Model
         public const decimal RoomFeelsBuzzing = 0.70m;
         public const decimal RoomBuzzLift = 0.06m;
 
+        // AND AN EMPTY-LOOKING RESTAURANT IS ONE PEOPLE WALK PAST. The room score alone only
+        // disappoints the people already inside, and the room is the smallest satisfaction
+        // weight on purpose, so overbuilding cost about $5k a month -- narration rather than a
+        // consequence. Given two places you have not tried, you pick the busy one.
+        //
+        // SELF-REINFORCING, SO CAPPED HARD: quiet begetting quiet is a death spiral, and this
+        // project has shipped one of those and had to take it out again. Looking dead costs
+        // 15% of footfall and can never cost more, so a bad patch makes digging out slower and
+        // never impossible. Measured in isolation on the nightlife pitch: a correctly-sized
+        // room moves 0-1%, a hundred-seat room loses 10%, a hundred-and-forty-seat room 23%.
+        public const decimal DoorAppealFloor = 0.85m;
+        public const decimal DoorAppealCeiling = 1.05m;
+
         /// <summary>Below this, a component of the meal is worth complaining about.</summary>
         public const decimal GrumbleThreshold = 0.55m;
 

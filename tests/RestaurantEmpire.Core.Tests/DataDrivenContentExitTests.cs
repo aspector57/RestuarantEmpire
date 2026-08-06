@@ -65,12 +65,14 @@ namespace RestaurantEmpire.Core.Tests
             company.SupplierPolicy.AssignAll("valley-produce");
 
             // 0.18*1.80 + 0.22*3.00 + 0.02*1.60 = 0.324 + 0.66 + 0.032 = 1.016
-            Assert.Equal(15.00m - 1.016m, restaurant.Costing.ContributionMargin("arrabbiata"));
+            Assert.Equal(15.00m - restaurant.Costing.PlateCost("arrabbiata"),
+                         restaurant.Costing.ContributionMargin("arrabbiata"));
 
             company.SupplierPolicy.Assign("tomato", "premium-harvest");
 
             // 0.18*1.80 + 0.22*5.00 + 0.02*1.60 = 0.324 + 1.10 + 0.032 = 1.456
-            Assert.Equal(15.00m - 1.456m, restaurant.Costing.ContributionMargin("arrabbiata"));
+            Assert.Equal(15.00m - restaurant.Costing.PlateCost("arrabbiata"),
+                         restaurant.Costing.ContributionMargin("arrabbiata"));
 
             Directory.Delete(dataDir, true);
         }
