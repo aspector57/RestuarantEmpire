@@ -1136,7 +1136,19 @@ function orderStock(id, qty){
 function suggestedOrder(id){
   const keeps = keepsFor(id);
   const usage = G.usage[id] || 0;
-  if(usage <= 0) return Math.max(0, 20 - stockOf(id));
+
+  // A DISH NOBODY ORDERS USED TO RESTOCK ITSELF FOREVER.
+  //
+  // From Aaron's 691-day run: the sea bass never sold on the suburban high street, so its
+  // usage sat at zero -- and this fallback bought twenty anyway, every time stock hit zero.
+  // They rotted in five days, went in the bin for $640, and it bought twenty more. Across the
+  // run that came to roughly $73,000 of the $75,815 he binned: a THIRD of the entire food
+  // bill, spent on a dish not one guest ever ate.
+  //
+  // The seed order is for things that KEEP, so a new pantry has something in it. Nothing that
+  // turns gets bought on a hunch -- if it is not being eaten, buying more of it is not an
+  // opening stock level, it is a standing order to the compost heap.
+  if(usage <= 0) return keeps > 0 ? 0 : Math.max(0, 20 - stockOf(id));
 
   // Par is a policy for things that KEEP. For anything that turns, never order more than
   // gets used before it does -- otherwise you buy a shelf, use a fraction and bin the rest.
@@ -2846,7 +2858,18 @@ function advise(){
       // help", which is wording written for a room that is merely under-served. A business
       // that has stopped trading outranks everything, including the runway brake: hiring is
       // not discretionary spending when the alternative is taking no money at all.
-      if(G.servers.length === 0){
+      if(G.cooks.length === 0){
+        // Same emergency, other half of the building. Aaron finished a 691-day run with ZERO
+        // cooks and a pass of 0 covers an hour, and this rule -- which already existed for
+        // servers -- said nothing, because it only ever looked at the floor.
+        out.push({ rank:0, id:"shut",
+          head:"There is nobody in the kitchen — nothing can be cooked.",
+          body:`Every cook has gone. The stations are all still there and not one of them can ` +
+               `be worked, so the doors open onto a dining room that cannot be served. Rent, ` +
+               `the floor staff and whatever is in the walk-in are all still being paid for. ` +
+               `Hire a cook before anything else.`,
+          needsWage: true, role: "cook" });
+      } else if(G.servers.length === 0){
         out.push({ rank:0, id:"shut",
           head:"There is nobody to seat anyone — the restaurant is serving no one.",
           body:`There are ${G.seats} seats and no floor staff at all, so not one of them can be ` +
@@ -3143,9 +3166,24 @@ function advise(){
   // A share cannot exceed one, and a share of almost nothing is not worth saying.
   if(d && G.spoiled > 0 && G.ledger.food > 500){
     const binned = Math.min(1, G.spoiled / G.ledger.food);
-    if(binned > 0.30)
+    if(binned > 0.30){
+      // NAME THE THING THAT IS ROTTING. "Either the order is too deep or the card is wrong"
+      // is two guesses and no answer -- Aaron read it for 691 days while one dish nobody had
+      // ever ordered ate a third of his food bill.
+      let worstIng = null, worstSold = 0;
+      for(const r of RECIPES){
+        if(!G.onMenu.has(r.id)) continue;
+        const sold = G.sold[r.id] || 0;
+        const perishes = Object.keys(r.ing).some(k => keepsFor(k) > 0);
+        if(perishes && (worstIng === null || sold < worstSold)){ worstIng = r; worstSold = sold; }
+      }
+      const deadDish = (worstIng && worstSold < 5)
+        ? ` Nothing on the card is selling worse than the ${worstIng.name} — ${worstSold} sold, ever — and it is made of things that turn. A dish nobody orders still gets bought for, every week, and then thrown away.`
+        : ` Either the standing order is set too deep, or the card is carrying things that do not sell fast enough to stay fresh.`;
+
       out.push({ rank:5, id:"waste", head:"We are throwing away too much of what we buy.",
-        body:`${Math.round(binned * 100)}% of the food bill has gone in the bin. Either the standing order is set too deep, or the card is carrying things that do not sell fast enough to stay fresh.` });
+        body:`${Math.round(binned * 100)}% of the food bill has gone in the bin.` + deadDish });
+    }
   }
 
   // --- 6. Prime cost. The number that decides whether a restaurant lives. ---
